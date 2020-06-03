@@ -6,9 +6,7 @@
   "directories": {
     "test": "tests"
   },
-  "dependencies": {
-    
-  },
+  "dependencies": {},
   "devDependencies": {
     "@openzeppelin/cli": "^2.8.2",
     "@openzeppelin/contracts": "^3.0.1",
@@ -16,6 +14,7 @@
     "@openzeppelin/test-environment": "^0.1.4",
     "@openzeppelin/upgrades": "^2.8.0",
     "chai": "^4.2.0",
+    "dotenv": "^8.2.0",
     "ganache-cli": "^6.9.1",
     "mocha": "^7.2.0"
   },
