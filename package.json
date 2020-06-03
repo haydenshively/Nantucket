@@ -1,0 +1,35 @@
+{
+  "name": "flash-loan-liquidation",
+  "version": "1.0.0",
+  "description": "",
+  "main": "main.js",
+  "directories": {
+    "test": "tests"
+  },
+  "dependencies": {
+    
+  },
+  "devDependencies": {
+    "@openzeppelin/cli": "^2.8.2",
+    "@openzeppelin/contracts": "^3.0.1",
+    "@openzeppelin/contracts-ethereum-package": "^3.0.0",
+    "@openzeppelin/test-environment": "^0.1.4",
+    "@openzeppelin/upgrades": "^2.8.0",
+    "chai": "^4.2.0",
+    "ganache-cli": "^6.9.1",
+    "mocha": "^7.2.0"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/haydenshively/Flash-Loan-Liquidation.git"
+  },
+  "author": "Hayden Shively",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/haydenshively/Flash-Loan-Liquidation/issues"
+  },
+  "homepage": "https://github.com/haydenshively/Flash-Loan-Liquidation#readme"
+}
