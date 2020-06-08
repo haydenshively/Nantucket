@@ -1,12 +1,14 @@
+// SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.6.6;
 
+// Import AAVE components
 import "./aave/FlashLoanReceiverBase.sol";
 import "./aave/ILendingPoolAddressesProvider.sol";
 import "./aave/ILendingPool.sol";
 
 contract Flashloan is FlashLoanReceiverBase {
 
-    constructor(address _addressProvider) FlashLoanReceiverBase(_addressProvider) public {}
+    // Initializer function is in super class
 
     /**
         This function is called after your contract has received the flash loaned amount

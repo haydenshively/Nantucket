@@ -3,7 +3,8 @@ pragma solidity ^0.6.6;
 
 /**
     @title ILendingPoolAddressesProvider interface
-    @notice provides the interface to fetch the LendingPoolCore address
+    @notice Provides the interface to fetch the LendingPoolCore address
+    @author AAVE
  */
 
 interface ILendingPoolAddressesProvider {

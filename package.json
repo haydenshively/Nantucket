@@ -10,9 +10,8 @@
   "devDependencies": {
     "@openzeppelin/cli": "^2.8.2",
     "@openzeppelin/contracts": "^3.0.1",
-    "@openzeppelin/contracts-ethereum-package": "^3.0.0",
-    "@openzeppelin/test-environment": "^0.1.4",
     "@openzeppelin/upgrades": "^2.8.0",
+    "@openzeppelin/test-environment": "^0.1.4",
     "chai": "^4.2.0",
     "dotenv": "^8.2.0",
     "ganache-cli": "^6.9.1",
