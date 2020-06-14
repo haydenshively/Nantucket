@@ -1,20 +1,20 @@
 // SPDX-License-Identifier: GNU
 pragma solidity ^0.6.6;
 
-// Import base Initializable contract
-import "@openzeppelin/upgrades/contracts/Initializable.sol";
+// import "@openzeppelin/upgrades/contracts/Initializable.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
 
 // Import the IERC20 interface and and SafeMath library
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
 
 // Import AAVE components
 import "./IFlashLoanReceiver.sol";
 import "./ILendingPoolAddressesProvider.sol";
-import "../utils/Withdrawable.sol";
+// import "../utils/Withdrawable.sol";
 
-abstract contract FlashLoanReceiverBase is IFlashLoanReceiver, Withdrawable, Initializable {
+abstract contract FlashLoanReceiverBase is IFlashLoanReceiver, Initializable {
 
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
@@ -23,7 +23,7 @@ abstract contract FlashLoanReceiverBase is IFlashLoanReceiver, Withdrawable, Ini
     ILendingPoolAddressesProvider public addressesProvider;
 
     // Initializer function (replaces constructor)
-    function initialize(address _addressProvider) public initializer {
+    function initialize(address _addressProvider) public virtual initializer {
         addressesProvider = ILendingPoolAddressesProvider(_addressProvider);
     }
 
