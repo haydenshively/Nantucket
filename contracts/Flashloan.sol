@@ -13,12 +13,40 @@ import "./compound/Comptroller.sol";
 
 contract Flashloan is FlashLoanReceiverBase {
 
-    // Comptroller troll;
+    using SafeERC20 for IERC20;
+    using SafeMath for uint256;
+
+    address constant ETHER = address(0);
+    address constant CETH = 0x4Ddc2D193948926D02f9B1fE9e1daa0718270ED5;
+    address payable private wallet;
+
+    event LogWithdraw(
+        address indexed _assetAddress,
+        uint amount
+    );
 
     // Initializer function (replaces constructor)
-    function initialize(address _addressProvider) public override initializer {
+    function initialize(address payable _wallet, address _addressProvider) public initializer {
         super.initialize(_addressProvider);
-        // troll = Comptroller(_comptrollerAddress);
+        wallet = _wallet;
+    }
+
+    // function liquidate(address _borrower) {
+        
+    // }
+
+    function liquidate(address _borrower, address _borrowedCToken, address _collatCToken, uint256 _amount) internal {
+        address requisiteAsset;
+        if (_borrowedCToken == CETH) {
+            requisiteAsset = ethAddress;
+        }else {
+            requisiteAsset = CErc20Storage(_borrowedCToken).underlying();
+        }
+
+        bytes memory params = abi.encode(_borrowedCToken, _borrower, _collatCToken);
+
+        ILendingPool lendingPool = ILendingPool(addressesProvider.getLendingPool());
+        lendingPool.flashLoan(address(this), requisiteAsset, _amount, params);
     }
 
     /**
@@ -28,38 +56,34 @@ contract Flashloan is FlashLoanReceiverBase {
 
         require(_amount <= getBalanceInternal(address(this), _reserve), "Invalid balance, was the flashLoan successful?");
 
-        (address asset, address borrower, address collateral) = abi.decode(_params, (address, address, address));
-        if (asset == 0x4Ddc2D193948926D02f9B1fE9e1daa0718270ED5) {
-            CEther cEther = CEther(asset);
-            cEther.liquidateBorrow{value: _amount}(borrower, collateral);
+        (address borrowedCToken, address borrower, address collatCToken) = abi.decode(_params, (address, address, address));
+        
+        if (borrowedCToken == CETH) {
+            CEther cEther = CEther(borrowedCToken);
+            cEther.liquidateBorrow{value: _amount}(borrower, collatCToken);
         }else {
-            CErc20 cErc20 = CErc20(asset);
-            cErc20.liquidateBorrow(borrower, _amount, collateral);
+            CErc20 cErc20 = CErc20(borrowedCToken);
+            cErc20.liquidateBorrow(borrower, _amount, collatCToken);
         }
 
         uint totalDebt = _amount.add(_fee);
         transferFundsBackToPoolInternal(_reserve, totalDebt);
     }
 
-    // /**
-    //     Flash loan 1000000000000000000 wei (1 ether) worth of `_asset`
-    //  */
-    // function flashloan(address _asset) public onlyOwner {
-    //     bytes memory data = "";
-    //     uint amount = 1 ether;
-
-    //     ILendingPool lendingPool = ILendingPool(addressesProvider.getLendingPool());
-    //     lendingPool.flashLoan(address(this), _asset, amount, data);
-    // }
-
-    function liquidate(address asset, address borrower, uint repayAmount, address collateral) public {
-        bytes memory params = abi.encode(asset, borrower, collateral);
-
-        ILendingPool lendingPool = ILendingPool(addressesProvider.getLendingPool());
-        lendingPool.flashLoan(address(this), asset, repayAmount, params);
+    /**
+     * @dev Withdraw asset.
+     * @param _assetAddress Asset to be withdrawn.
+     */
+    function withdraw(address _assetAddress) public {
+        uint assetBalance;
+        if (_assetAddress == ETHER) {
+            address self = address(this); // workaround for a possible solidity bug
+            assetBalance = self.balance;
+            wallet.transfer(assetBalance);
+        } else {
+            assetBalance = IERC20(_assetAddress).balanceOf(address(this));
+            IERC20(_assetAddress).safeTransfer(wallet, assetBalance);
+        }
+        emit LogWithdraw(_assetAddress, assetBalance);
     }
-
-    // function liquidate(address borrower) {
-
-    // }
 }

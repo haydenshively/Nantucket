@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GNU
 pragma solidity ^0.6.6;
 
-// import "@openzeppelin/upgrades/contracts/Initializable.sol";
+// import Initializable
 import "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol";
 
-// Import the IERC20 interface and and SafeMath library
+// Import the ERC20 interface and and SafeMath library
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
@@ -12,7 +12,6 @@ import "@openzeppelin/contracts-ethereum-package/contracts/math/SafeMath.sol";
 // Import AAVE components
 import "./IFlashLoanReceiver.sol";
 import "./ILendingPoolAddressesProvider.sol";
-// import "../utils/Withdrawable.sol";
 
 abstract contract FlashLoanReceiverBase is IFlashLoanReceiver, Initializable {
 
@@ -23,7 +22,7 @@ abstract contract FlashLoanReceiverBase is IFlashLoanReceiver, Initializable {
     ILendingPoolAddressesProvider public addressesProvider;
 
     // Initializer function (replaces constructor)
-    function initialize(address _addressProvider) public virtual initializer {
+    function initialize(address _addressProvider) public initializer {
         addressesProvider = ILendingPoolAddressesProvider(_addressProvider);
     }
 

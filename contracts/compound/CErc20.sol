@@ -10,3 +10,10 @@ interface CErc20 {
     function repayBorrowBehalf(address borrower, uint repayAmount) external returns (uint);
     function liquidateBorrow(address borrower, uint repayAmount, address collateral) external returns (uint);
 }
+
+contract CErc20Storage {
+    /**
+     * @notice Underlying asset for this CToken
+     */
+    address public underlying;
+}
