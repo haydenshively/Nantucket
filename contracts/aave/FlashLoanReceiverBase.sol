@@ -18,7 +18,7 @@ abstract contract FlashLoanReceiverBase is IFlashLoanReceiver, Initializable {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
-    address constant ethAddress = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
+    address constant AETH = 0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE;
     ILendingPoolAddressesProvider public addressesProvider;
 
     // Initializer function (replaces constructor)
@@ -34,7 +34,7 @@ abstract contract FlashLoanReceiverBase is IFlashLoanReceiver, Initializable {
     }
 
     function transferInternal(address payable _destination, address _reserve, uint256 _amount) internal {
-        if(_reserve == ethAddress) {
+        if(_reserve == AETH) {
             (bool success, ) = _destination.call{value: _amount}("");
             require(success == true, "Couldn't transfer ETH");
             return;
@@ -43,7 +43,7 @@ abstract contract FlashLoanReceiverBase is IFlashLoanReceiver, Initializable {
     }
 
     function getBalanceInternal(address _target, address _reserve) internal view returns(uint256) {
-        if(_reserve == ethAddress) {
+        if(_reserve == AETH) {
             return _target.balance;
         }
         return IERC20(_reserve).balanceOf(_target);

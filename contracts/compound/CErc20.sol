@@ -11,9 +11,6 @@ interface CErc20 {
     function liquidateBorrow(address borrower, uint repayAmount, address collateral) external returns (uint);
 }
 
-contract CErc20Storage {
-    /**
-     * @notice Underlying asset for this CToken
-     */
-    address public underlying;
+interface CErc20Storage {
+    function underlying() external view returns (address);
 }
