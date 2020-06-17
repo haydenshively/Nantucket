@@ -1,0 +1,112 @@
+{
+  "contracts": {
+    "Flashloan": {
+      "address": "0x3990C04973EE2da655130d7F2a394DeFd6e9E759",
+      "constructorCode": "608060405234801561001057600080fd5b5061169c806100206000396000f3fe",
+      "bodyBytecodeHash": "c08c3bb9b00f56c65c982bd8d7e3330c31bd2e0b2672a29192cbf92f221f50fc",
+      "localBytecodeHash": "6c4717814a520eeb90f29b9b3e03964e85b68c71f53a003235605d60ad605366",
+      "deployedBytecodeHash": "6c4717814a520eeb90f29b9b3e03964e85b68c71f53a003235605d60ad605366",
+      "types": {
+        "t_bool": {
+          "id": "t_bool",
+          "kind": "elementary",
+          "label": "bool"
+        },
+        "t_uint256": {
+          "id": "t_uint256",
+          "kind": "elementary",
+          "label": "uint256"
+        },
+        "t_array:50<t_uint256>": {
+          "id": "t_array:50<t_uint256>",
+          "valueType": "t_uint256",
+          "length": "50",
+          "kind": "array",
+          "label": "uint256[50]"
+        },
+        "t_address": {
+          "id": "t_address",
+          "kind": "elementary",
+          "label": "address"
+        },
+        "t_address_payable": {
+          "id": "t_address_payable",
+          "kind": "elementary",
+          "label": "address payable"
+        }
+      },
+      "storage": [
+        {
+          "contract": "Initializable",
+          "path": "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol",
+          "label": "initialized",
+          "astId": 5,
+          "type": "t_bool",
+          "src": "757:24:0"
+        },
+        {
+          "contract": "Initializable",
+          "path": "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol",
+          "label": "initializing",
+          "astId": 8,
+          "type": "t_bool",
+          "src": "876:25:0"
+        },
+        {
+          "contract": "Initializable",
+          "path": "@openzeppelin/contracts-ethereum-package/contracts/Initializable.sol",
+          "label": "______gap",
+          "astId": 73,
+          "type": "t_array:50<t_uint256>",
+          "src": "1982:29:0"
+        },
+        {
+          "contract": "FlashLoanReceiverBase",
+          "path": "contracts/aave/FlashLoanReceiverBase.sol",
+          "label": "addressesProvider",
+          "astId": 921,
+          "type": "t_address",
+          "src": "796:54:6"
+        },
+        {
+          "contract": "Flashloan",
+          "path": "contracts/Flashloan.sol",
+          "label": "wallet",
+          "astId": 667,
+          "type": "t_address_payable",
+          "src": "580:30:5"
+        }
+      ],
+      "warnings": {
+        "hasConstructor": false,
+        "hasSelfDestruct": false,
+        "hasDelegateCall": false,
+        "hasInitialValuesInDeclarations": false,
+        "uninitializedBaseContracts": []
+      }
+    }
+  },
+  "solidityLibs": {},
+  "proxies": {
+    "Flash Loan Liquidation/Flashloan": [
+      {
+        "address": "0xb78D13E162B37271Cbe9bbE60AB55257B73F3bCC",
+        "version": "1.0.0",
+        "implementation": "0x3990C04973EE2da655130d7F2a394DeFd6e9E759",
+        "admin": "0x553E9d99B258bE6173B09cE509FB40d4972dcb88",
+        "kind": "Upgradeable"
+      }
+    ]
+  },
+  "manifestVersion": "2.2",
+  "version": "1.0.0",
+  "dependencies": {
+    "@openzeppelin/contracts-ethereum-package": {
+      "package": "0x778dddF23Ec1B5Cb18394c6C110480CaaDB3B0f6",
+      "version": "3.0.0"
+    }
+  },
+  "proxyAdmin": {
+    "address": "0x553E9d99B258bE6173B09cE509FB40d4972dcb88"
+  }
+}
