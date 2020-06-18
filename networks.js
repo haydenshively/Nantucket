@@ -7,13 +7,13 @@ module.exports = {
     development: {
       provider: () => new HDWalletProvider('glad famous milk doctor wedding rifle piece rival fancy youth boost frame', 'https://kovan.infura.io/v3/' + process.env.INFURA_ID),
       gas: 5000000,
-      gasPrice: 35e9,
+      gasPrice: 30e9,
       networkId: '*',
     },
     production: {
       provider: () => new HDWalletProvider(process.env.MNEMONIC, 'https://mainnet.infura.io/v3/' + process.env.INFURA_ID),
       gas: 5000000,
-      gasPrice: 35e9,
+      gasPrice: 30e9,
       networkId: '*',
     },
   },

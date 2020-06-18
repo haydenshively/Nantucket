@@ -1,11 +1,11 @@
 {
   "contracts": {
-    "Flashloan": {
-      "address": "0x3990C04973EE2da655130d7F2a394DeFd6e9E759",
-      "constructorCode": "608060405234801561001057600080fd5b5061169c806100206000396000f3fe",
-      "bodyBytecodeHash": "c08c3bb9b00f56c65c982bd8d7e3330c31bd2e0b2672a29192cbf92f221f50fc",
-      "localBytecodeHash": "6c4717814a520eeb90f29b9b3e03964e85b68c71f53a003235605d60ad605366",
-      "deployedBytecodeHash": "6c4717814a520eeb90f29b9b3e03964e85b68c71f53a003235605d60ad605366",
+    "Liquidator": {
+      "address": "0x90eD580c68d596069D66FbF589E12672D2F4F928",
+      "constructorCode": "608060405234801561001057600080fd5b506131e2806100206000396000f3fe",
+      "bodyBytecodeHash": "2e40613bce1ad99c059ca36794797dad1eb9f7bc12b6c5c1901d9e381816bf5e",
+      "localBytecodeHash": "bc3f7f6288d9344c3658ef4465c4e5a1f930b082b1ede5385a72fb2dee8b9e6d",
+      "deployedBytecodeHash": "bc3f7f6288d9344c3658ef4465c4e5a1f930b082b1ede5385a72fb2dee8b9e6d",
       "types": {
         "t_bool": {
           "id": "t_bool",
@@ -64,17 +64,25 @@
           "contract": "FlashLoanReceiverBase",
           "path": "contracts/aave/FlashLoanReceiverBase.sol",
           "label": "addressesProvider",
-          "astId": 921,
+          "astId": 1460,
           "type": "t_address",
-          "src": "796:54:6"
+          "src": "796:54:7"
         },
         {
-          "contract": "Flashloan",
+          "contract": "Liquidator",
           "path": "contracts/Flashloan.sol",
           "label": "wallet",
-          "astId": 667,
+          "astId": 829,
           "type": "t_address_payable",
-          "src": "580:30:5"
+          "src": "716:30:6"
+        },
+        {
+          "contract": "Liquidator",
+          "path": "contracts/Flashloan.sol",
+          "label": "router",
+          "astId": 831,
+          "type": "t_address",
+          "src": "752:32:6"
         }
       ],
       "warnings": {
@@ -92,7 +100,16 @@
       {
         "address": "0xb78D13E162B37271Cbe9bbE60AB55257B73F3bCC",
         "version": "1.0.0",
-        "implementation": "0x3990C04973EE2da655130d7F2a394DeFd6e9E759",
+        "implementation": "0xe3b4aF8925909168A82C7e168b942FB015d72942",
+        "admin": "0x553E9d99B258bE6173B09cE509FB40d4972dcb88",
+        "kind": "Upgradeable"
+      }
+    ],
+    "Flash Loan Liquidation/Liquidator": [
+      {
+        "address": "0x3C66B3435cd6A9AE33bD171e062574cCc4Fdb391",
+        "version": "1.0.0",
+        "implementation": "0x90eD580c68d596069D66FbF589E12672D2F4F928",
         "admin": "0x553E9d99B258bE6173B09cE509FB40d4972dcb88",
         "kind": "Upgradeable"
       }

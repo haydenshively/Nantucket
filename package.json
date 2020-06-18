@@ -11,6 +11,7 @@
     "@openzeppelin/cli": "^2.8.2",
     "@openzeppelin/contracts-ethereum-package": "^3.0.0",
     "@truffle/hdwallet-provider": "^1.0.35",
+    "@uniswap/lib": "^1.1.2",
     "chai": "^4.2.0",
     "dotenv": "^8.2.0",
     "ganache-cli": "^6.9.1",

@@ -9,6 +9,7 @@ interface CErc20 {
     function repayBorrow(uint repayAmount) external returns (uint);
     function repayBorrowBehalf(address borrower, uint repayAmount) external returns (uint);
     function liquidateBorrow(address borrower, uint repayAmount, address collateral) external returns (uint);
+    function balanceOfUnderlying(address account) external returns (uint);
 }
 
 interface CErc20Storage {

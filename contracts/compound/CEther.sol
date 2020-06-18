@@ -9,4 +9,5 @@ interface CEther {
     function repayBorrow() external payable;
     function repayBorrowBehalf(address borrower) external payable;
     function liquidateBorrow(address borrower, address cTokenCollateral) external payable;
+    function balanceOfUnderlying(address account) external returns (uint);
 }

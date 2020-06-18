@@ -1,11 +1,11 @@
 {
   "contracts": {
     "Flashloan": {
-      "address": "0x1d3f8D9da27ef046B7952a7b34a4b2Aa872fD141",
-      "constructorCode": "608060405234801561001057600080fd5b50611748806100206000396000f3fe",
-      "bodyBytecodeHash": "136973e02ee4ca48518a760e26dd72b1ce3b1098efd0f04c37562c5ea0e842c3",
-      "localBytecodeHash": "24b40bcd8824b9c5acfada6310e0da820dab7dbba355358f5d3ede0a9e6041c1",
-      "deployedBytecodeHash": "24b40bcd8824b9c5acfada6310e0da820dab7dbba355358f5d3ede0a9e6041c1",
+      "address": "0x64067AD187e5aa2E4e898066dc47242BBE41E6B5",
+      "constructorCode": "608060405234801561001057600080fd5b506131e2806100206000396000f3fe",
+      "bodyBytecodeHash": "2e40613bce1ad99c059ca36794797dad1eb9f7bc12b6c5c1901d9e381816bf5e",
+      "localBytecodeHash": "bc3f7f6288d9344c3658ef4465c4e5a1f930b082b1ede5385a72fb2dee8b9e6d",
+      "deployedBytecodeHash": "bc3f7f6288d9344c3658ef4465c4e5a1f930b082b1ede5385a72fb2dee8b9e6d",
       "types": {
         "t_bool": {
           "id": "t_bool",
@@ -64,17 +64,25 @@
           "contract": "FlashLoanReceiverBase",
           "path": "contracts/aave/FlashLoanReceiverBase.sol",
           "label": "addressesProvider",
-          "astId": 921,
+          "astId": 1460,
           "type": "t_address",
-          "src": "796:54:6"
+          "src": "796:54:7"
         },
         {
           "contract": "Flashloan",
           "path": "contracts/Flashloan.sol",
           "label": "wallet",
-          "astId": 667,
+          "astId": 829,
           "type": "t_address_payable",
-          "src": "580:30:5"
+          "src": "715:30:6"
+        },
+        {
+          "contract": "Flashloan",
+          "path": "contracts/Flashloan.sol",
+          "label": "router",
+          "astId": 831,
+          "type": "t_address",
+          "src": "751:32:6"
         }
       ],
       "warnings": {
@@ -90,10 +98,10 @@
   "proxies": {
     "Flash Loan Liquidation/Flashloan": [
       {
-        "address": "0xCC44287f16dc7cb4FaAB6fd5303e572097e8aFbd",
+        "address": "0x5902AA3a2ec18A6CdA311C7Ea666f43058fA736d",
         "version": "1.0.0",
-        "implementation": "0x1d3f8D9da27ef046B7952a7b34a4b2Aa872fD141",
-        "admin": "0x05B45F2385778D5F28101445444A88e2b4f926d2",
+        "implementation": "0x64067AD187e5aa2E4e898066dc47242BBE41E6B5",
+        "admin": "0x415e60Bd397D57641fee1fad64E75338978Ce24B",
         "kind": "Upgradeable"
       }
     ]
@@ -107,6 +115,6 @@
     }
   },
   "proxyAdmin": {
-    "address": "0x05B45F2385778D5F28101445444A88e2b4f926d2"
+    "address": "0x415e60Bd397D57641fee1fad64E75338978Ce24B"
   }
 }
