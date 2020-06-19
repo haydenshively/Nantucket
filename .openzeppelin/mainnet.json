@@ -1,11 +1,11 @@
 {
   "contracts": {
-    "Liquidator": {
-      "address": "0x90eD580c68d596069D66FbF589E12672D2F4F928",
-      "constructorCode": "608060405234801561001057600080fd5b506131e2806100206000396000f3fe",
-      "bodyBytecodeHash": "2e40613bce1ad99c059ca36794797dad1eb9f7bc12b6c5c1901d9e381816bf5e",
-      "localBytecodeHash": "bc3f7f6288d9344c3658ef4465c4e5a1f930b082b1ede5385a72fb2dee8b9e6d",
-      "deployedBytecodeHash": "bc3f7f6288d9344c3658ef4465c4e5a1f930b082b1ede5385a72fb2dee8b9e6d",
+    "LiquidatorBase": {
+      "address": "0xDC706a7A7df124D9668122b09f917eE5C0BE75F0",
+      "constructorCode": "608060405234801561001057600080fd5b50611584806100206000396000f3fe",
+      "bodyBytecodeHash": "81dc8171a75c92a10929b7a7d40e57b2e80f882c7acb26be133bb9aba343e34b",
+      "localBytecodeHash": "1348bc84681d2dda7cc5b47c649a546b842af71fd406bef7635093a9d8faba55",
+      "deployedBytecodeHash": "1348bc84681d2dda7cc5b47c649a546b842af71fd406bef7635093a9d8faba55",
       "types": {
         "t_bool": {
           "id": "t_bool",
@@ -64,25 +64,25 @@
           "contract": "FlashLoanReceiverBase",
           "path": "contracts/aave/FlashLoanReceiverBase.sol",
           "label": "addressesProvider",
-          "astId": 1460,
+          "astId": 1087,
           "type": "t_address",
           "src": "796:54:7"
         },
         {
-          "contract": "Liquidator",
+          "contract": "LiquidatorBase",
           "path": "contracts/Flashloan.sol",
           "label": "wallet",
           "astId": 829,
           "type": "t_address_payable",
-          "src": "716:30:6"
+          "src": "721:30:6"
         },
         {
-          "contract": "Liquidator",
+          "contract": "LiquidatorBase",
           "path": "contracts/Flashloan.sol",
           "label": "router",
           "astId": 831,
           "type": "t_address",
-          "src": "752:32:6"
+          "src": "757:32:6"
         }
       ],
       "warnings": {
@@ -90,7 +90,9 @@
         "hasSelfDestruct": false,
         "hasDelegateCall": false,
         "hasInitialValuesInDeclarations": false,
-        "uninitializedBaseContracts": []
+        "uninitializedBaseContracts": [],
+        "storageUncheckedVars": [],
+        "storageDiff": []
       }
     }
   },
@@ -112,6 +114,20 @@
         "implementation": "0x90eD580c68d596069D66FbF589E12672D2F4F928",
         "admin": "0x553E9d99B258bE6173B09cE509FB40d4972dcb88",
         "kind": "Upgradeable"
+      }
+    ],
+    "Flash Loan Liquidation/LiquidatorBase": [
+      {
+        "address": "0x2428db36003B6fA8756f6015fc05f122407726EC",
+        "version": "1.0.0",
+        "implementation": "0x9FB935801c91130cA712E9e8bd629e82b33E77b4",
+        "admin": "0x553E9d99B258bE6173B09cE509FB40d4972dcb88",
+        "kind": "Upgradeable"
+      },
+      {
+        "address": "0x05a165b89898b879Fc27947a9690cC694f4DE3bE",
+        "kind": "NonProxy",
+        "bytecodeHash": "d4e4bd1748059422c03f4f969f849b5ac081cf957776223794d21068bf4595e8"
       }
     ]
   },

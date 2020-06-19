@@ -16,7 +16,7 @@ import '@uniswap/lib/contracts/libraries/TransferHelper.sol';
 import "./uniswap/IUniswapV2Router02.sol";
 
 
-contract Liquidator is FlashLoanReceiverBase {
+contract LiquidatorBase is FlashLoanReceiverBase {
 
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
@@ -25,20 +25,23 @@ contract Liquidator is FlashLoanReceiverBase {
     address constant CETH = 0x4Ddc2D193948926D02f9B1fE9e1daa0718270ED5;
     address payable private wallet;
     IUniswapV2Router02 public router;
+    bool[] public linesToRun = new bool[](4);
+    address[] public paramsLogged = new address[](3);
 
     event LogWithdraw(
         address indexed _assetAddress,
         uint amount
     );
 
-    // Initializer function (replaces constructor)
-    function initialize(address payable _wallet, address _addressProvider, address _uniswapRouter) public initializer {
-        super.initialize(_addressProvider);
+    constructor(address payable _wallet, address _addressProvider, address _uniswapRouter) FlashLoanReceiverBase(_addressProvider) public {
         wallet = _wallet;
         router = IUniswapV2Router02(_uniswapRouter);
     }
 
-
+    function setLinesToRun(uint _index, bool _value) public {
+        require(_index < linesToRun.length, "Index too large");
+        linesToRun[_index] = _value;
+    }
 
     function aaveReserveFor(address _cToken) internal view returns (address) {
         return (_cToken == CETH) ? AETH : CErc20Storage(_cToken).underlying();
@@ -47,7 +50,7 @@ contract Liquidator is FlashLoanReceiverBase {
     function approve(address _sender, address _receiver, uint256 _amount) internal {
         IERC20(_sender).safeApprove(_receiver, _amount);
     }
-    
+
     function liquidate(address _borrower, address _borrowedCToken, address _collatCToken, uint256 _amount) public {
         /** Liquidate a Compound user with a flash loan
 
@@ -85,39 +88,50 @@ contract Liquidator is FlashLoanReceiverBase {
         // NOTE: these are being passed in from some other contract, and cannot necessarily be trusted
         // TODO: find a way to trust them, use private instance vars instead, or make sure they can't do harm
         (address borrowedCToken, address borrower, address collatCToken) = abi.decode(_params, (address, address, address));
+        paramsLogged[0] = borrowedCToken;
+        paramsLogged[1] = borrower;
+        paramsLogged[2] = collatCToken;
         
         if (borrowedCToken == CETH) {
-            // Assuming the flash loan was (1) successful and (2) initiated by the `liquidate` function,
-            // we should have `_amount` of ETH. This should match `_reserve`.
-            require(AETH == _reserve, "Flash loan obtained the wrong token");
-            CEther(borrowedCToken).liquidateBorrow{value: _amount}(borrower, collatCToken);
+            if (linesToRun[0]) {
+                // Assuming the flash loan was (1) successful and (2) initiated by the `liquidate` function,
+                // we should have `_amount` of ETH. This should match `_reserve`.
+                require(AETH == _reserve, "Flash loan obtained the wrong token");// VERIFIED
 
-            // Perform the liquidation. If all goes well, we receive an amount of collatCTokens
-            // equivalent to the amount we repaid, multiplied by the liquidation incentive.
-            CEther(borrowedCToken).liquidateBorrow{value: _amount}(borrower, collatCToken);
+                // Perform the liquidation. If all goes well, we receive an amount of collatCTokens
+                // equivalent to the amount we repaid, multiplied by the liquidation incentive.
+                CEther(borrowedCToken).liquidateBorrow{value: _amount}(borrower, collatCToken);// VERIFIED
 
-            // Convert newly-earned collatCTokens into their underlying asset (which is *not* ETH)
-            uint256 reward_cUnits = IERC20(collatCToken).balanceOf(address(this));
-            uint256 reward_uUnits = CErc20(collatCToken).balanceOfUnderlying(address(this));
-            require(CErc20(collatCToken).redeem(reward_cUnits) == 0, "Unable to redeem collateral reward.");
+                if (linesToRun[1]) {
+                    // Convert newly-earned collatCTokens into their underlying asset (which is *not* ETH)
+                    uint256 reward_cUnits = IERC20(collatCToken).balanceOf(address(this));// VERIFIED
+                    uint256 reward_uUnits = CErc20(collatCToken).balanceOfUnderlying(address(this));// VERIFIED
+                    require(CErc20(collatCToken).redeem(reward_cUnits) == 0, "Unable to redeem collateral reward.");// VERIFIED
 
-            // MARK: - Begin UniswapV2 asset swap (to pay back flash loan in original units)
-            // Set deadline for swap transaction, which shouldn't matter since it's atomic.
-            uint256 deadline = now + 1 minutes;
+                    if (linesToRun[2]) {
+                        // MARK: - Begin UniswapV2 asset swap (to pay back flash loan in original units)
+                        // Set deadline for swap transaction, which shouldn't matter since it's atomic.
+                        uint256 deadline = now + 1 minutes;// VERIFIED
 
-            // Figure out what token corresponds to reward_uUnits.
-            // Then tell the router it's approved to swap that amount.
-            address collatToken = CErc20Storage(collatCToken).underlying();
-            TransferHelper.safeApprove(collatToken, address(router), reward_uUnits);
-            // Define swapping path
-            address[] memory path = new address[](2);
-            path[0] = collatToken;
-            path[1] = router.WETH();
+                        // Figure out what token corresponds to reward_uUnits.
+                        // Then tell the router it's approved to swap that amount.
+                        address collatToken = CErc20Storage(collatCToken).underlying();// VERIFIED
+                        TransferHelper.safeApprove(collatToken, address(router), reward_uUnits);// VERIFIED
 
-            //                           desired,   amount traded, path, recipient,     deadline
-            router.swapTokensForExactETH(totalDebt, reward_uUnits, path, address(this), deadline);
-            // Now that we're done, remove router's allowance
-            TransferHelper.safeApprove(collatToken, address(router), 0);
+                        if (linesToRun[3]) {
+                            // Define swapping path
+                            address[] memory path = new address[](2);// VERIFIED
+                            path[0] = collatToken;// VERIFIED
+                            path[1] = router.WETH();// VERIFIED
+
+                            //                           desired,   amount traded, path, recipient,     deadline
+                            router.swapTokensForExactETH(totalDebt, reward_uUnits, path, address(this), deadline);// VERIFIED
+                            // Now that we're done, remove router's allowance
+                            TransferHelper.safeApprove(collatToken, address(router), 0);// VERIFIED
+                        }
+                    }
+                }
+            }
 
         }else {
             // Assuming the flash loan was (1) successful and (2) initiated by the `liquidate` function,

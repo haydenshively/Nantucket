@@ -1,11 +1,9 @@
 {
   "manifestVersion": "2.2",
   "contracts": {
-    "Liquidator": "Liquidator"
+    "LiquidatorBase": "LiquidatorBase"
   },
-  "dependencies": {
-    "@openzeppelin/contracts-ethereum-package": "^3.0.0"
-  },
+  "dependencies": {},
   "name": "Flash Loan Liquidation",
   "version": "1.0.0",
   "compiler": {

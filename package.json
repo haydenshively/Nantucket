@@ -9,7 +9,7 @@
   "dependencies": {},
   "devDependencies": {
     "@openzeppelin/cli": "^2.8.2",
-    "@openzeppelin/contracts-ethereum-package": "^3.0.0",
+    "@openzeppelin/contracts": "^3.0.2",
     "@truffle/hdwallet-provider": "^1.0.35",
     "@uniswap/lib": "^1.1.2",
     "chai": "^4.2.0",
