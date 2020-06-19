@@ -6,14 +6,19 @@
   "directories": {
     "test": "tests"
   },
-  "dependencies": {},
+  "dependencies": {
+    "dotenv": "^8.2.0",
+    "ethereumjs-tx": "^2.1.2",
+    "node-fetch": "^2.6.0",
+    "perf_hooks": "0.0.1",
+    "web3": "^1.2.6"
+  },
   "devDependencies": {
     "@openzeppelin/cli": "^2.8.2",
     "@openzeppelin/contracts": "^3.0.2",
     "@truffle/hdwallet-provider": "^1.0.35",
     "@uniswap/lib": "^1.1.2",
     "chai": "^4.2.0",
-    "dotenv": "^8.2.0",
     "ganache-cli": "^6.9.1",
     "mocha": "^7.2.0"
   },
