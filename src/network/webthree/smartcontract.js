@@ -10,7 +10,7 @@ global.web3 = new Web3('/media/haydenshively/SamsungT5/Geth/geth.ipc', net);
 // web3.eth.accounts.wallet.add(account);
 // web3.eth.defaultAccount = account.address;
 
-class Contract {
+class SmartContract {
   constructor(address, abi) {
     this.address = address;
     this.abi = abi;
@@ -70,4 +70,4 @@ class Contract {
   }
 }
 
-module.exports = Contract;
+module.exports = SmartContract;

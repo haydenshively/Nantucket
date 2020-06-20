@@ -1,4 +1,4 @@
-const Contract = require('../Contract.js');
+const Contract = require('../smartcontract.js');
 const COMPTROLLERABI = require('./abis/comptroller.json');
 
 class Comptroller extends Contract {

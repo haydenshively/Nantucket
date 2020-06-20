@@ -1,4 +1,4 @@
-const Contract = require('../Contract.js');
+const Contract = require('../smartcontract.js');
 import PRICEORACLEABI from './abis/priceoracle.json';
 
 class PriceOracle extends Contract {

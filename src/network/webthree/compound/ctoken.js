@@ -1,4 +1,4 @@
-const Contract = require('../Contract.js');
+const Contract = require('../smartcontract.js');
 const CBATABI = require('./abis/cbat.json');
 const CDAIABI = require('./abis/cdai.json');
 const CETHABI = require('./abis/ceth.json');
