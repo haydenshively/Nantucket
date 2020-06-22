@@ -2,7 +2,7 @@
   "name": "flash-loan-liquidation",
   "version": "1.0.0",
   "description": "",
-  "main": "main.js",
+  "main": "src/main.js",
   "directories": {
     "test": "tests"
   },
@@ -23,8 +23,11 @@
     "ganache-cli": "^6.9.1",
     "mocha": "^7.2.0"
   },
+  "optionalDependencies": {
+    "@tensorflow/tfjs-node-gpu": "^2.0.1"
+  },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "mocha 'tests/**/*.js' --recursive"
   },
   "repository": {
     "type": "git",
