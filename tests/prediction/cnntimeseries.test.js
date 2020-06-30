@@ -28,23 +28,73 @@ describe("CNN Time Series Test", () => {
     cnn.build();
     cnn.compile();
 
-    let i;
+    let loss;
+
+    let sequence = Array(40);
+    for (let i = 0; i < sequence.length; i++) sequence[i] = 0.0;
+    for (let i = 0; i < 600; i++) {
+      cnn.record(sequence);
+      loss = await cnn.train();
+
+      sequence.push(i + 20 * Math.cos(i / 100.0));
+      sequence.shift();
+    }
+
+    assert(loss < 0.1);
+  }).timeout(60000);
+
+  it("should learn square wave in 700 steps", async function() {
+    const cnn = new CNNTimeSeries([40, 40, 1], 5, 16);
+    cnn.build();
+    cnn.compile(0.01);
+
+    let pred;
 
     let sequence = Array(40);
     for (i = 0; i < sequence.length; i++) sequence[i] = 0.0;
-
-    for (i = 0; i < 1000; i++) {
+    for (i = 0; i < 700; i++) {
       cnn.record(sequence);
-
       const loss = await cnn.train();
-      const pred = cnn.predictFromRecord();
+      pred = cnn.predictFromRecord();
 
-      sequence.push(i + 20*Math.cos(i / 100.0));
+      sequence.push(i % 10 > 5 ? 20.0 : -20.0);
       sequence.shift();
-
-      if (loss < 1.5) break;
     }
 
-    assert(i <= 600);
+    assert(
+      tf
+        .min(pred)
+        .less(-18.0)
+        .toBool()
+        .arraySync() &&
+        tf
+          .max(pred)
+          .greater(18.0)
+          .toBool()
+          .arraySync()
+    );
+  }).timeout(60000);
+
+  it("should transfer learn abs(cos) in 200 steps", async function() {
+    const cnn = new CNNTimeSeries([40, 40, 1], 5, 16);
+    const handler = tf.io.fileSystem(
+      "./src/prediction/tfjs_artifacts/model.json"
+    );
+    cnn.model = await tf.loadLayersModel(handler);
+    cnn.compile(0.01);
+
+    let loss;
+
+    let sequence = Array(40);
+    for (i = 0; i < sequence.length; i++) sequence[i] = 0.0;
+    for (i = 0; i < 200; i++) {
+      cnn.record(sequence);
+      loss = await cnn.train();
+
+      sequence.push(Math.abs(Math.cos(i / 10.0)));
+      sequence.shift();
+    }
+
+    assert(loss < 0.02);
   }).timeout(60000);
 });

@@ -26,7 +26,7 @@ class CNN {
       ["maxPooling2d", [2, 2], [2, 2]],
 
       ["flatten"],
-      ["dense", this.outputShape, "sigmoid"]
+      ["dense", this.outputShape, "linear"]
     ];
 
     for (let layer of layers) {
@@ -64,9 +64,9 @@ class CNN {
     }
   }
 
-  compile() {
+  compile(trainingRate = 0.001) {
     this.model.compile({
-      optimizer: tf.train.sgd(0.001),
+      optimizer: tf.train.sgd(trainingRate),
       loss: "meanSquaredError"
     });
   }
