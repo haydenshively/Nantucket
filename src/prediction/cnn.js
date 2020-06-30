@@ -1,65 +1,72 @@
 const tf = require("@tensorflow/tfjs-node-gpu");
 
 class CNN {
-  constructor(inputShape) {
+  constructor(inputShape, outputShape) {
     this.inputShape = inputShape;
+    this.outputShape = outputShape;
 
     this.model = tf.sequential();
+  }
 
-    // block 1
-    this.model.add(
-      tf.layers.conv2d({
-        inputShape: inputShape,
-        kernelSize: 3,
-        filters: 32,
-        strides: 1,
-        activation: "relu",
-        kernelInitializer: "varianceScaling"
-      })
-    );
-    this.model.add(
-      tf.layers.maxPooling2d({ poolSize: [2, 2], strides: [2, 2] })
-    );
-    this.model.add(tf.layers.dropout({ rate: 0.25 }));
+  build() {
+    const layers = [
+      ["inputLayer", this.inputShape],
 
-    // block 2
-    for (let i; i < 2; i++) {
-      this.model.add(
-        tf.layers.conv2d({
-          kernelSize: 3,
-          filters: 64,
-          strides: 1,
-          activation: "relu",
-          kernelInitializer: "varianceScaling"
-        })
-      );
+      ["conv2d", 32, 3, "relu"],
+      ["maxPooling2d", [2, 2], [2, 2]],
+      ["dropout", 0.25],
+
+      ["conv2d", 64, 3, "relu"],
+      ["conv2d", 64, 3, "relu"],
+      ["maxPooling2d", [2, 2], [2, 2]],
+      ["dropout", 0.25],
+
+      ["conv2d", 128, 3, "relu"],
+      ["conv2d", 128, 3, "relu"],
+      ["maxPooling2d", [2, 2], [2, 2]],
+
+      ["flatten"],
+      ["dense", this.outputShape, "sigmoid"]
+    ];
+
+    for (let layer of layers) {
+      switch (layer[0]) {
+        case "inputLayer":
+          this.model.add(tf.layers.inputLayer({ inputShape: layer[1] }));
+          break;
+        case "conv2d":
+          this.model.add(
+            tf.layers.conv2d({
+              filters: layer[1],
+              kernelSize: layer[2],
+              strides: 1,
+              activation: layer[3]
+            })
+          );
+          break;
+        case "maxPooling2d":
+          this.model.add(
+            tf.layers.maxPooling2d({ poolSize: layer[1], strides: layer[2] })
+          );
+          break;
+        case "dropout":
+          this.model.add(tf.layers.dropout({ rate: layer[1] }));
+          break;
+        case "flatten":
+          this.model.add(tf.layers.flatten());
+          break;
+        case "dense":
+          this.model.add(
+            tf.layers.dense({ units: layer[1], activation: layer[2] })
+          );
+          break;
+      }
     }
-    this.model.add(
-      tf.layers.maxPooling2d({ poolSize: [2, 2], strides: [2, 2] })
-    );
-    this.model.add(tf.layers.dropout({ rate: 0.25 }));
+  }
 
-    // block 3
-    for (let i; i < 2; i++) {
-      this.model.add(
-        tf.layers.conv2d({
-          kernelSize: 3,
-          filters: 128,
-          strides: 1,
-          activation: "relu",
-          kernelInitializer: "varianceScaling"
-        })
-      );
-    }
-    this.model.add(
-      tf.layers.maxPooling2d({ poolSize: [2, 2], strides: [2, 2] })
-    );
-    this.model.add(tf.layers.flatten());
-    this.model.add(tf.layers.dense({ units: 1, activation: "sigmoid" }));
-
-    // compile model
+  compile() {
     this.model.compile({
-      optimizer: tf.train.sgd(0.01),
+      optimizer: tf.train.sgd(0.001),
       loss: "meanSquaredError"
     });
   }
