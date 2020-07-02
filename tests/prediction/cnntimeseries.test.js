@@ -3,7 +3,6 @@ const assert = require("assert");
 const tf = require("@tensorflow/tfjs-node-gpu");
 
 const CNNTimeSeries = require("../../src/prediction/cnntimeseries.js");
-const { doesNotMatch } = require("assert");
 
 describe("CNN Time Series Test", () => {
   it("should match saved architecture", async function() {
