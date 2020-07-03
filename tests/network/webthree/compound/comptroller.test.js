@@ -3,7 +3,7 @@ const assert = require("assert");
 const Comptroller = require("../../../../src/network/webthree/compound/comptroller");
 const Tokens = require("../../../../src/network/webthree/compound/ctoken");
 
-describe("Compound Comptroller Test", () => {
+describe("network/webthree/compound || Comptroller Test", () => {
   it("should retrieve liquidation incentive", () => {
     return Comptroller.mainnet.liquidationIncentive().then(result => {
       assert(result > 1.0);

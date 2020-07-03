@@ -2,7 +2,7 @@ const assert = require("assert");
 
 const Tokens = require("../../../../src/network/webthree/compound/ctoken");
 
-describe("Compound cToken Test", () => {
+describe("network/webthree/compound || cToken Test", () => {
   it("should retrieve cDAI exchange rates", () => {
     return Tokens.mainnet.cDAI.exchangeRate().then(result => {
       assert(result != 0.0);

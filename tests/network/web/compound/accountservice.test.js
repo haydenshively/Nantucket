@@ -3,7 +3,7 @@ const assert = require("assert");
 const AccountService = require("../../../../src/network/web/compound/accountservice");
 const service = new AccountService();
 
-describe("Compound Account Service", () => {
+describe("network/web/compound || Account Service Test", () => {
   it("should retrieve some accounts", () => {
     return service.fetch({}).then(result => {
       assert(result.error === null);

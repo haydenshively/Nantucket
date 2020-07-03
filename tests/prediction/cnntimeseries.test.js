@@ -4,7 +4,7 @@ const tf = require("@tensorflow/tfjs-node-gpu");
 
 const CNNTimeSeries = require("../../src/prediction/cnntimeseries.js");
 
-describe("CNN Time Series Test", () => {
+describe("prediction || CNN Time Series Test", () => {
   it("should match saved architecture", async function() {
     const cnn = new CNNTimeSeries([40, 40, 1], 5, 16);
     cnn.build();

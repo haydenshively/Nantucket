@@ -3,7 +3,7 @@ const assert = require("assert");
 const CTokenService = require("../../../../src/network/web/compound/ctokenservice");
 const service = new CTokenService();
 
-describe("Compound CToken Service", () => {
+describe("network/web/compound || cToken Service Test", () => {
   it("should retrieve some CTokens", () => {
     return service.fetch({}).then(result => {
       assert(result.error === null);
