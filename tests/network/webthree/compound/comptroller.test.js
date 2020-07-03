@@ -2,13 +2,6 @@ require("dotenv").config();
 
 const assert = require("assert");
 
-const Web3 = require("web3");
-if (process.env.WEB3_PROVIDER.endsWith(".ipc")) {
-  net = require("net");
-  global.web3 = new Web3(process.env.WEB3_PROVIDER_TEST, net);
-} else {
-  global.web3 = new Web3(process.env.WEB3_PROVIDER_TEST);
-}
 const Comptroller = require("../../../../src/network/webthree/compound/comptroller");
 const Tokens = require("../../../../src/network/webthree/compound/ctoken");
 
@@ -49,8 +42,4 @@ describe("Compound Comptroller Test", () => {
         assert(result[1] == 0);
       });
   });
-});
-
-after(async () => {
-  web3.currentProvider.connection.close();
 });

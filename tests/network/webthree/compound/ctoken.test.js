@@ -2,13 +2,6 @@ require("dotenv").config();
 
 const assert = require("assert");
 
-const Web3 = require("web3");
-if (process.env.WEB3_PROVIDER.endsWith(".ipc")) {
-  net = require("net");
-  global.web3 = new Web3(process.env.WEB3_PROVIDER_TEST, net);
-} else {
-  global.web3 = new Web3(process.env.WEB3_PROVIDER_TEST);
-}
 const Tokens = require("../../../../src/network/webthree/compound/ctoken");
 
 describe("Compound cToken Test", () => {
@@ -47,9 +40,7 @@ describe("Compound cToken Test", () => {
       assert(result != 0.0);
     });
   });
-})
-
-
+});
 
 // // Tokens.mainnet.cDAI.uUnitsLoanedOutTo(accountToLiquidate).then((uUnitsLoaned) => {
 // //   Comptroller.mainnet.closeFactor().then((closeFactor) => {
