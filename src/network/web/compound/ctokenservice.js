@@ -87,13 +87,24 @@ class CTokens extends Fetchable {
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json"
-      },
-      body: withConfig
+      }
     };
 
-    const res = await fetch(process.env.COMPOUND_ENDPOINT + "/ctoken", params);
-    return (await res.json()).cToken.map(json => CToken(json));
+    const urlParams = Object.keys(withConfig)
+      .map(key => key + "=" + withConfig[key])
+      .join("&");
+
+    const res = await fetch(
+      process.env.COMPOUND_ENDPOINT + "/ctoken?" + urlParams,
+      params
+    );
+    const json = await res.json();
+
+    return {
+      error: json.error,
+      tokens: json.cToken.map(i => new CToken(i))
+    };
   }
 }
 
-exports.CTokenService = CTokens;
+module.exports = CTokens;
