@@ -10,57 +10,47 @@ if (process.env.WEB3_PROVIDER.endsWith(".ipc")) {
   global.web3 = new Web3(process.env.WEB3_PROVIDER_TEST);
 }
 const Comptroller = require("../../../../src/network/webthree/compound/comptroller");
+const Tokens = require("../../../../src/network/webthree/compound/ctoken");
 
 describe("Compound Comptroller Test", () => {
   it("should retrieve liquidation incentive", () => {
     return Comptroller.mainnet.liquidationIncentive().then(result => {
       assert(result > 1.0);
     });
+  });
 
-    
+  it("should retrieve close facetor", () => {
+    return Comptroller.mainnet.closeFactor().then(result => {
+      assert(result > 0.0);
+    });
+  });
+
+  it("should retrieve cDAI collateral factor", () => {
+    return Comptroller.mainnet
+      .collateralFactorFor(Tokens.mainnet.cDAI)
+      .then(result => {
+        assert(result > 0.0);
+      });
+  });
+
+  it("should retrieve active markets", () => {
+    return Comptroller.mainnet
+      .marketsEnteredBy(process.env.ACCOUNT_PUBLIC_KEY)
+      .then(result => {
+        assert(result.length >= 9);
+      });
+  });
+
+  it("should retrieve account liquidity", () => {
+    return Comptroller.mainnet
+      .accountLiquidityOf(process.env.ACCOUNT_PUBLIC_KEY)
+      .then(result => {
+        assert(result[0] > 0.0);
+        assert(result[1] == 0);
+      });
   });
 });
 
 after(async () => {
   web3.currentProvider.connection.close();
 });
-
-// t0 = performance.now();
-// Comptroller.mainnet.liquidationIncentive().then((result) => {
-//   console.log('Compound Liquidation Incentive: call took ' + (performance.now() - t0) + ' milliseconds');
-//   console.log(result);
-//   console.log('');
-// });
-// t0 = performance.now();
-// Comptroller.mainnet.closeFactor().then((result) => {
-//   console.log('Compound Close Factor: call took ' + (performance.now() - t0) + ' milliseconds');
-//   console.log(result);
-//   console.log('');
-// });
-// t0 = performance.now();
-// Comptroller.mainnet.collateralFactorFor(Tokens.mainnet.cDAI).then((result) => {
-//   console.log('cDAI Collateral Factor: call took ' + (performance.now() - t0) + ' milliseconds');
-//   console.log(result);
-//   console.log('');
-// });
-// t0 = performance.now();
-// Comptroller.mainnet.marketsEnteredBy(process.env.PUBLIC_KEY).then((result) => {
-//   console.log('Hayden\'s Active Markets: call took ' + (performance.now() - t0) + ' milliseconds');
-//   console.log(result);
-//   console.log('');
-// });
-// t0 = performance.now();
-// Comptroller.mainnet.accountLiquidityOf(process.env.PUBLIC_KEY).then((result) => {
-//   console.log('Hayden\'s Account Liquidity and Shortfall (in Eth): call took ' + (performance.now() - t0) + ' milliseconds');
-//   console.log(result);
-//   console.log('');
-// });
-
-// // Comptroller.mainnet.enterMarketsFor([
-// //   Tokens.mainnet.cBAT,
-// //   Tokens.mainnet.cREP,
-// //   Tokens.mainnet.cSAI,
-// //   Tokens.mainnet.cZRX,
-// //   Tokens.mainnet.cWBTC,
-// //   Tokens.mainnet.cETH,
-// // ], process.env.PUBLIC_KEY);
