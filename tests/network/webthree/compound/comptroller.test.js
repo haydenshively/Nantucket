@@ -1,5 +1,3 @@
-require("dotenv").config();
-
 const assert = require("assert");
 
 const Comptroller = require("../../../../src/network/webthree/compound/comptroller");

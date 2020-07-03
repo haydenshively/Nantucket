@@ -1,5 +1,3 @@
-require("dotenv").config();
-
 const assert = require("assert");
 
 const EthAccount = require("../../../src/network/webthree/ethaccount");
