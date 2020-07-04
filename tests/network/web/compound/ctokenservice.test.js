@@ -4,7 +4,7 @@ const CTokenService = require("../../../../src/network/web/compound/ctokenservic
 const service = new CTokenService();
 
 describe("network/web/compound || cToken Service Test", () => {
-  it("should retrieve some CTokens", () => {
+  it("should retrieve some cTokens", () => {
     return service.fetch({}).then(result => {
       assert(result.error === null);
     });
