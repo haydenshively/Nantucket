@@ -2,6 +2,9 @@ require("dotenv").config();
 
 const { Pool } = require("pg");
 
+const AccountService = require("../../src/network/web/compound/accountservice");
+const service = new AccountService();
+
 const pool = new Pool({
   max: 20,
   idleTimeoutMillis: 30000,
@@ -9,6 +12,10 @@ const pool = new Pool({
 });
 
 ;(async () => {
+  let result = await service.fetch({ page_number: 1 });
+  console.log(result);
+
+
   const client = await pool.connect()
   console.log("Connected");
   try {

@@ -1,7 +1,7 @@
 DROP TABLE UTokens CASCADE;
 CREATE TABLE UTokens (
   id                smallserial primary key not null,
-  address           char(40) not null,
+  address           char(40) unique not null,
   name              varchar(50) not null,
   symbol            varchar(10) not null,
 
@@ -11,7 +11,7 @@ CREATE TABLE UTokens (
 DROP TABLE CTokens CASCADE;
 CREATE TABLE CTokens (
   id                smallserial primary key not null,
-  address           char(40) not null,
+  address           char(40) unique not null,
   name              varchar(50) not null,
   symbol            varchar(10) not null,
 
@@ -24,7 +24,7 @@ CREATE TABLE CTokens (
 DROP TABLE Users CASCADE;
 CREATE TABLE Users (
   id                serial primary key not null,
-  address           char(40) not null
+  address           char(40) unique not null
 );
 
 DROP TABLE Borrows;
