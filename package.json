@@ -12,6 +12,7 @@
     "ethereumjs-tx": "^2.1.2",
     "node-fetch": "^2.6.0",
     "perf_hooks": "0.0.1",
+    "pg": "^8.2.2",
     "web3": "^1.2.6"
   },
   "devDependencies": {
@@ -27,6 +28,9 @@
     "@tensorflow/tfjs-node-gpu": "^2.0.1"
   },
   "scripts": {
+    "db-create": "createdb FlashLoanLiquidation",
+    "db-setup": "psql --echo-errors -f './scripts/database/setup.sql' FlashLoanLiquidation",
+    "db-populate": "node './scripts/database/populate.js'",
     "test": "mocha --file './tests/network/webthree/setup.js' 'tests/**/*.js' --recursive",
     "test-network": "mocha --file './tests/network/webthree/setup.js' 'tests/network/**/*.js' --recursive",
     "test-prediction": "mocha 'tests/prediction/**/*.js' --recursive"
