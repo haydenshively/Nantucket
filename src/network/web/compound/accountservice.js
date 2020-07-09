@@ -5,41 +5,41 @@ const Fetchable = require("../fetchable");
 class Account {
   static CToken = class {
     constructor(json) {
-      Object.assign(this, json);
+      this.json = json;
     }
 
     address() {
-      return this.address;
+      return this.json.address;
     }
 
     borrowBalanceUnderlying() {
-      return this.borrow_balance_underlying.value;
+      return this.json.borrow_balance_underlying.value;
     }
 
     supplyBalanceUnderlying() {
-      return this.supply_balance_underlying.value;
+      return this.json.supply_balance_underlying.value;
     }
   };
 
   constructor(json) {
-    Object.assign(this, json);
-    this.tokens = this.tokens.map(json => new Account.CToken(json));
+    this.json = json;
+    this.tokens = json.tokens.map(t => new Account.CToken(t));
   }
 
   address() {
-    return this.address;
+    return this.json.address;
   }
 
   health() {
-    return this.health.value;
+    return this.json.health.value;
   }
 
   totalBorrowValueInEth() {
-    return this.total_borrow_value_in_eth.value;
+    return this.json.total_borrow_value_in_eth.value;
   }
 
   totalCollateralValueInEth() {
-    return this.total_collateral_value_in_eth.value;
+    return this.json.total_collateral_value_in_eth.value;
   }
 }
 

@@ -4,79 +4,79 @@ const Fetchable = require("../fetchable");
 
 class CToken {
   constructor(json) {
-    Object.assign(this, json);
+    this.json = json;
+  }
+
+  address() {
+    return this.json.token_address;
   }
 
   borrowRate() {
-    return this.borrow_rate.value;
+    return this.json.borrow_rate.value;
   }
 
   cash() {
-    return this.cash.value;
+    return this.json.cash.value;
   }
 
   collateralFactor() {
-    return this.collateral_factor.value;
+    return this.json.collateral_factor.value;
   }
 
   exchangeRate() {
-    return this.exchange_rate.value;
+    return this.json.exchange_rate.value;
   }
 
   interestRateModelAddress() {
-    return this.interest_rate_model_address;
+    return this.json.interest_rate_model_address;
   }
 
   name() {
-    return this.name;
+    return this.json.name;
   }
 
   numberOfBorrowers() {
-    return this.number_of_borrowers;
+    return this.json.number_of_borrowers;
   }
 
   numberOfSuppliers() {
-    return this.number_of_suppliers;
+    return this.json.number_of_suppliers;
   }
 
   reserves() {
-    return this.reserves.value;
+    return this.json.reserves.value;
   }
 
   supplyRate() {
-    return this.supply_rate.value;
+    return this.json.supply_rate.value;
   }
 
   symbol() {
-    return this.symbol;
-  }
-
-  tokenAddress() {
-    return this.token_address;
+    return this.json.symbol;
   }
 
   totalBorrows() {
-    return this.total_borrowers.value;
+    return this.json.total_borrows.value;
   }
 
   totalSupply() {
-    return this.total_supply.value;
+    return this.json.total_supply.value;
   }
 
   underlyingAddress() {
-    return this.underlying_address;
+    return this.json.underlying_address;
   }
 
   underlyingName() {
-    return this.underlying_name;
+    return this.json.underlying_name;
   }
 
   underlyingPrice() {
-    return this.underlying_price.value;
+    return this.json.underlying_price.value;
   }
 
   underlyingSymbol() {
-    return this.underlying_symbol;
+    return this.json.underlying_symbol;
   }
 }
 
