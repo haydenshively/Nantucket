@@ -100,19 +100,6 @@ async function serviceFetchAll() {
     const accounts = await serviceFetchAll();
 
     for (account of accounts) {
-      // // If account address isn't already in the USERS table, insert it
-      // // NOTE: Postgres enforces uniqueness
-      // await client.query(
-      //   "INSERT INTO users (address) VALUES ($1::text) ON CONFLICT (address) DO NOTHING",
-      //   [account.address().slice(2)]
-      // );
-      // // Once account address has been inserted, it is assigned a unique ID
-      // // Retrieve that ID here
-      // const userID = (await client.query(
-      //   "SELECT (id) FROM users WHERE address = $1::text",
-      //   [String(account.address()).slice(2)]
-      // )).rows[0].id;
-
       let supply = 0;
       let borrow = 0;
 
@@ -125,37 +112,6 @@ async function serviceFetchAll() {
 
         supply += Number(token.supplyBalanceUnderlying()) * costineth * collat;
         borrow += Number(token.borrowBalanceUnderlying()) * costineth;
-
-        // if (Number(token.borrowBalanceUnderlying()) > 0) {
-        //   await client.query(
-        //     `
-        //     INSERT INTO credit (userid, ctokenid, amountunderlying)
-        //     VALUES ($1, $2, $3)
-        //     ON CONFLICT (userid, ctokenid) DO UPDATE
-        //     SET amountunderlying=EXCLUDED.amountunderlying
-        //     `,
-        //     [
-        //       userID,
-        //       cTokenID,
-        //       -Number(token.borrowBalanceUnderlying()),
-        //     ]
-        //   );
-        // }
-        // if (Number(token.supplyBalanceUnderlying()) > 0) {
-        //   await client.query(
-        //     `
-        //     INSERT INTO credit (userid, ctokenid, amountunderlying)
-        //     VALUES ($1, $2, $3)
-        //     ON CONFLICT (userid, ctokenid) DO UPDATE
-        //     SET amountunderlying=EXCLUDED.amountunderlying
-        //     `,
-        //     [
-        //       userID,
-        //       cTokenID,
-        //       +Number(token.supplyBalanceUnderlying()),
-        //     ]
-        //   );
-        // }
       }
 
       // liquidity = (supply_balances .* collateral_factors) .- borrow_balances
