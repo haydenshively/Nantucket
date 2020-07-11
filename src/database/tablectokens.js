@@ -1,13 +1,16 @@
 class TableCTokens {
   constructor(pool, tableUTokens) {
     this._pool = pool;
-    this._tableUTokens = tableUTokens
+    this._tableUTokens = tableUTokens;
   }
 
   async upsertCTokenService(tokens) {
     for (let token of tokens) {
       const address = String(token.address()).slice(2);
-      const addressUnderlying = (token.underlyingAddress() === null) ? "0000000000000000000000000000000000000000" : String(token.underlyingAddress()).slice(2);
+      const addressUnderlying =
+        token.underlyingAddress() === null
+          ? "0000000000000000000000000000000000000000"
+          : String(token.underlyingAddress()).slice(2);
       const uTokenID = await this._tableUTokens.getID(addressUnderlying);
 
       await this.upsert(
@@ -23,7 +26,16 @@ class TableCTokens {
     }
   }
 
-  async upsert(address, name, symbol, collateralFactor, exchangeRate, borrowRate, supplyRate, uTokenID) {
+  async upsert(
+    address,
+    name,
+    symbol,
+    collateralFactor,
+    exchangeRate,
+    borrowRate,
+    supplyRate,
+    uTokenID
+  ) {
     return this._pool.query(
       `
       INSERT INTO ctokens (address, name, symbol, collateralfactor, exchangerate, borrowrate, supplyrate, utokenid)
@@ -31,15 +43,31 @@ class TableCTokens {
       ON CONFLICT (address) DO UPDATE
       SET name=EXCLUDED.name, symbol=EXCLUDED.symbol, collateralfactor=EXCLUDED.collateralfactor, exchangerate=EXCLUDED.exchangerate, borrowrate=EXCLUDED.borrowrate, supplyrate=EXCLUDED.supplyrate, utokenid=EXCLUDED.utokenid
       `,
-      [ address, name, symbol, collateralFactor, exchangeRate, borrowRate, supplyRate, uTokenID ]
+      [
+        address,
+        name,
+        symbol,
+        collateralFactor,
+        exchangeRate,
+        borrowRate,
+        supplyRate,
+        uTokenID
+      ]
     );
   }
 
+  async getAddress(id) {
+    return (
+      await this._pool.query("SELECT address FROM ctokens WHERE id=$1", [id])
+    ).rows[0].address;
+  }
+
   async getID(address) {
-    return (await this._pool.query(
-      "SELECT id FROM ctokens WHERE address = $1::text",
-      [address]
-    )).rows[0].id;
+    return (
+      await this._pool.query("SELECT id FROM ctokens WHERE address=$1::text", [
+        address
+      ])
+    ).rows[0].id;
   }
 }
 

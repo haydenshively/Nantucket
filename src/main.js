@@ -1,5 +1,7 @@
 require("dotenv").config();
 
+const { Pool } = require("pg");
+
 const Web3 = require("web3");
 if (process.env.WEB3_PROVIDER_TEST.endsWith(".ipc")) {
   net = require("net");
@@ -8,247 +10,163 @@ if (process.env.WEB3_PROVIDER_TEST.endsWith(".ipc")) {
   global.web3 = new Web3(process.env.WEB3_PROVIDER_TEST);
 }
 
-class Main {
-  
-}
-
-
-
-
-require("dotenv").config();
-// network/web
-const Etherscan = require("./network/web/etherscan/etherscan");
-const Ethplorer = require("./network/web/ethplorer/ethplorer");
-const GasStation = require("./network/web/gasstation/gasstation");
-// network/webthree
-const Web3 = require("web3");
-if (process.env.WEB3_PROVIDER.endsWith(".ipc")) {
-  net = require("net");
-  global.web3 = new Web3(process.env.WEB3_PROVIDER, net);
-} else {
-  global.web3 = new Web3(process.env.WEB3_PROVIDER);
-}
-const Tokens = require("./network/webthree/compound/ctoken");
+// src.database
+const TableUTokens = require("./database/tableutokens");
+const TableCTokens = require("./database/tablectokens");
+const TablePaySeizePairs = require("./database/tablepayseizepairs");
+const TableUsers = require("./database/tableusers");
+// src.network.web
+const AccountService = require("./network/web/compound/accountservice");
+const CTokenService = require("./network/web/compound/ctokenservice");
+const GasPrice = require("./network/web/gasstation/gasprice");
+// src.network.webthree
+const EthAccount = require("./network/webthree/ethaccount");
 const Comptroller = require("./network/webthree/compound/comptroller");
+const Tokens = require("./network/webthree/compound/ctoken");
 
-// Scripting
-const ProcessAddress = require("./ProcessAddress.js");
+new EthAccount();
 
+class Main {
+  constructor(manualLiquidationTargets) {
+    // Database is assumed to have already been setup & initialized
+    this._pool = new Pool({
+      max: 20,
+      idleTimeoutMillis: 30000,
+      connectionTimeoutMillis: 2000
+    });
 
+    this._tableUTokens = new TableUTokens(this._pool);
+    this._tableCTokens = new TableCTokens(this._pool, this._tableUTokens);
+    this._tablePaySeizePairs = new TablePaySeizePairs(
+      this._pool,
+      this._tableCTokens
+    );
+    this._tableUsers = new TableUsers(
+      this._pool,
+      this._tableCTokens,
+      this._tablePaySeizePairs
+    );
 
-class MainOld {
-  constructor() {
-    this.accounts = [];
-    this.closeFactor = 0.0;
-    this.liquidationIncentive = 1.0;
-    this.gasPrices = {};
-    this.cTokenUnderlyingPrices_Eth = {};
-    this.myBalances = {};
+    this._accountService = new AccountService();
+    this._ctokenService = new CTokenService();
+    this._gasPriceAPI = new GasPrice();
 
-    this.accountsFetchingHandle = null;
-    this.closeFactorFetchingHandle = null;
-    this.liquidationIncentiveFetchingHandle = null;
-    this.gasFetchingHandle = null;
-    this.cTokenUnderlyingFetchingHandle = null;
-    this.myBalancesFetchingHandle = null;
-    this.riskyFetchingHandler = null;
+    this._blockLastAccountServicePull = null;
+    this._blocksPerMinute = 0;
+
+    this._liquidationTargets = [];
+    this.manualLiquidationTargets = manualLiquidationTargets;
   }
 
-  startFetchingAccounts(timeout) {
-    this.accountsFetchingHandle = setInterval(() => {
-      this.stopFetchingRiskyLiquidities();
-      Compound.fetchAccounts(1.1).then(result => {
-        //console.log('Updated Accounts');
-        //console.log('');
-        const addresses = this.accounts.map(a => a.address);
-        let toAppend = [];
-        for (let i = 0; i < result.length; i++) {
-          if (!addresses.includes(result[i].address)) {
-            toAppend.push(result[i]);
-          }
-        }
-        this.accounts = this.accounts.concat(toAppend);
-        this.onGotNewData();
-        this.startFetchingRiskyLiquidities();
-      });
-    }, timeout);
+  async pullFromCTokenService() {
+    const tokens = (await ctokenService.fetch({})).tokens;
+    await this._tableUTokens.upsertCTokenService(tokens);
+    await this._tableCTokens.upsertCTokenService(tokens);
+    await this._tablePaySeizePairs.insertCTokenService(tokens);
   }
 
-  stopFetchingAccounts() {
-    if (this.accountsFetchingHandle) clearInterval(this.accountsFetchingHandle);
-  }
+  async pullFromAccountService(timeout_minutes, offset_minutes) {
+    const blockCurrent = await web3.eth.getBlockNumber();
+    const blockToLabel = blockCurrent - offset_minutes * this._blocksPerMinute;
+    const closeFactor = await Comptroller.mainnet.closeFactor();
+    const liquidationIncentive = await Comptroller.mainnet.liquidationIncentive();
 
-  startFetchingRiskyLiquidities() {
-    this.riskyFetchingHandler = setInterval(async () => {
-      try {
-        //console.log('Double checking liquidity with Comptroller:');
-
-        for (let i = 0; i < this.accounts.length; i++) {
-          if (this.accounts[i]["liquidated"]) continue;
-          if (this.accounts[i].health && this.accounts[i].health.value > 1.0)
-            continue;
-
-          const [
-            liquidity,
-            shortfall
-          ] = await Comptroller.mainnet.accountLiquidityOf(
-            this.accounts[i].address
-          );
-          if (liquidity > 0) continue;
-          if (shortfall > 0) {
-            this.accounts[i].health.value = 0.999;
-
-            for (let key of Object.keys(this.accounts[i].tokens)) {
-              let symbol = this.accounts[i].tokens[key].symbol;
-              symbol = symbol.charAt(0).toLowerCase() + symbol.substring(1);
-              this.accounts[i].tokens[key].borrow_balance_underlying = {
-                value: await Tokens.mainnet[symbol].uUnitsLoanedOutTo(
-                  this.accounts[i].address
-                )
-              };
-              this.accounts[i].tokens[key].supply_balance_underlying = {
-                value: await Tokens.mainnet[symbol].uUnitsInContractFor(
-                  this.accounts[i].address
-                )
-              };
-            }
-
-            const expectedRevenue = ProcessAddress.possiblyLiquidate(
-              this.accounts[i],
-              this.closeFactor,
-              this.liquidationIncentive,
-              this.gasPrices,
-              this.cTokenUnderlyingPrices_Eth,
-              this.myBalances
-            );
-            if (expectedRevenue > 0) this.accounts[i]["liquidated"] = true;
-          }
-        }
-      } catch (error) {
-        console.log(error);
-      }
-    }, 90 * 1000);
-  }
-
-  stopFetchingRiskyLiquidities() {
-    if (this.riskyFetchingHandler) clearInterval(this.riskyFetchingHandler);
-  }
-
-  startFetchingCloseFactor(timeout) {
-    this.closeFactorFetchingHandle = setInterval(() => {
-      Comptroller.mainnet.closeFactor().then(result => {
-        if (this.closeFactor !== result) {
-          //console.log('Close Factor Changed');
-          //console.log('');
-          this.closeFactor = result;
-          this.onGotNewData();
-        }
-      });
-    }, timeout);
-  }
-
-  stopFetchingCloseFactor() {
-    if (this.closeFactorFetchingHandle)
-      clearInterval(this.closeFactorFetchingHandle);
-  }
-
-  startFetchingLiquidationIncentive(timeout) {
-    this.liquidationIncentiveFetchingHandle = setInterval(() => {
-      Comptroller.mainnet.liquidationIncentive().then(result => {
-        if (this.liquidationIncentive !== result) {
-          //console.log('Liquidation Incentive Changed');
-          //console.log('');
-          this.liquidationIncentive = result;
-          this.onGotNewData();
-        }
-      });
-    }, timeout);
-  }
-
-  stopFetchingLiquidationIncentive() {
-    if (this.liquidationIncentiveFetchingHandle)
-      clearInterval(this.liquidationIncentiveFetchingHandle);
-  }
-
-  startFetchingGasPrices(timeout) {
-    this.gasFetchingHandle = setInterval(() => {
-      GasStation.pricesHighToLow_wei().then(result => {
-        if (JSON.stringify(this.gasPrices) !== JSON.stringify(result)) {
-          //console.log('Gas Prices Changed');
-          //console.log(result);
-          //console.log('');
-          this.gasPrices = result;
-          this.onGotNewData();
-        }
-      });
-    }, timeout);
-  }
-
-  stopFetchingGasPrices() {
-    if (this.gasFetchingHandle) clearInterval(this.gasFetchingHandle);
-  }
-
-  startFetchingCTokenUnderlying(timeout) {
-    this.cTokenUnderlyingFetchingHandle = setInterval(() => {
-      Compound.fetchCTokenUnderlyingPrices_Eth().then(result => {
-        if (
-          JSON.stringify(this.cTokenUnderlyingPrices_Eth) !==
-          JSON.stringify(result)
-        ) {
-          //console.log('Token Prices Changed');
-          //console.log(result);
-          //console.log('');
-          this.cTokenUnderlyingPrices_Eth = result;
-          this.onGotNewData();
-        }
-      });
-    }, timeout);
-  }
-
-  stopFetchingCTokenUnderlying() {
-    if (this.cTokenUnderlyingFetchingHandle)
-      clearInterval(this.cTokenUnderlyingFetchingHandle);
-  }
-
-  startFetchingMyBalances(timeout) {
-    this.myBalancesFetchingHandle = setInterval(() => {
-      Ethplorer.balancesFor(process.env.PUBLIC_KEY).then(result => {
-        if (JSON.stringify(this.myBalances) !== JSON.stringify(result)) {
-          //console.log('My Balances Changed');
-          //console.log(result);
-          //console.log('');
-          this.myBalances = result;
-          this.onGotNewData();
-        }
-      });
-    }, timeout);
-  }
-
-  stopFetchingMyBalances() {
-    if (this.myBalancesFetchingHandle)
-      clearInterval(this.myBalancesFetchingHandle);
-  }
-
-  onGotNewData() {
-    for (let i = 0; i < this.accounts.length; i++) {
-      if (this.accounts[i]["liquidated"]) continue;
-      const expectedRevenue = ProcessAddress.possiblyLiquidate(
-        this.accounts[i],
-        this.closeFactor,
-        this.liquidationIncentive,
-        this.gasPrices,
-        this.cTokenUnderlyingPrices_Eth,
-        this.myBalances
+    // 0 means pull most recent block
+    // We label it with an older block number to avoid overwriting fresher
+    // data from on-chain calls
+    this._accountService.fetchAll(0, accounts => {
+      this._tableUsers.upsertAccountService(
+        blockToLabel,
+        accounts,
+        closeFactor,
+        liquidationIncentive
       );
-      if (expectedRevenue > 0) this.accounts[i]["liquidated"] = true;
+    });
+
+    if (this._blockLastAccountServicePull !== null) {
+      this._blocksPerMinute =
+        (blockCurrent - this._blockLastAccountServicePull) / timeout_minutes;
+    }
+    this._blockLastAccountServicePull = blockCurrent;
+  }
+
+  async updateLiquidationCandidates(
+    lowCount = 10,
+    highCount = 90,
+    highThresh_Eth = 50
+  ) {
+    const estimatedTxFee_Eth =
+      ((await web3.eth.getGasPrice()) / 1e18) * 1000000;
+    this._liquidationTargets = this.manualLiquidationTargets
+      .concat(
+        await this._tableUsers.getLiquidationLowCandidates(
+          lowCount,
+          estimatedTxFee_Eth
+        )
+      )
+      .concat(
+        await this._tableUsers.getLiquidationHighCandidates(
+          highCount,
+          highThresh_Eth
+        )
+      );
+  }
+
+  async onNewBlock() {
+    const gasPrice = await web3.eth.getGasPrice();
+    for (let target of this._liquidationTargets) {
+      const userAddr = "0x" + target.address;
+      Comptroller.mainnet.accountLiquidityOf(userAddr).then(async res => {
+        if (res[1] > 0.0) {
+          // Target has negative liquidity. We're good to go
+          const repayAddr =
+            "0x" + (await this._tableCTokens.getAddress(target.ctokenidpay));
+          const seizeAddr =
+            "0x" + (await this._tableCTokens.getAddress(target.ctokenidseize));
+
+          const closeFact = await Comptroller.mainnet.closeFactor();
+          const repayAmnt =
+            closeFact *
+            1e18 *
+            (await Tokens.mainnetByAddr[repayAddr].uUnitsInContractFor(
+              userAddr
+            ));
+          
+          console.log("Liquidating " + userAddr);
+          const tx = Tokens.mainnetByAddr[repayAddr].flashLiquidate_uUnits(
+            userAddr,
+            repayAmnt,
+            seizeAddr,
+            gasPrice
+          );
+
+          EthAccount.shared.signAndSend(tx, await EthAccount.getHighestConfirmedNonce());
+        }
+      });
     }
   }
 }
 
-const main = new Main();
-main.startFetchingAccounts(4 * 60 * 1000);
-main.startFetchingCloseFactor(2 * 60 * 1000);
-main.startFetchingLiquidationIncentive(2 * 60 * 1000);
-main.startFetchingGasPrices(60 * 1000);
-main.startFetchingCTokenUnderlying(90 * 1000);
-main.startFetchingMyBalances(5 * 60 * 1000);
+const main = new Main([]);
+
+setInterval(main.pullFromCTokenService, 6 * 60 * 1000);
+setInterval(main.pullFromAccountService, 12 * 60 * 1000, 12, 4);
+setInterval(main.updateLiquidationCandidates, 5 * 60 * 1000);
+
+web3.eth.subscribe("newBlockHeaders", (err, block) => {
+  if (err) {
+    console.log(error);
+    return;
+  }
+
+  console.log(block.number);
+  main.onNewBlock();
+});
+
+process.on("SIGINT", () => {
+  console.log("\nCaught interrupt signal");
+
+  web3.eth.clearSubscriptions();
+  main._pool.end();
+  process.exit();
+});

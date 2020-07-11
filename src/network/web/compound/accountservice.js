@@ -70,7 +70,7 @@ class Accounts extends Fetchable {
     };
   }
 
-  async fetchAll(blockNo) {
+  async fetchAll(blockNo, forEachChunk = null) {
     let accounts = [];
 
     let i = 1;
@@ -78,11 +78,16 @@ class Accounts extends Fetchable {
 
     let result;
     do {
-      result = await this.fetch({ page_number: i, page_size: 200, block_number: blockNo });
+      result = await this.fetch({
+        page_number: i,
+        page_size: 200,
+        block_number: blockNo
+      });
       pageCount = result.pagination.total_pages;
       i++;
 
-      accounts = accounts.concat(result.accounts);
+      if (forEachChunk === null) accounts = accounts.concat(result.accounts);
+      else forEachChunk(result.accounts);
     } while (i <= pageCount);
 
     return accounts;

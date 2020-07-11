@@ -28,6 +28,7 @@
     "@tensorflow/tfjs-node-gpu": "^2.0.1"
   },
   "scripts": {
+    "main": "node './src/main'",
     "db-create": "createdb FlashLoanLiquidation",
     "db-initialize": "psql --echo-errors -f './scripts/database/initialize.sql' FlashLoanLiquidation",
     "db-create-views": "psql --echo-errors -f './scripts/database/views.sql' FlashLoanLiquidation",

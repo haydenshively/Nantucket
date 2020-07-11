@@ -22,7 +22,7 @@ class EthAccount {
     return web3.eth.sendSignedTransaction(signedTx);
   }
 
-  static signAndSend(transaction, nonce) {
+  signAndSend(transaction, nonce) {
     transaction.from = process.env.ACCOUNT_PUBLIC_KEY;
     transaction.nonce = web3.utils.toHex(nonce);
 
@@ -35,7 +35,7 @@ class EthAccount {
       console.warn("Overriding transaction with nonce ${nonce}.");
     }
 
-    const sentTx = this._send(this._sign(transaction));
+    const sentTx = EthAccount._send(EthAccount._sign(transaction));
     sentTx.on("sent", payload => {
       this.pendingTransactions[nonce] = {
         to: transaction.to,
