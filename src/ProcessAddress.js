@@ -35,18 +35,8 @@ exports.possiblyLiquidate = (
 
     const borrow_uUnits = (token.borrow_balance_underlying) ? token.borrow_balance_underlying.value : 0.0;
     if (borrow_uUnits > 0) {
-      // console.log('----> Borrow (in uUnits): ' + borrow_uUnits);
       const borrow_Eth = borrow_uUnits * cTokenUnderlyingPrices_Eth[tokenSymbol];
-      // console.log('----> Borrow (in Eth): ' + borrow_Eth);
-      let closable_Eth = borrow_Eth * closeFactor;
-      // console.log('------> Closable by Market (in Eth): ' + closable_Eth);
-      // Assumes that all cTokens are named like xUND, where x is any letter and UND is the
-      // symbol of the underlying asset
-      const exchangeRate = cTokenUnderlyingPrices_Eth[tokenSymbol] ? cTokenUnderlyingPrices_Eth[tokenSymbol] : 0.0;
-      const mine = myBalances[tokenSymbol.substring(1)] ? myBalances[tokenSymbol.substring(1)] : 0.0;
-      closable_Eth = Math.min(closable_Eth, mine * exchangeRate);
-      // console.log('------> Closable by Me (in Eth):     ' + closable_Eth);
-
+      const closable_Eth = borrow_Eth * closeFactor;
       if (closable_Eth > closingAmountEth_borrow) {
         // console.log('****> Now the winner!');
         closingAmountEth_borrow = closable_Eth;

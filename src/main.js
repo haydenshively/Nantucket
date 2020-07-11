@@ -1,4 +1,21 @@
 require("dotenv").config();
+
+const Web3 = require("web3");
+if (process.env.WEB3_PROVIDER_TEST.endsWith(".ipc")) {
+  net = require("net");
+  global.web3 = new Web3(process.env.WEB3_PROVIDER_TEST, net);
+} else {
+  global.web3 = new Web3(process.env.WEB3_PROVIDER_TEST);
+}
+
+class Main {
+  
+}
+
+
+
+
+require("dotenv").config();
 // network/web
 const Etherscan = require("./network/web/etherscan/etherscan");
 const Ethplorer = require("./network/web/ethplorer/ethplorer");
@@ -19,7 +36,7 @@ const ProcessAddress = require("./ProcessAddress.js");
 
 
 
-class Main {
+class MainOld {
   constructor() {
     this.accounts = [];
     this.closeFactor = 0.0;

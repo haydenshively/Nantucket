@@ -69,6 +69,25 @@ class Accounts extends Fetchable {
       accounts: json.accounts.map(i => new Account(i))
     };
   }
+
+  async fetchAll(blockNo) {
+    let accounts = [];
+
+    let i = 1;
+    let pageCount;
+
+    let result;
+    do {
+      result = await this.fetch({ page_number: i, page_size: 200, block_number: blockNo });
+      pageCount = result.pagination.total_pages;
+      i++;
+
+      accounts = accounts.concat(result.accounts);
+      break;
+    } while (i <= pageCount);
+
+    return accounts;
+  }
 }
 
 // exports.AccountService = Accounts;
