@@ -23,11 +23,13 @@ class EthAccount {
   }
 
   signAndSend(transaction, nonce) {
+    const self = EthAccount.shared;
+
     transaction.from = process.env.ACCOUNT_PUBLIC_KEY;
     transaction.nonce = web3.utils.toHex(nonce);
 
-    if (nonce in this.pendingTransactions) {
-      const currentGasPrice = this.pendingTransactions[nonce].gasPrice;
+    if (nonce in self.pendingTransactions) {
+      const currentGasPrice = self.pendingTransactions[nonce].gasPrice;
       if (transaction.gasPrice <= currentGasPrice) {
         console.error("Failed to override transaction. Gas price too low.");
         return;
@@ -37,7 +39,7 @@ class EthAccount {
 
     const sentTx = EthAccount._send(EthAccount._sign(transaction));
     sentTx.on("sent", payload => {
-      this.pendingTransactions[nonce] = {
+      self.pendingTransactions[nonce] = {
         to: transaction.to,
         gas: transaction.gas,
         gasPrice: transaction.gasPrice,
@@ -46,7 +48,7 @@ class EthAccount {
       };
     });
     sentTx.on("transactionHash", transactionHash => {
-      this.pendingTransactions[nonce] = {
+      self.pendingTransactions[nonce] = {
         to: transaction.to,
         gas: transaction.gas,
         gasPrice: transaction.gasPrice,
@@ -56,7 +58,7 @@ class EthAccount {
       };
     });
     sentTx.on("receipt", receipt => {
-      delete this.pendingTransactions.nonce;
+      delete self.pendingTransactions.nonce;
     });
   }
 }

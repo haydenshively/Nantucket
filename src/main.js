@@ -1,14 +1,4 @@
-require("dotenv").config();
-
 const { Pool } = require("pg");
-
-const Web3 = require("web3");
-if (process.env.WEB3_PROVIDER_TEST.endsWith(".ipc")) {
-  net = require("net");
-  global.web3 = new Web3(process.env.WEB3_PROVIDER_TEST, net);
-} else {
-  global.web3 = new Web3(process.env.WEB3_PROVIDER_TEST);
-}
 
 // src.database
 const TableUTokens = require("./database/tableutokens");
@@ -27,55 +17,62 @@ const Tokens = require("./network/webthree/compound/ctoken");
 new EthAccount();
 
 class Main {
-  constructor(manualLiquidationTargets) {
-    // Database is assumed to have already been setup & initialized
-    this._pool = new Pool({
-      max: 20,
-      idleTimeoutMillis: 30000,
-      connectionTimeoutMillis: 2000
-    });
+  constructor() {
+    if (!Main.shared) {
+      // Database is assumed to have already been setup & initialized
+      this._pool = new Pool({
+        max: 20,
+        idleTimeoutMillis: 30000,
+        connectionTimeoutMillis: 2000
+      });
 
-    this._tableUTokens = new TableUTokens(this._pool);
-    this._tableCTokens = new TableCTokens(this._pool, this._tableUTokens);
-    this._tablePaySeizePairs = new TablePaySeizePairs(
-      this._pool,
-      this._tableCTokens
-    );
-    this._tableUsers = new TableUsers(
-      this._pool,
-      this._tableCTokens,
-      this._tablePaySeizePairs
-    );
+      this._tableUTokens = new TableUTokens(this._pool);
+      this._tableCTokens = new TableCTokens(this._pool, this._tableUTokens);
+      this._tablePaySeizePairs = new TablePaySeizePairs(
+        this._pool,
+        this._tableCTokens
+      );
+      this._tableUsers = new TableUsers(
+        this._pool,
+        this._tableCTokens,
+        this._tablePaySeizePairs
+      );
 
-    this._accountService = new AccountService();
-    this._ctokenService = new CTokenService();
-    this._gasPriceAPI = new GasPrice();
+      this._accountService = new AccountService();
+      this._ctokenService = new CTokenService();
+      this._gasPriceAPI = new GasPrice();
 
-    this._blockLastAccountServicePull = null;
-    this._blocksPerMinute = 0;
+      this._blockLastAccountServicePull = null;
+      this._blocksPerMinute = 0;
 
-    this._liquidationTargets = [];
-    this.manualLiquidationTargets = manualLiquidationTargets;
+      this._liquidationTargets = [];
+
+      Main.shared = this;
+    }
   }
 
-  async pullFromCTokenService() {
-    const tokens = (await this._ctokenService.fetch({})).tokens;
-    await this._tableUTokens.upsertCTokenService(tokens);
-    await this._tableCTokens.upsertCTokenService(tokens);
-    await this._tablePaySeizePairs.insertCTokenService(tokens);
+  static async pullFromCTokenService() {
+    const self = Main.shared;
+
+    const tokens = (await self._ctokenService.fetch({})).tokens;
+    await self._tableUTokens.upsertCTokenService(tokens);
+    await self._tableCTokens.upsertCTokenService(tokens);
+    await self._tablePaySeizePairs.insertCTokenService(tokens);
   }
 
-  async pullFromAccountService(timeout_minutes, offset_minutes) {
+  static async pullFromAccountService(timeout_minutes, offset_minutes) {
+    const self = Main.shared;
+
     const blockCurrent = await web3.eth.getBlockNumber();
-    const blockToLabel = blockCurrent - offset_minutes * this._blocksPerMinute;
+    const blockToLabel = blockCurrent - offset_minutes * self._blocksPerMinute;
     const closeFactor = await Comptroller.mainnet.closeFactor();
     const liquidationIncentive = await Comptroller.mainnet.liquidationIncentive();
 
     // 0 means pull most recent block
     // We label it with an older block number to avoid overwriting fresher
     // data from on-chain calls
-    this._accountService.fetchAll(0, accounts => {
-      this._tableUsers.upsertAccountService(
+    self._accountService.fetchAll(0, accounts => {
+      self._tableUsers.upsertAccountService(
         blockToLabel,
         accounts,
         closeFactor,
@@ -83,54 +80,59 @@ class Main {
       );
     });
 
-    if (this._blockLastAccountServicePull !== null) {
-      this._blocksPerMinute =
-        (blockCurrent - this._blockLastAccountServicePull) / timeout_minutes;
+    if (self._blockLastAccountServicePull !== null) {
+      self._blocksPerMinute =
+        (blockCurrent - self._blockLastAccountServicePull) / timeout_minutes;
     }
-    this._blockLastAccountServicePull = blockCurrent;
+    self._blockLastAccountServicePull = blockCurrent;
   }
 
-  async updateLiquidationCandidates(
+  static async updateLiquidationCandidates(
     lowCount = 10,
     highCount = 90,
     highThresh_Eth = 50
   ) {
+    const self = Main.shared;
+
     const estimatedTxFee_Eth =
       ((await web3.eth.getGasPrice()) / 1e18) * 1000000;
-    this._liquidationTargets = []
+
+    self._liquidationTargets = []
       .concat(
-        await this._tableUsers.getLiquidationCandidates(
+        await self._tableUsers.getLiquidationCandidates(
           lowCount,
           estimatedTxFee_Eth
         )
       )
       .concat(
-        await this._tableUsers.getLiquidationCandidates(
+        await self._tableUsers.getLiquidationCandidates(
           highCount,
           highThresh_Eth
         )
       );
   }
 
-  async onNewBlock() {
+  static async onNewBlock() {
+    const self = Main.shared;
+
     const gasPrice = await web3.eth.getGasPrice();
-    for (let target of this._liquidationTargets) {
+    for (let target of self._liquidationTargets) {
       const userAddr = "0x" + target.address;
       Comptroller.mainnet.accountLiquidityOf(userAddr).then(async res => {
         if (res[1] > 0.0) {
           // Target has negative liquidity (positive shortfall). We're good to go
           const repayAddr =
-            "0x" + (await this._tableCTokens.getAddress(target.ctokenidpay));
+            "0x" +
+            (await self._tableCTokens.getAddress(target.ctokenidpay));
           const seizeAddr =
-            "0x" + (await this._tableCTokens.getAddress(target.ctokenidseize));
+            "0x" +
+            (await self._tableCTokens.getAddress(target.ctokenidseize));
 
           const closeFact = await Comptroller.mainnet.closeFactor();
           const repayAmnt =
             closeFact *
             1e18 *
-            (await Tokens.mainnetByAddr[repayAddr].uUnitsLoanedOutTo(
-              userAddr
-            ));
+            (await Tokens.mainnetByAddr[repayAddr].uUnitsLoanedOutTo(userAddr));
 
           console.log("Liquidating " + userAddr);
           const tx = Tokens.mainnetByAddr[repayAddr].flashLiquidate_uUnits(
@@ -148,28 +150,10 @@ class Main {
       });
     }
   }
+
+  end() {
+    this._pool.end();
+  }
 }
 
-const main = new Main([]);
-
-setInterval(main.pullFromCTokenService, 6 * 60 * 1000);
-setInterval(main.pullFromAccountService, 12 * 60 * 1000, 12, 4);
-setInterval(main.updateLiquidationCandidates, 5 * 60 * 1000);
-
-web3.eth.subscribe("newBlockHeaders", (err, block) => {
-  if (err) {
-    console.log(error);
-    return;
-  }
-
-  console.log(block.number);
-  main.onNewBlock();
-});
-
-process.on("SIGINT", () => {
-  console.log("\nCaught interrupt signal");
-
-  web3.eth.clearSubscriptions();
-  main._pool.end();
-  process.exit();
-});
+module.exports = Main;
