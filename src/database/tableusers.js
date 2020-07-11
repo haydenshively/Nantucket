@@ -5,52 +5,83 @@ class TableUsers {
     this._tablePaySeizePairs = tablePaySeizePairs;
   }
 
+  async getLiquidationLowCandidates(count=10, estimatedTxFee_Eth) {
+    return await this._pool.query(
+      `
+      SELECT * FROM users
+      WHERE users.profitability>$1
+      ORDER BY users.liquidity ASC
+      LIMIT $2
+      `,
+      [estimatedTxFee_Eth, count]
+    );
+  }
+
+  async getLiquidationHighCandidates(count=100, thresh_Eth=100) {
+    return await this._pool.query(
+      `
+      SELECT * FROM users
+      WHERE users.profitability>$1
+      ORDER BY users.liquidity ASC
+      LIMIT $2
+      `,
+      [thresh_Eth, count]
+    );
+  }
+
   async upsertAccountService(blockNo, accounts, closeFactor, liquidationIncentive) {
     for (let account of accounts) {
       let supply = 0.0;
       let borrow = 0.0;
       let bestAssetToClose = null;
       let bestAssetToSeize = null;
-      let closingAmountEth_borrow = 0.0;
-      let closingAmountEth_supply = 0.0;
+      let closableMax_Eth = 0.0;
+      let seizableMax_Eth = 0.0;
 
       for (let token of account.tokens) {
-        const cTokenID = await this._tableCTokens.getID(token.address().slice(2));
-
         const borrow_uUnits = Number(token.borrowBalanceUnderlying());
         const supply_uUnits = Number(token.supplyBalanceUnderlying());
 
-        if (borrow_uUnits > 0.0) {
-          const { collat, costineth } = await this.getCollatAndCost(cTokenID);
-          const closable_Eth = borrow_uUnits * costineth * closeFactor;
-          borrow += borrow_uUnits * costineth * collat;
+        if (borrow_uUnits == 0.0 && supply_uUnits == 0.0) continue;
 
-          if (closable_Eth > closingAmountEth_borrow) {
-            closingAmountEth_borrow = closable_Eth;
+        const cTokenID = await this._tableCTokens.getID(token.address().slice(2));
+        const { collat, costineth } = await this.getCollatAndCost(cTokenID);
+
+        borrow += borrow_uUnits * costineth * collat;
+        supply += supply_uUnits * costineth;
+
+        const closableAmount_Eth = borrow_uUnits * costineth * closeFactor;
+        const seizableAmount_Eth = supply_uUnits * costineth / liquidationIncentive;
+
+        if (closableAmount_Eth > closableMax_Eth && seizableAmount_Eth > seizableMax_Eth) {
+          if (closableAmount_Eth <= seizableMax_Eth) {
+            // In this case, raising closableMax_Eth actually increases rewards
+            // (seizableMax_Eth is sufficient to maximize liquidation incentive)
+            closableMax_Eth = closableAmount_Eth;
             bestAssetToClose = cTokenID;
-          }
-        }
-
-        if (supply_uUnits > 0.0) {
-          const { collat, costineth } = await this.getCollatAndCost(cTokenID);
-          const closable_Eth = supply_uUnits * costineth / liquidationIncentive;
-          supply += supply_uUnits * costineth;
-
-          if (closable_Eth > closingAmountEth_supply) {
-            closingAmountEth_supply = closable_Eth;
+          }else {
+            // In this case, raising closableMax_Eth wouldn't lead to increased rewards
+            // so we increase seizableMax_Eth instead
+            seizableMax_Eth = seizableAmount_Eth;
             bestAssetToSeize = cTokenID;
           }
+        }else if (closableAmount_Eth > closableMax_Eth) {
+          closableMax_Eth = closableAmount_Eth;
+          bestAssetToClose = cTokenID;
+        }else if (seizableAmount_Eth > seizableMax_Eth) {
+          seizableMax_Eth = seizableAmount_Eth;
+          bestAssetToSeize = cTokenID;
         }
       }
 
       const liquidity = supply - borrow;
-      const profitability = Math.min(closingAmountEth_borrow, closingAmountEth_supply) * (liquidationIncentive - 1.0);
+      const profitability = Math.min(closableMax_Eth, seizableMax_Eth) * (liquidationIncentive - 1.0);
       
       let pairID;
       if (bestAssetToClose === null || bestAssetToSeize === null) {
         pairID = null;
       }else {
-        pairID = this._tablePaySeizePairs.getID(bestAssetToClose, bestAssetToSeize);
+        pairID = await this._tablePaySeizePairs.getID(bestAssetToClose, bestAssetToSeize);
       }
 
       await this.upsert(account.address().slice(2), liquidity, profitability, pairID, blockNo);
@@ -64,7 +95,7 @@ class TableUsers {
       VALUES ($1::text, $2, $3, $4, $5)
       ON CONFLICT (address) DO UPDATE
       SET liquidity=EXCLUDED.liquidity, profitability=EXCLUDED.profitability, pairid=EXCLUDED.pairid, blockupdated=EXCLUDED.blockupdated
-      WHERE NEW.blockUpdated<=OLD.blockUpdated
+      WHERE EXCLUDED.blockUpdated>=users.blockUpdated
       `,
       [ address, liquidity, profitability, pairID, blockUpdated ]
     );

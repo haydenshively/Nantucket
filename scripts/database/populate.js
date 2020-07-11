@@ -25,16 +25,13 @@ const tableUsers = new TableUsers(pool, tableCTokens, tablePaySeizePairs);
 
 ;(async () => {
   try {
-    // const tokens = (await ctokenService.fetch({})).tokens;
-
-    // await tableUTokens.upsertCTokenService(tokens);
-    // await tableCTokens.upsertCTokenService(tokens);
-    // await tablePaySeizePairs.insertCTokenService(tokens);
+    const tokens = (await ctokenService.fetch({})).tokens;
+    await tableUTokens.upsertCTokenService(tokens);
+    await tableCTokens.upsertCTokenService(tokens);
+    await tablePaySeizePairs.insertCTokenService(tokens);
     
-    const accounts = await accountService.fetchAll(10436262);
-
-    await tableUsers.upsertAccountService(10436262, accounts, 0.5, 1.08);
-
+    const accounts = await accountService.fetchAll(0);
+    await tableUsers.upsertAccountService(10436306, accounts, 0.5, 1.08);
 
   } finally {
     pool.end();

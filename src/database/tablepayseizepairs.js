@@ -32,13 +32,15 @@ class TablePaySeizePairs {
   }
 
   async getID(idPay, idSeize) {
-    return (await this._pool.query(
+    const row = (await this._pool.query(
       `
       SELECT id FROM payseizepairs
       WHERE (ctokenidpay=$1 AND ctokenidseize=$2)
       `,
       [idPay, idSeize]
-    )).rows[0].id;
+    )).rows[0];
+    
+    return row === undefined ? null : row.id;
   }
 
   async getPair(id) {

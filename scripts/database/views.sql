@@ -5,4 +5,6 @@ CREATE VIEW ctokunderlying AS
   WHERE ctokens.utokenid=utokens.id;
 
 DROP VIEW IF EXISTS usersnonzero;
-CREATE VIEW usersnonzero AS SELECT * FROM users WHERE users.liquidity!=0;
+CREATE VIEW usersnonzero AS
+  SELECT * FROM users
+  WHERE users.profitability!=0;

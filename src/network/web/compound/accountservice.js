@@ -83,7 +83,6 @@ class Accounts extends Fetchable {
       i++;
 
       accounts = accounts.concat(result.accounts);
-      break;
     } while (i <= pageCount);
 
     return accounts;
