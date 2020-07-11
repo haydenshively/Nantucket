@@ -16,7 +16,7 @@ class TableUsers {
   
   */
 
-  async getLiquidationLowCandidates(count = 10, estimatedTxFee_Eth = 0.01) {
+  async getLiquidationCandidates(count = 100, min_Eth = 100) {
     return (
       await this._pool.query(
         `
@@ -26,22 +26,7 @@ class TableUsers {
         ORDER BY users.liquidity ASC
         LIMIT $2
         `,
-        [estimatedTxFee_Eth, count]
-      )
-    ).rows;
-  }
-
-  async getLiquidationHighCandidates(count = 100, thresh_Eth = 100) {
-    return (
-      await this._pool.query(
-        `
-        SELECT users.id, users.address, payseizepairs.ctokenidpay, payseizepairs.ctokenidseize
-        FROM users INNER JOIN payseizepairs ON (users.pairid=payseizepairs.id)
-        WHERE users.profitability>$1
-        ORDER BY users.liquidity ASC
-        LIMIT $2
-        `,
-        [thresh_Eth, count]
+        [min_Eth, count]
       )
     ).rows;
   }

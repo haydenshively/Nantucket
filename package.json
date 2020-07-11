@@ -33,7 +33,8 @@
     "db-initialize": "psql --echo-errors -f './scripts/database/initialize.sql' FlashLoanLiquidation",
     "db-create-views": "psql --echo-errors -f './scripts/database/views.sql' FlashLoanLiquidation",
     "db-populate": "node './scripts/database/populate.js'",
-    "test": "mocha --file './tests/network/webthree/setup.js' 'tests/**/*.js' --recursive",
+    "test": "mocha --file './tests/network/webthree/setup.js' --file './tests/database/setup.js' 'tests/**/*.js' --recursive",
+    "test-database": "mocha --file './tests/database/setup.js' 'tests/database/**/*.js' --recursive",
     "test-network": "mocha --file './tests/network/webthree/setup.js' 'tests/network/**/*.js' --recursive",
     "test-prediction": "mocha 'tests/prediction/**/*.js' --recursive"
   },

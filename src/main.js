@@ -59,7 +59,7 @@ class Main {
   }
 
   async pullFromCTokenService() {
-    const tokens = (await ctokenService.fetch({})).tokens;
+    const tokens = (await this._ctokenService.fetch({})).tokens;
     await this._tableUTokens.upsertCTokenService(tokens);
     await this._tableCTokens.upsertCTokenService(tokens);
     await this._tablePaySeizePairs.insertCTokenService(tokens);
@@ -97,15 +97,15 @@ class Main {
   ) {
     const estimatedTxFee_Eth =
       ((await web3.eth.getGasPrice()) / 1e18) * 1000000;
-    this._liquidationTargets = this.manualLiquidationTargets
+    this._liquidationTargets = []
       .concat(
-        await this._tableUsers.getLiquidationLowCandidates(
+        await this._tableUsers.getLiquidationCandidates(
           lowCount,
           estimatedTxFee_Eth
         )
       )
       .concat(
-        await this._tableUsers.getLiquidationHighCandidates(
+        await this._tableUsers.getLiquidationCandidates(
           highCount,
           highThresh_Eth
         )
@@ -118,7 +118,7 @@ class Main {
       const userAddr = "0x" + target.address;
       Comptroller.mainnet.accountLiquidityOf(userAddr).then(async res => {
         if (res[1] > 0.0) {
-          // Target has negative liquidity. We're good to go
+          // Target has negative liquidity (positive shortfall). We're good to go
           const repayAddr =
             "0x" + (await this._tableCTokens.getAddress(target.ctokenidpay));
           const seizeAddr =
@@ -128,10 +128,10 @@ class Main {
           const repayAmnt =
             closeFact *
             1e18 *
-            (await Tokens.mainnetByAddr[repayAddr].uUnitsInContractFor(
+            (await Tokens.mainnetByAddr[repayAddr].uUnitsLoanedOutTo(
               userAddr
             ));
-          
+
           console.log("Liquidating " + userAddr);
           const tx = Tokens.mainnetByAddr[repayAddr].flashLiquidate_uUnits(
             userAddr,
@@ -140,7 +140,10 @@ class Main {
             gasPrice
           );
 
-          EthAccount.shared.signAndSend(tx, await EthAccount.getHighestConfirmedNonce());
+          EthAccount.shared.signAndSend(
+            tx,
+            await EthAccount.getHighestConfirmedNonce()
+          );
         }
       });
     }
