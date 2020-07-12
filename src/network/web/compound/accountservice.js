@@ -101,5 +101,4 @@ class Accounts extends Fetchable {
   }
 }
 
-// exports.AccountService = Accounts;
 module.exports = Accounts;

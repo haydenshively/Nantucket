@@ -60,6 +60,8 @@ class EthAccount {
     sentTx.on("receipt", receipt => {
       delete self.pendingTransactions.nonce;
     });
+
+    return sentTx;
   }
 }
 

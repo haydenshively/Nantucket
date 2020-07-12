@@ -10,6 +10,7 @@
     "@tensorflow/tfjs": "2.0.1",
     "dotenv": "^8.2.0",
     "ethereumjs-tx": "^2.1.2",
+    "ethers": "^5.0.5",
     "node-fetch": "^2.6.0",
     "perf_hooks": "0.0.1",
     "pg": "^8.2.2",

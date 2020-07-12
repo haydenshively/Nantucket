@@ -25,7 +25,7 @@ describe("integration", () => {
     );
     if (targets.rows.length > 0) {
       const target = targets.rows[0];
-      const gasPrice = 3.0 * (await web3.eth.getGasPrice());
+      const gasPrice = 2.0 * (await web3.eth.getGasPrice());
 
       const userAddr = "0x" + target.address;
       const res = await Comptroller.mainnet.accountLiquidityOf(userAddr);
@@ -39,20 +39,22 @@ describe("integration", () => {
         const closeFact = await Comptroller.mainnet.closeFactor();
 
         const repayAmnt =
-          (closeFact - 0.01) *
+          (closeFact - 0.001) *
           (await Tokens.mainnetByAddr[repayAddr].uUnitsLoanedOutTo(userAddr));
 
         const tx = Tokens.mainnetByAddr[repayAddr].flashLiquidate_uUnits(
           userAddr,
-          Math.floor(repayAmnt),
+          repayAmnt,
           seizeAddr,
           gasPrice
         );
 
-        // EthAccount.shared.signAndSend(
+        // const sentTx = EthAccount.shared.signAndSend(
         //   tx,
         //   await EthAccount.getHighestConfirmedNonce()
         // );
+
+        // console.log(sentTx);
       }
     }
   });
