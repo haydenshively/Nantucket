@@ -20,10 +20,10 @@ class TableUsers {
     return (
       await this._pool.query(
         `
-        SELECT users.id, users.address, payseizepairs.ctokenidpay, payseizepairs.ctokenidseize
-        FROM users INNER JOIN payseizepairs ON (users.pairid=payseizepairs.id)
-        WHERE users.profitability>$1
-        ORDER BY users.liquidity ASC
+        SELECT usersnonzero.id, usersnonzero.address, payseizepairs.ctokenidpay, payseizepairs.ctokenidseize
+        FROM usersnonzero INNER JOIN payseizepairs ON (usersnonzero.pairid=payseizepairs.id)
+        WHERE usersnonzero.profitability>$1
+        ORDER BY usersnonzero.liquidity ASC
         LIMIT $2
         `,
         [min_Eth, count]

@@ -33,6 +33,7 @@
     "db-initialize": "psql --echo-errors -f './scripts/database/initialize.sql' FlashLoanLiquidation",
     "db-create-views": "psql --echo-errors -f './scripts/database/views.sql' FlashLoanLiquidation",
     "db-populate": "node './scripts/database/populate.js'",
+    "test-integration": "mocha --file './tests/setup.js' './tests/integration.test.js'",
     "test": "mocha --file './tests/setup.js' 'tests/**/*.js' --recursive",
     "test-database": "mocha --file './tests/setup.js' 'tests/database/**/*.js' --recursive",
     "test-network": "mocha --file './tests/setup.js' 'tests/network/**/*.js' --recursive",

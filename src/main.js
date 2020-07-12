@@ -17,7 +17,7 @@ const Tokens = require("./network/webthree/compound/ctoken");
 new EthAccount();
 
 class Main {
-  constructor() {
+  constructor(gasMultiplier) {
     if (!Main.shared) {
       // Database is assumed to have already been setup & initialized
       this._pool = new Pool({
@@ -44,6 +44,7 @@ class Main {
 
       this._blockLastAccountServicePull = null;
       this._blocksPerMinute = 0;
+      this._gasMultiplier = gasMultiplier;
 
       this._liquidationTargets = [];
 
@@ -64,7 +65,9 @@ class Main {
     const self = Main.shared;
 
     const blockCurrent = await web3.eth.getBlockNumber();
-    const blockToLabel = Math.floor(blockCurrent - offset_minutes * self._blocksPerMinute);
+    const blockToLabel = Math.floor(
+      blockCurrent - offset_minutes * self._blocksPerMinute
+    );
     const closeFactor = await Comptroller.mainnet.closeFactor();
     const liquidationIncentive = await Comptroller.mainnet.liquidationIncentive();
 
@@ -95,7 +98,7 @@ class Main {
     const self = Main.shared;
 
     const estimatedTxFee_Eth =
-      ((await web3.eth.getGasPrice()) / 1e18) * 1000000;
+      ((self._gasMultiplier * (await web3.eth.getGasPrice())) / 1e18) * 1000000;
 
     self._liquidationTargets = []
       .concat(
@@ -115,24 +118,50 @@ class Main {
   static async onNewBlock() {
     const self = Main.shared;
 
-    const gasPrice = await web3.eth.getGasPrice();
+    let nonce = await EthAccount.getHighestConfirmedNonce();
+    const gasPrice = self._gasMultiplier * (await web3.eth.getGasPrice());
+
     for (let target of self._liquidationTargets) {
+      // This is pairID 13 and 42 (DAI and SAI). There's no AAVE pool for it.
+      if (
+        (target.ctokenidpay == 2 && target.ctokenidseize == 6) ||
+        (target.ctokenidpay == 6 && target.ctokenidseize == 2)
+      )
+        continue;
+
+      // Get the target user's address as a string
       const userAddr = "0x" + target.address;
+
+      // Figure out if the user has already been liquidated. If they have, skip and move on
+      // While we're at it, also get the lowest unused nonce (for use in potential new tx)
+      let alreadyLiquidated = false;
+      for (const pendingNonce in EthAccount.shared.pendingTransactions) {
+        const pendingTx = EthAccount.shared.pendingTransactions[pendingNonce];
+        if (pendingTx.to === userAddr) alreadyLiquidated = true;
+        nonce = Math.max(nonce, pendingNonce + 1);
+      }
+      if (alreadyLiquidated) continue;
+
+      // Check if user can be liquidated
       Comptroller.mainnet.accountLiquidityOf(userAddr).then(async res => {
         if (res[1] > 0.0) {
           // Target has negative liquidity (positive shortfall). We're good to go
           const repayAddr =
-            "0x" +
-            (await self._tableCTokens.getAddress(target.ctokenidpay));
+            "0x" + (await self._tableCTokens.getAddress(target.ctokenidpay));
           const seizeAddr =
-            "0x" +
-            (await self._tableCTokens.getAddress(target.ctokenidseize));
+            "0x" + (await self._tableCTokens.getAddress(target.ctokenidseize));
 
           const closeFact = await Comptroller.mainnet.closeFactor();
           const repayAmnt =
-            closeFact *
-            1e18 *
+            (closeFact - 0.001) *
             (await Tokens.mainnetByAddr[repayAddr].uUnitsLoanedOutTo(userAddr));
+
+          if (repayAmnt == 0.0) {
+            console.log(
+              "Proposed repay=0, otherwise could've liquidated. Token pair likely stale"
+            );
+            return;
+          }
 
           console.log("Liquidating " + userAddr);
           const tx = Tokens.mainnetByAddr[repayAddr].flashLiquidate_uUnits(
@@ -142,10 +171,7 @@ class Main {
             gasPrice
           );
 
-          EthAccount.shared.signAndSend(
-            tx,
-            await EthAccount.getHighestConfirmedNonce()
-          );
+          EthAccount.shared.signAndSend(tx, nonce);
         }
       });
     }
