@@ -1,18 +1,18 @@
 require("dotenv").config();
 
 const Web3 = require("web3");
-if (process.env.WEB3_PROVIDER_TEST.endsWith(".ipc")) {
+if (process.env.WEB3_PROVIDER.endsWith(".ipc")) {
   net = require("net");
-  global.web3 = new Web3(process.env.WEB3_PROVIDER_TEST, net);
+  global.web3 = new Web3(process.env.WEB3_PROVIDER, net);
 } else {
-  global.web3 = new Web3(process.env.WEB3_PROVIDER_TEST);
+  global.web3 = new Web3(process.env.WEB3_PROVIDER);
 }
 
 const Main = require("./main");
 new Main();
 
 setInterval(Main.pullFromCTokenService, 6 * 60 * 1000);
-setInterval(Main.pullFromAccountService, 12 * 60 * 1000, 12, 4);
+setInterval(Main.pullFromAccountService, 15 * 60 * 1000, 15, 4);
 setInterval(Main.updateLiquidationCandidates, 5 * 60 * 1000);
 
 web3.eth.subscribe("newBlockHeaders", (err, block) => {

@@ -64,7 +64,7 @@ class Main {
     const self = Main.shared;
 
     const blockCurrent = await web3.eth.getBlockNumber();
-    const blockToLabel = blockCurrent - offset_minutes * self._blocksPerMinute;
+    const blockToLabel = Math.floor(blockCurrent - offset_minutes * self._blocksPerMinute);
     const closeFactor = await Comptroller.mainnet.closeFactor();
     const liquidationIncentive = await Comptroller.mainnet.liquidationIncentive();
 
