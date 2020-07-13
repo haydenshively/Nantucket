@@ -40,12 +40,40 @@ class SmartContract {
     }
 
     if (nonceToReplace === null) {
-      console.error("Failed to override update gas price. Transaction doesn't exist.");
+      console.error(
+        "Failed to override update gas price. Transaction doesn't exist."
+      );
       return;
     }
 
     tx.gasPrice = newGasPrice;
     return tx;
+  }
+
+  subscribeToLogEvent(eventName, callback) {
+    const eventJsonInterface = web3.utils._.find(
+      this.contract._jsonInterface,
+      o => o.name === eventName && o.type === "event"
+    );
+    return web3.eth.subscribe(
+      "logs",
+      {
+        address: this.address,
+        topics: [eventJsonInterface.signature]
+      },
+      (error, result) => {
+        if (error) {
+          callback(error, null);
+          return;
+        }
+        const eventObj = web3.eth.abi.decodeLog(
+          eventJsonInterface.inputs,
+          result.data,
+          result.topics.slice(1)
+        );
+        callback(error, eventObj);
+      }
+    );
   }
 }
 

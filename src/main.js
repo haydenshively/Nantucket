@@ -21,7 +21,7 @@ class Main {
     if (!Main.shared) {
       // Database is assumed to have already been setup & initialized
       this._pool = new Pool({
-        max: 20,
+        max: 40,
         idleTimeoutMillis: 30000,
         connectionTimeoutMillis: 2000
       });
@@ -91,7 +91,7 @@ class Main {
   }
 
   static async updateLiquidationCandidates(
-    lowCount = 10,
+    lowCount = 60,
     highCount = 90,
     highThresh_Eth = 50
   ) {
@@ -119,6 +119,7 @@ class Main {
     const self = Main.shared;
 
     let nonce = await EthAccount.getHighestConfirmedNonce();
+    const closeFact = await Comptroller.mainnet.closeFactor();
     const gasPrice = self._gasMultiplier * (await web3.eth.getGasPrice());
 
     for (let target of self._liquidationTargets) {
@@ -151,7 +152,6 @@ class Main {
           const seizeAddr =
             "0x" + (await self._tableCTokens.getAddress(target.ctokenidseize));
 
-          const closeFact = await Comptroller.mainnet.closeFactor();
           const repayAmnt =
             (closeFact - 0.001) *
             (await Tokens.mainnetByAddr[repayAddr].uUnitsLoanedOutTo(userAddr));

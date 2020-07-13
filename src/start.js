@@ -9,7 +9,7 @@ if (process.env.WEB3_PROVIDER.endsWith(".ipc")) {
 }
 
 const Main = require("./main");
-new Main(2.0);
+new Main(1.25);
 
 // Run immediately
 Main.updateLiquidationCandidates();
@@ -26,7 +26,8 @@ web3.eth.subscribe("newBlockHeaders", (err, block) => {
     return;
   }
 
-  console.log(block.number);
+  if (block.number % 1000 == 0) console.log(block.number);
+  
   Main.onNewBlock();
 });
 
@@ -37,3 +38,24 @@ process.on("SIGINT", () => {
   Main.shared.end();
   process.exit();
 });
+
+const Tokens = require("./network/webthree/compound/ctoken");
+for (let symbol in Tokens.mainnet) {
+  const token = Tokens.mainnet[symbol];
+  token.subscribeToLogEvent("LiquidateBorrow", (err, event) => {
+    if (err) {
+      console.log(error);
+      return;
+    }
+
+    const target = event.borrower;
+    const targets = Main.shared._liquidationTargets.map(t => "0x" + t.address);
+
+    if (!targets.includes(target)) {
+      console.log("Didn't liquidate " + target.slice(6) + "because they weren't in the candidates list");
+    } else {
+      console.log("Some sort of logic was wrong for:")
+      console.log(event);
+    }
+  });
+}

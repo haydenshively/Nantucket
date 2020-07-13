@@ -46,7 +46,7 @@ class Comptroller extends Contract {
     // liquidity is nonzero if borrower can borrow more
     // shortfall is nonzero if borrower can be liquidated
     const { 0: error, 1: liquidity, 2: shortfall } = result;
-    return [liquidity / 1e19, shortfall / 1e19];
+    return [liquidity / 1e18, shortfall / 1e18];// TODO 18 or 19?
   }
 
   // Returns the percent (0 -> 1) of a liquidatable account's borrow that can be repaid in a single transaction
