@@ -67,7 +67,7 @@ class Main extends Database {
 
   async _liquiCandidatesConcat(count, min_Eth) {
     this._liquiCandidates = this._liquiCandidates.concat(
-      await super._tUsers.getLiquidationCandidates(count, min_Eth)
+      await this._tUsers.getLiquidationCandidates(count, min_Eth)
     );
   }
 
@@ -78,7 +78,7 @@ class Main extends Database {
       this._numLowCandidates,
       (await this.getTxFee_Eth()) * this._minRevenueFeeRatio
     );
-    await Main._liquiCandidatesConcat(
+    await this._liquiCandidatesConcat(
       this._numHighCandidates,
       this._highRevenueThresh
     );
@@ -115,9 +115,9 @@ class Main extends Database {
         if (res[1] > 0.0) {
           // Target has negative liquidity (positive shortfall). We're good to go
           const repayAddr =
-            "0x" + (await super._tCTokens.getAddress(target.ctokenidpay));
+            "0x" + (await this._tCTokens.getAddress(target.ctokenidpay));
           const seizeAddr =
-            "0x" + (await super._tCTokens.getAddress(target.ctokenidseize));
+            "0x" + (await this._tCTokens.getAddress(target.ctokenidseize));
 
           const repayAmnt =
             (closeFact - 0.001) *

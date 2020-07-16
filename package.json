@@ -29,8 +29,7 @@
     "@tensorflow/tfjs-node-gpu": "^2.0.1"
   },
   "scripts": {
-    "start-highlow": "node './src/start' 1.0 5.0 2.0 60 50.0 90 1",
-    "start-mid": "node './src/start' 1.25 4.0 4.0 60 20.0 90 0",
+    "nantucket": "node './src/start'",
     "db-create": "createdb FlashLoanLiquidation",
     "db-initialize": "psql --echo-errors -f './scripts/database/initialize.sql' FlashLoanLiquidation",
     "db-create-views": "psql --echo-errors -f './scripts/database/views.sql' FlashLoanLiquidation",

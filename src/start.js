@@ -7,7 +7,7 @@ async function sleep(millis) {
 }
 
 if (cluster.isMaster) {
-  console.log("Master ${process.pid} is running");
+  console.log(`Master ${process.pid} is running`);
 
   const numCPUs = require("os").cpus().length;
   if (numCPUs < 4) {
@@ -16,39 +16,48 @@ if (cluster.isMaster) {
   }
 
   let workers = [];
-  for (let i = 0; i < 4; i++) {
-    const worker = cluster.fork();
-    workers.push(worker);
-  }
-
   // worker #1 just pulls data from AccountService and cTokenService
+  workers.push(cluster.fork());
   workers[0].send({
     desiredType: "web",
     args: [0, 0, 0, 0, 0, 0, 0]
   });
   // worker #2 watches high-value accounts
+  workers.push(
+    cluster.fork({
+      ...process.env,
+      ACCOUNT_PUBLIC_KEY: process.env.ACCOUNT_PUBLIC_KEY_A,
+      ACCOUNT_PRIVATE_KEY: process.env.ACCOUNT_PRIVATE_KEY_A
+    })
+  );
   workers[1].send({
     desiredType: "webthree",
     args: [1.0, 5.0, 2.0, 60, 50.0, 90, 0]
-  })
+  });
   // worker #3 watches mid-range accounts
+  workers.push(
+    cluster.fork({
+      ...process.env,
+      ACCOUNT_PUBLIC_KEY: process.env.ACCOUNT_PUBLIC_KEY_B,
+      ACCOUNT_PRIVATE_KEY: process.env.ACCOUNT_PRIVATE_KEY_B
+    })
+  );
   workers[2].send({
     desiredType: "webthree",
     args: [1.2, 4.0, 4.0, 60, 20.0, 90, 15]
-  })
+  });
 
   process.on("SIGINT", () => {
     console.log("\nCaught interrupt signal");
+    workers.forEach(worker => worker.kill("SIGINT"));
     process.exit();
   });
 }
-
 
 if (cluster.isWorker) {
   console.log(`Worker ${process.pid} is running`);
 
   // configure web3
-  const Tokens = require("./network/webthree/compound/ctoken");
   const Web3 = require("web3");
   if (process.env.WEB3_PROVIDER.endsWith(".ipc")) {
     net = require("net");
@@ -56,13 +65,14 @@ if (cluster.isWorker) {
   } else {
     global.web3 = new Web3(process.env.WEB3_PROVIDER);
   }
+  const Tokens = require("./network/webthree/compound/ctoken");
 
   // prepare main functionality
   const Main = require("./main");
   let main = null;
 
   // allow messages from master to configure behavior
-  process.on("message", async (msg) => {
+  process.on("message", async msg => {
     if (main !== null) {
       console.warn(`Worker ${process.pid} is already configured`);
       return;
@@ -73,7 +83,6 @@ if (cluster.isWorker) {
     if (args[6] > 0) await sleep(args[6] * 1000);
 
     switch (msg.desiredType) {
-
       case "web":
         // update database using cTokenService and AccountService
         setInterval(main.pullFromCTokenService.bind(main), 6 * 60 * 1000);
@@ -112,10 +121,11 @@ if (cluster.isWorker) {
   });
 
   // before exiting, clean up any connections in main
-  process.on("exit", (code) => {
-    if (main !== null) main.stop();
-    console.log(main);
+  process.on("SIGINT", code => {
     web3.eth.clearSubscriptions();
-    console.log(`Worker ${process.pid} has exited cleanly`)
-  })
+    if (main !== null) main.stop();
+
+    console.log(`Worker ${process.pid} has exited cleanly`);
+    process.exit();
+  });
 }
