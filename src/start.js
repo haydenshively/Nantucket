@@ -32,7 +32,7 @@ if (cluster.isMaster) {
   );
   workers[1].send({
     desiredType: "webthree",
-    args: [1.0, 5.0, 2.0, 60, 50.0, 90, 0]
+    args: [1.0, 5.0, 2.0, 30, 50.0, 90, 0]
   });
   // worker #3 watches mid-range accounts
   workers.push(
@@ -44,7 +44,7 @@ if (cluster.isMaster) {
   );
   workers[2].send({
     desiredType: "webthree",
-    args: [1.2, 4.0, 4.0, 60, 20.0, 90, 15]
+    args: [1.2, 4.0, 4.0, 30, 20.0, 90, 15]
   });
 
   process.on("SIGINT", () => {
