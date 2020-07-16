@@ -16,7 +16,7 @@ class Main extends DatabaseUpdater {
     numHighCandidates
   ) {
     /**
-     * Constructs the `Main` singleton and saves it to `Main.shared`
+     * Constructs a `Main` object
      *
      * @param {number} feeMinMultiplier When sending transactions, use
      *    market-recommended gas price multiplied by this amount
@@ -36,84 +36,63 @@ class Main extends DatabaseUpdater {
      *    highRevenueThresh
      *
      */
+    super();
 
-    if (Main.shared === undefined) {
-      super();
+    this._blockLastAccountServicePull = null;
+    this._blocksPerMinute = 0;
 
-      this._blockLastAccountServicePull = null;
-      this._blocksPerMinute = 0;
+    this._feeMinMultiplier = feeMinMultiplier;
+    this._feeMaxMultiplier = feeMaxMultiplier;
+    this._minRevenueFeeRatio = minRevenueFeeRatio;
+    this._numLowCandidates = Math.floor(numLowCandidates);
+    this._highRevenueThresh = highRevenueThresh;
+    this._numHighCandidates = Math.floor(numHighCandidates);
 
-      this._feeMinMultiplier = feeMinMultiplier;
-      this._feeMaxMultiplier = feeMaxMultiplier;
-      this._minRevenueFeeRatio = minRevenueFeeRatio;
-      this._numLowCandidates = Math.floor(numLowCandidates);
-      this._highRevenueThresh = highRevenueThresh;
-      this._numHighCandidates = Math.floor(numHighCandidates);
-
-      this._liquiCandidates = [];
-
-      // Store singleton
-      Main.shared = this;
-    }
+    this._liquiCandidates = [];
   }
 
-  static pullFromCTokenService() {
-    const self = Main.shared;
-    self.pullFromCTokenService.bind(self)();
-  }
-
-  static pullFromAccountService() {
-    const self = Main.shared;
-    self.pullFromAccountService.bind(self)();
-  }
-
-  static async getGasPrice(forHighValueTarget = false) {
+  async getGasPrice(forHighValueTarget = false) {
     const marketValue = await web3.eth.getGasPrice();
 
-    const self = Main.shared;
     return (
       marketValue *
-      (forHighValueTarget ? self._feeMaxMultiplier : self._feeMinMultiplier)
+      (forHighValueTarget ? this._feeMaxMultiplier : this._feeMinMultiplier)
     );
   }
 
-  static async getTxFee_Eth(forHighValueTarget = false, gas = 1000000) {
-    return (await Main.getGasPrice(forHighValueTarget)) * (gas / 1e18);
+  async getTxFee_Eth(forHighValueTarget = false, gas = 1000000) {
+    return (await this.getGasPrice(forHighValueTarget)) * (gas / 1e18);
   }
 
-  static _liquiCandidatesClear() {
-    Main.shared._liquiCandidates = [];
+  _liquiCandidatesClear() {
+    this._liquiCandidates = [];
   }
 
-  static async _liquiCandidatesConcat(count, min_Eth) {
-    const self = Main.shared;
-    self._liquiCandidates = self._liquiCandidates.concat(
-      await self._tUsers.getLiquidationCandidates(count, min_Eth)
+  async _liquiCandidatesConcat(count, min_Eth) {
+    this._liquiCandidates = this._liquiCandidates.concat(
+      await super._tUsers.getLiquidationCandidates(count, min_Eth)
     );
   }
 
-  static async updateLiquidationCandidates() {
-    const self = Main.shared;
+  async updateLiquidationCandidates() {
+    this._liquiCandidatesClear();
 
-    Main._liquiCandidatesClear();
-    await Main._liquiCandidatesConcat(
-      self._numLowCandidates,
-      (await Main.getTxFee_Eth()) * self._minRevenueFeeRatio
+    await this._liquiCandidatesConcat(
+      this._numLowCandidates,
+      (await this.getTxFee_Eth()) * this._minRevenueFeeRatio
     );
     await Main._liquiCandidatesConcat(
-      self._numHighCandidates,
-      self._highRevenueThresh
+      this._numHighCandidates,
+      this._highRevenueThresh
     );
   }
 
-  static async onNewBlock() {
-    const self = Main.shared;
-
+  async onNewBlock() {
     let nonce = await EthAccount.getHighestConfirmedNonce();
     const closeFact = await Comptroller.mainnet.closeFactor();
     const gasPrice = await web3.eth.getGasPrice();
 
-    for (let target of self._liquiCandidates) {
+    for (let target of this._liquiCandidates) {
       // This is pairID 13 and 42 (DAI and SAI). There's no AAVE pool for it.
       if (
         (target.ctokenidpay == 2 && target.ctokenidseize == 6) ||
@@ -139,9 +118,9 @@ class Main extends DatabaseUpdater {
         if (res[1] > 0.0) {
           // Target has negative liquidity (positive shortfall). We're good to go
           const repayAddr =
-            "0x" + (await self._tCTokens.getAddress(target.ctokenidpay));
+            "0x" + (await super._tCTokens.getAddress(target.ctokenidpay));
           const seizeAddr =
-            "0x" + (await self._tCTokens.getAddress(target.ctokenidseize));
+            "0x" + (await super._tCTokens.getAddress(target.ctokenidseize));
 
           const repayAmnt =
             (closeFact - 0.001) *
@@ -160,21 +139,17 @@ class Main extends DatabaseUpdater {
             repayAmnt,
             seizeAddr,
             gasPrice *
-              (target.profitability >= self._highRevenueThresh
-                ? self._feeMaxMultiplier
-                : self._feeMinMultiplier)
+              (target.profitability >= this._highRevenueThresh
+                ? this._feeMaxMultiplier
+                : this._feeMinMultiplier)
           );
-          
+
           // TODO if multiple people can be liquidated in a single block, nonce won't increment properly
           // Solve by moving transaction logic to a separate thread / make it queue based
           EthAccount.shared.signAndSend(tx, nonce);
         }
       });
     }
-  }
-
-  end() {
-    this._pool.end();
   }
 }
 

@@ -61,6 +61,10 @@ class DatabaseUpdater {
       );
     });
   }
+
+  stop() {
+    this._pool.end();
+  }
 }
 
 module.exports = DatabaseUpdater;

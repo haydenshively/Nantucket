@@ -10,17 +10,18 @@ if (process.env.WEB3_PROVIDER.endsWith(".ipc")) {
 
 const Main = require("./main");
 const args = process.argv.slice(2).map(v => Number(v));
-new Main(args[0], args[1], args[2], args[3], args[4], args[5]);
+
+const main = new Main(args[0], args[1], args[2], args[3], args[4], args[5]);
 
 // Run immediately
-Main.updateLiquidationCandidates();
+main.updateLiquidationCandidates.bind(main)();
 
 // Schedule to run on timers
 if (Boolean(args[6])) {
-  setInterval(Main.pullFromCTokenService, 6 * 60 * 1000);
-  setInterval(Main.pullFromAccountService, 9 * 60 * 1000);
+  setInterval(main.pullFromCTokenService.bind(main), 6 * 60 * 1000);
+  setInterval(main.pullFromAccountService.bind(main), 9 * 60 * 1000);
 }
-setInterval(Main.updateLiquidationCandidates, 5 * 60 * 1000);
+setInterval(main.updateLiquidationCandidates.bind(main), 5 * 60 * 1000);
 
 // Schedule to run every block
 web3.eth.subscribe("newBlockHeaders", (err, block) => {
@@ -31,14 +32,14 @@ web3.eth.subscribe("newBlockHeaders", (err, block) => {
 
   if (block.number % 1000 == 0) console.log(block.number);
 
-  Main.onNewBlock();
+  main.onNewBlock().bind(main);
 });
 
 process.on("SIGINT", () => {
   console.log("\nCaught interrupt signal");
 
   web3.eth.clearSubscriptions();
-  Main.shared.end();
+  main.stop().bind(main);
   process.exit();
 });
 
