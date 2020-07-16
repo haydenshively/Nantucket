@@ -1,5 +1,5 @@
 {
-  "name": "flash-loan-liquidation",
+  "name": "nantucket",
   "version": "1.0.0",
   "description": "",
   "main": "src/start.js",
@@ -29,8 +29,7 @@
     "@tensorflow/tfjs-node-gpu": "^2.0.1"
   },
   "scripts": {
-    "start-highlow": "node './src/start' 1.0 5.0 2.0 60 50.0 90 1",
-    "start-mid": "node './src/start' 1.25 4.0 4.0 60 20.0 90 0",
+    "nantucket": "node './src/start'",
     "db-create": "createdb FlashLoanLiquidation",
     "db-initialize": "psql --echo-errors -f './scripts/database/initialize.sql' FlashLoanLiquidation",
     "db-create-views": "psql --echo-errors -f './scripts/database/views.sql' FlashLoanLiquidation",
@@ -43,12 +42,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/haydenshively/Flash-Loan-Liquidation.git"
+    "url": "git+https://github.com/haydenshively/Nantucket.git"
   },
   "author": "Hayden Shively",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/haydenshively/Flash-Loan-Liquidation/issues"
+    "url": "https://github.com/haydenshively/Nantucket/issues"
   },
-  "homepage": "https://github.com/haydenshively/Flash-Loan-Liquidation#readme"
+  "homepage": "https://github.com/haydenshively/Nantucket#readme"
 }

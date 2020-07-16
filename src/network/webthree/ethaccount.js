@@ -22,8 +22,28 @@ class EthAccount {
     return web3.eth.sendSignedTransaction(signedTx);
   }
 
-  signAndSend(transaction, nonce) {
+  async _getNonceFor(transaction) {
+    for (nonce in this.pendingTransactions) {
+      const pendingTx = this.pendingTransactions[nonce];
+      if (
+        transaction.to === pendingTx.to &&
+        transaction.data === pendingTx.data
+      )
+        return nonce;
+    }
+
+    return (
+      (await EthAccount.getHighestConfirmedNonce()) +
+      Object.keys(this.pendingTransactions).length
+    );
+  }
+
+  signAndSend(transaction, nonce = null) {
     const self = EthAccount.shared;
+    if (nonce === null) {
+      self._getNonceFor(transaction).then(n => self.signAndSend(transaction, n));
+      return;
+    }
 
     transaction.from = process.env.ACCOUNT_PUBLIC_KEY;
     transaction.nonce = web3.utils.toHex(nonce);
@@ -58,6 +78,11 @@ class EthAccount {
       };
     });
     sentTx.on("receipt", receipt => {
+      console.log(`Got receipt for transaction ${nonce}`);
+      delete self.pendingTransactions.nonce;
+    });
+    sentTx.on("error", error => {
+      console.error(`Got error for transaction ${nonce}`);
       delete self.pendingTransactions.nonce;
     });
 

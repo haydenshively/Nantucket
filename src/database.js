@@ -11,11 +11,11 @@ const CTokenService = require("./network/web/compound/ctokenservice");
 // src.network.webthree
 const Comptroller = require("./network/webthree/compound/comptroller");
 
-class DatabaseUpdater {
+class Database {
   constructor() {
     // Prepare to interact with database
     this._pool = new Pool({
-      max: 40,
+      max: 30,
       idleTimeoutMillis: 30000,
       connectionTimeoutMillis: 2000
     });
@@ -52,7 +52,7 @@ class DatabaseUpdater {
     // 0 means pull most recent block
     // We label it with an older block number to avoid overwriting fresher
     // data from on-chain calls
-    this._accountService.fetchAll(0, accounts => {
+    await this._accountService.fetchAll(0, accounts => {
       this._tUsers.upsertAccountService(
         blockLabel,
         accounts,
@@ -67,4 +67,4 @@ class DatabaseUpdater {
   }
 }
 
-module.exports = DatabaseUpdater;
+module.exports = Database;

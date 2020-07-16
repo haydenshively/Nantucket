@@ -1,4 +1,4 @@
-const DatabaseUpdater = require("./databaseupdater");
+const Database = require("./database");
 // src.network.webthree
 const EthAccount = require("./network/webthree/ethaccount");
 const Comptroller = require("./network/webthree/compound/comptroller");
@@ -6,7 +6,7 @@ const Tokens = require("./network/webthree/compound/ctoken");
 
 new EthAccount();
 
-class Main extends DatabaseUpdater {
+class Main extends Database {
   constructor(
     feeMinMultiplier,
     feeMaxMultiplier,
@@ -38,9 +38,6 @@ class Main extends DatabaseUpdater {
      */
     super();
 
-    this._blockLastAccountServicePull = null;
-    this._blocksPerMinute = 0;
-
     this._feeMinMultiplier = feeMinMultiplier;
     this._feeMaxMultiplier = feeMaxMultiplier;
     this._minRevenueFeeRatio = minRevenueFeeRatio;
@@ -70,7 +67,7 @@ class Main extends DatabaseUpdater {
 
   async _liquiCandidatesConcat(count, min_Eth) {
     this._liquiCandidates = this._liquiCandidates.concat(
-      await super._tUsers.getLiquidationCandidates(count, min_Eth)
+      await this._tUsers.getLiquidationCandidates(count, min_Eth)
     );
   }
 
@@ -81,14 +78,13 @@ class Main extends DatabaseUpdater {
       this._numLowCandidates,
       (await this.getTxFee_Eth()) * this._minRevenueFeeRatio
     );
-    await Main._liquiCandidatesConcat(
+    await this._liquiCandidatesConcat(
       this._numHighCandidates,
       this._highRevenueThresh
     );
   }
 
   async onNewBlock() {
-    let nonce = await EthAccount.getHighestConfirmedNonce();
     const closeFact = await Comptroller.mainnet.closeFactor();
     const gasPrice = await web3.eth.getGasPrice();
 
@@ -103,24 +99,14 @@ class Main extends DatabaseUpdater {
       // Get the target user's address as a string
       const userAddr = "0x" + target.address;
 
-      // Figure out if the user has already been liquidated. If they have, skip and move on
-      // While we're at it, also get the lowest unused nonce (for use in potential new tx)
-      let alreadyLiquidated = false;
-      for (const pendingNonce in EthAccount.shared.pendingTransactions) {
-        const pendingTx = EthAccount.shared.pendingTransactions[pendingNonce];
-        if (pendingTx.to === userAddr) alreadyLiquidated = true;
-        nonce = Math.max(nonce, pendingNonce + 1);
-      }
-      if (alreadyLiquidated) continue;
-
       // Check if user can be liquidated
       Comptroller.mainnet.accountLiquidityOf(userAddr).then(async res => {
         if (res[1] > 0.0) {
           // Target has negative liquidity (positive shortfall). We're good to go
           const repayAddr =
-            "0x" + (await super._tCTokens.getAddress(target.ctokenidpay));
+            "0x" + (await this._tCTokens.getAddress(target.ctokenidpay));
           const seizeAddr =
-            "0x" + (await super._tCTokens.getAddress(target.ctokenidseize));
+            "0x" + (await this._tCTokens.getAddress(target.ctokenidseize));
 
           const repayAmnt =
             (closeFact - 0.001) *
@@ -146,9 +132,34 @@ class Main extends DatabaseUpdater {
 
           // TODO if multiple people can be liquidated in a single block, nonce won't increment properly
           // Solve by moving transaction logic to a separate thread / make it queue based
-          EthAccount.shared.signAndSend(tx, nonce);
+          EthAccount.shared.signAndSend(tx);
+          // process.send(tx);
         }
       });
+    }
+  }
+
+  onNewLiquidation(event) {
+    if (event.liquidator == "0x6bfdfCC0169C3cFd7b5DC51c8E563063Df059097")
+      return;
+    const target = event.borrower;
+    const targets = this._liquiCandidates.map(t => "0x" + t.address);
+
+    if (!targets.includes(target)) {
+      console.log(
+        `Didn't liquidate ${target.slice(
+          0,
+          6
+        )} because they weren't in the candidates list`
+      );
+    } else {
+      console.warn(
+        `Didn't liquidate ${target.slice(
+          0,
+          6
+        )} based on JS logic (or lost gas bidding war)`
+      );
+      console.warn(event);
     }
   }
 }
