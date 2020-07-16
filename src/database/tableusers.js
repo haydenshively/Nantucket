@@ -87,7 +87,8 @@ class TableUsers {
         }
       }
 
-      const liquidity = supply - borrow;
+      // const liquidity = supply - borrow;
+      const liquidity = supply / borrow;// really "health"
       const profitability =
         Math.min(closableMax_Eth, seizableMax_Eth) *
         (liquidationIncentive - 1.0);

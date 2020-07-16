@@ -85,7 +85,6 @@ class Main extends Database {
   }
 
   async onNewBlock() {
-    let nonce = await EthAccount.getHighestConfirmedNonce();
     const closeFact = await Comptroller.mainnet.closeFactor();
     const gasPrice = await web3.eth.getGasPrice();
 
@@ -99,16 +98,6 @@ class Main extends Database {
 
       // Get the target user's address as a string
       const userAddr = "0x" + target.address;
-
-      // Figure out if the user has already been liquidated. If they have, skip and move on
-      // While we're at it, also get the lowest unused nonce (for use in potential new tx)
-      let alreadyLiquidated = false;
-      for (const pendingNonce in EthAccount.shared.pendingTransactions) {
-        const pendingTx = EthAccount.shared.pendingTransactions[pendingNonce];
-        if (pendingTx.to === userAddr) alreadyLiquidated = true;
-        nonce = Math.max(nonce, pendingNonce + 1);
-      }
-      if (alreadyLiquidated) continue;
 
       // Check if user can be liquidated
       Comptroller.mainnet.accountLiquidityOf(userAddr).then(async res => {
@@ -143,28 +132,32 @@ class Main extends Database {
 
           // TODO if multiple people can be liquidated in a single block, nonce won't increment properly
           // Solve by moving transaction logic to a separate thread / make it queue based
-          EthAccount.shared.signAndSend(tx, nonce);
+          EthAccount.shared.signAndSend(tx);
+          // process.send(tx);
         }
       });
     }
   }
 
   onNewLiquidation(event) {
-    if (event.liquidator == "0x6bfdfCC0169C3cFd7b5DC51c8E563063Df059097") return;
+    if (event.liquidator == "0x6bfdfCC0169C3cFd7b5DC51c8E563063Df059097")
+      return;
     const target = event.borrower;
     const targets = this._liquiCandidates.map(t => "0x" + t.address);
 
     if (!targets.includes(target)) {
       console.log(
-        "Didn't liquidate " +
-        target.slice(0, 6) +
-        " because they weren't in the candidates list"
+        `Didn't liquidate ${target.slice(
+          0,
+          6
+        )} because they weren't in the candidates list`
       );
     } else {
       console.warn(
-        "Didn't liquidate " +
-        target.slice(0, 6) +
-        " based on JS logic (or lost gas bidding war)"
+        `Didn't liquidate ${target.slice(
+          0,
+          6
+        )} based on JS logic (or lost gas bidding war)`
       );
       console.warn(event);
     }

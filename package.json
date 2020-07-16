@@ -1,5 +1,5 @@
 {
-  "name": "flash-loan-liquidation",
+  "name": "nantucket",
   "version": "1.0.0",
   "description": "",
   "main": "src/start.js",
@@ -42,12 +42,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/haydenshively/Flash-Loan-Liquidation.git"
+    "url": "git+https://github.com/haydenshively/Nantucket.git"
   },
   "author": "Hayden Shively",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/haydenshively/Flash-Loan-Liquidation/issues"
+    "url": "https://github.com/haydenshively/Nantucket/issues"
   },
-  "homepage": "https://github.com/haydenshively/Flash-Loan-Liquidation#readme"
+  "homepage": "https://github.com/haydenshively/Nantucket#readme"
 }
