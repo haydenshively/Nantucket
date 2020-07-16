@@ -32,7 +32,13 @@ class DatabaseUpdater {
   }
 
   async pullFromCTokenService() {
-    const tokens = (await this._ctokenService.fetch({})).tokens;
+    const res = (await this._ctokenService.fetch({}));
+    if (res.error) {
+      console.warn("Fetch cTokenService failed: " + res.error.toString());
+      return;
+    }
+
+    const tokens = res.tokens;
     await this._tUTokens.upsertCTokenService(tokens);
     await this._tCTokens.upsertCTokenService(tokens);
     await this._tPairs.insertCTokenService(tokens);

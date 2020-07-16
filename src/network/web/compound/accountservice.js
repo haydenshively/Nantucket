@@ -82,7 +82,7 @@ class Accounts extends Fetchable {
     let accounts = [];
 
     let i = 1;
-    let pageCount;
+    let pageCount = 0;
 
     let result;
     do {
@@ -94,6 +94,11 @@ class Accounts extends Fetchable {
         page_size: 300,
         block_number: blockNo
       });
+      if (result.error) {
+        console.warn("Fetch AccountService failed: " + result.error.toString());
+        continue;
+      }
+
       pageCount = result.pagination.total_pages;
       i++;
 
