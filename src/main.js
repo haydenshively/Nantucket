@@ -1,4 +1,4 @@
-const DatabaseUpdater = require("./databaseupdater");
+const Database = require("./database");
 // src.network.webthree
 const EthAccount = require("./network/webthree/ethaccount");
 const Comptroller = require("./network/webthree/compound/comptroller");
@@ -6,7 +6,7 @@ const Tokens = require("./network/webthree/compound/ctoken");
 
 new EthAccount();
 
-class Main extends DatabaseUpdater {
+class Main extends Database {
   constructor(
     feeMinMultiplier,
     feeMaxMultiplier,
@@ -37,9 +37,6 @@ class Main extends DatabaseUpdater {
      *
      */
     super();
-
-    this._blockLastAccountServicePull = null;
-    this._blocksPerMinute = 0;
 
     this._feeMinMultiplier = feeMinMultiplier;
     this._feeMaxMultiplier = feeMaxMultiplier;
@@ -149,6 +146,27 @@ class Main extends DatabaseUpdater {
           EthAccount.shared.signAndSend(tx, nonce);
         }
       });
+    }
+  }
+
+  onNewLiquidation(event) {
+    if (event.liquidator == "0x6bfdfCC0169C3cFd7b5DC51c8E563063Df059097") return;
+    const target = event.borrower;
+    const targets = this._liquiCandidates.map(t => "0x" + t.address);
+
+    if (!targets.includes(target)) {
+      console.log(
+        "Didn't liquidate " +
+        target.slice(0, 6) +
+        " because they weren't in the candidates list"
+      );
+    } else {
+      console.warn(
+        "Didn't liquidate " +
+        target.slice(0, 6) +
+        " based on JS logic (or lost gas bidding war)"
+      );
+      console.warn(event);
     }
   }
 }
