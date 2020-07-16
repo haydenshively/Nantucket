@@ -61,17 +61,21 @@ class Accounts extends Fetchable {
       .map(key => key + "=" + withConfig[key])
       .join("&");
 
-    const res = await fetch(
-      process.env.COMPOUND_ENDPOINT + "/account?" + urlParams,
-      params
-    );
-    const json = await res.json();
+    try {
+      const res = await fetch(
+        process.env.COMPOUND_ENDPOINT + "/account?" + urlParams,
+        params
+      );
+      const json = await res.json();
 
-    return {
-      error: json.error,
-      pagination: json.pagination_summary,
-      accounts: json.accounts.map(i => new Account(i))
-    };
+      return {
+        error: json.error,
+        pagination: json.pagination_summary,
+        accounts: json.accounts.map(i => new Account(i))
+      };
+    } catch (error) {
+      return { error: error };
+    }
   }
 
   async fetchAll(blockNo, forEachChunk = null) {

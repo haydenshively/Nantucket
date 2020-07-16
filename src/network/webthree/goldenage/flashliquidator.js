@@ -12,7 +12,7 @@ class FlashLiquidator extends Contract {
       .liquidate(borrower, borrowedCToken, collatCToken, hexAmount)
       .encodeABI();
 
-    return this.txFor(encodedMethod, 5000000, gasPrice);
+    return this.txFor(encodedMethod, 3000000, gasPrice);
   }
 }
 

@@ -30,7 +30,7 @@ class SmartContract {
     let nonceToReplace = null;
     let tx = null;
 
-    for (nonce in EthAccount.shared.pendingTransactions) {
+    for (let nonce in EthAccount.shared.pendingTransactions) {
       const pendingTransaction = EthAccount.shared.pendingTransactions[nonce];
       if (pendingTransaction.data === encodedMethod) {
         nonceToReplace = nonce;

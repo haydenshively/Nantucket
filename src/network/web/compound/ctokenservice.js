@@ -94,16 +94,20 @@ class CTokens extends Fetchable {
       .map(key => key + "=" + withConfig[key])
       .join("&");
 
-    const res = await fetch(
-      process.env.COMPOUND_ENDPOINT + "/ctoken?" + urlParams,
-      params
-    );
-    const json = await res.json();
+    try {
+      const res = await fetch(
+        process.env.COMPOUND_ENDPOINT + "/ctoken?" + urlParams,
+        params
+      );
+      const json = await res.json();
 
-    return {
-      error: json.error,
-      tokens: json.cToken.map(i => new CToken(i))
-    };
+      return {
+        error: json.error,
+        tokens: json.cToken.map(i => new CToken(i))
+      };
+    } catch (error) {
+      return { error: error };
+    }
   }
 }
 

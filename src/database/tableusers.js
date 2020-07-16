@@ -20,7 +20,7 @@ class TableUsers {
     return (
       await this._pool.query(
         `
-        SELECT usersnonzero.id, usersnonzero.address, payseizepairs.ctokenidpay, payseizepairs.ctokenidseize
+        SELECT usersnonzero.id, usersnonzero.address, usersnonzero.profitability, payseizepairs.ctokenidpay, payseizepairs.ctokenidseize
         FROM usersnonzero INNER JOIN payseizepairs ON (usersnonzero.pairid=payseizepairs.id)
         WHERE usersnonzero.profitability>$1
         ORDER BY usersnonzero.liquidity ASC
