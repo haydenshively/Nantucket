@@ -116,12 +116,12 @@ class CToken extends Contract {
   }
 
   // Returns the total amount of ordinary asset that the contract owns (CALL -- no gas needed)
-  async uUnitsInContract() {
+  async uUnitsSupplied() {
     return (await this.contract.methods.getCash().call()) / this.decimals;
   }
 
   // Returns the amount of ordinary asset that the wallet has placed in the contract (CALL -- no gas needed)
-  async uUnitsInContractFor(wallet) {
+  async uUnitsSuppliedBy(wallet) {
     return (
       (await this.contract.methods.balanceOfUnderlying(wallet).call()) /
       this.decimals
@@ -129,7 +129,7 @@ class CToken extends Contract {
   }
 
   // Returns the total amount of ordinary asset that the contract has loaned out (CALL -- no gas needed)
-  async uUnitsLoanedOut() {
+  async uUnitsBorrowed() {
     return (
       (await this.contract.methods.totalBorrowsCurrent().call()) / this.decimals
     );
@@ -138,7 +138,7 @@ class CToken extends Contract {
   // Returns the amount of ordinary asset that the contract has loaned out to borrower (CALL -- no gas needed)
   // ** includes interest **
   // borrower: account address of any user
-  async uUnitsLoanedOutTo(borrower) {
+  async uUnitsBorrowedBy(borrower) {
     return (
       (await this.contract.methods.borrowBalanceCurrent(borrower).call()) /
       this.decimals

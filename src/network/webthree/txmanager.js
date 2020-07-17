@@ -69,6 +69,7 @@ class TxManager {
 
       if (!this._queue[i].inProgress) {
         // set tx nonce
+        this._queue[i].inProgress = true;
         this._queue[i].id = this._nextNonce;
         this._nextNonce++;
         // send tx and setup its callback events
@@ -80,7 +81,6 @@ class TxManager {
         );
         this._setupTxEvents(sentTx, this._queue[i].id, handle);
         // now that tx is in progress, update state
-        this._queue[i].inProgress = true;
         this._numInProgressTxs++;
       }
     }
@@ -93,17 +93,18 @@ class TxManager {
       console.log(label + "received hash");
     });
     sentTx.on("receipt", receipt => {
-      console.log(label + "received receipt");
       clearInterval(setIntervalHandle);
+      console.log(label + "received receipt");
       this._onTxReceiptFor(nonce);
     });
     sentTx.on("error", (error, receipt) => {
-      console.error(label + "received error");
       clearInterval(setIntervalHandle);
       if (receipt !== undefined) {
+        console.log(label + "received receipt");
         this._onTxReceiptFor(nonce);
         return;
       }
+      console.error(label + "received error");
       this._onTxErrorFor(nonce);
     });
   }

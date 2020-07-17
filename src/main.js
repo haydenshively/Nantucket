@@ -91,50 +91,61 @@ class Main extends Database {
     const liqIncent = await Comptroller.mainnet.liquidationIncentive();
     const gasPrice = await web3.eth.getGasPrice();
 
+    let uPrices = {};
+
     for (let target of this._liquiCandidates) {
-      // This is pairID 13 and 42 (DAI and SAI). There's no AAVE pool for it.
+      // this is pairID 13 and 42 (DAI and SAI). There's no AAVE pool for it.
       if (
         (target.ctokenidpay == 2 && target.ctokenidseize == 6) ||
         (target.ctokenidpay == 6 && target.ctokenidseize == 2)
       )
         continue;
 
-      // Get the target user's address as a string
+      // get the target user's address as a string
       const userAddr = "0x" + target.address;
+      const label = userAddr.slice(0, 6);
 
-      // Check if user can be liquidated
+      // check if user can be liquidated
       Comptroller.mainnet.accountLiquidityOf(userAddr).then(async res => {
+        // check if target has negative liquidity
         if (res[1] > 0.0) {
-          // Target has negative liquidity (positive shortfall). We're good to go
+          // retrieve addresses for pre-computed best repay and seize tokens
           const repayAddr =
             "0x" + (await this._tCTokens.getAddress(target.ctokenidpay));
           const seizeAddr =
             "0x" + (await this._tCTokens.getAddress(target.ctokenidseize));
-
-          let repayAmnt =
-            (closeFact - 0.0001) *
-            (await Tokens.mainnetByAddr[repayAddr].uUnitsLoanedOutTo(userAddr));
-
-          const ratio =
-            (await PriceOracle.mainnet.getUnderlyingPrice(seizeAddr)) /
-            (await PriceOracle.mainnet.getUnderlyingPrice(repayAddr));
-          const seizeAmnt =
-            (ratio *
-              (await Tokens.mainnetByAddr[seizeAddr].uUnitsInContractFor(
-                userAddr
-              ))) /
-            liqIncent;
-
-          repayAmnt = Math.min(repayAmnt, seizeAmnt);
-
-          if (repayAmnt == 0.0) {
-            console.log(
-              "Proposed repay=0, otherwise could've liquidated. Token pair likely stale"
+          // if we haven't yet obtained this block's underlying prices for
+          // the tokens in question, get them and store them
+          // (storing them may increase CPU/RAM usage slightly, but it cuts
+          // down on async calls to the Ethereum node)
+          if (!(repayAddr in uPrices))
+            uPrices[repayAddr] = await PriceOracle.mainnet.getUnderlyingPrice(
+              repayAddr
             );
+          if (!(seizeAddr in uPrices))
+            uPrices[seizeAddr] = await PriceOracle.mainnet.getUnderlyingPrice(
+              seizeAddr
+            );
+          // compute max repayAmnt = closeFactor * uUnitsBorrowed
+          // compute max seizeAmnt = uUnitsSupplied / liquidationIncentive
+          let repayAmnt =
+            closeFact *
+            (await Tokens.mainnetByAddr[repayAddr].uUnitsBorrowedBy(userAddr));
+          const seizeAmnt =
+            (await Tokens.mainnetByAddr[seizeAddr].uUnitsSuppliedBy(userAddr)) /
+            liqIncent;
+          // to get safe repayAmnt, compare with seizeAmnt (after converting units)
+          // conversion factor: ethPerSeizeToken / ethPerRepayToken
+          const ratio = uPrices[seizeAddr] / uPrices[repayAddr];
+          repayAmnt = Math.min(repayAmnt, seizeAmnt * ratio);
+          // make sure revenue meets minimums
+          const revenue = repayAmnt * (liqIncent - 1.0) * uPrices[repayAddr];
+          if (revenue / (gasPrice / 1e18) <= this._minRevenueFeeRatio) {
+            console.log(`Proposal ${label}: revenue / fee ratio too low. Token pair likely stale`)
             return;
           }
+          console.log(`Proposal ${label}: liquidating`);
 
-          console.log("Liquidating " + userAddr);
           const tx = Tokens.mainnetByAddr[repayAddr].flashLiquidate_uUnits(
             userAddr,
             repayAmnt,
