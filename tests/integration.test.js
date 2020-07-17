@@ -3,29 +3,31 @@ const assert = require("assert");
 const TableUTokens = require("../src/database/tableutokens");
 const TableCTokens = require("../src/database/tablectokens");
 
-const EthAccount = require("../src/network/webthree/ethaccount");
+const TxManager = require("../src/network/webthree/txmanager");
 const Comptroller = require("../src/network/webthree/compound/comptroller");
+const PriceOracle = require("../src/network/webthree/compound/priceoracle");
 const Tokens = require("../src/network/webthree/compound/ctoken");
 
 describe("integration", () => {
   const tableUTokens = new TableUTokens(pool);
   const tableCTokens = new TableCTokens(pool, tableUTokens);
 
-  new EthAccount();
+  new TxManager("ACCOUNT_PUBLIC_KEY_B", "ACCOUNT_PRIVATE_KEY_B", 4);
 
   it("should liquidate one account", async function() {
+    await TxManager.shared.init();
+
     targets = await pool.query(
       `
       SELECT usersnonzero.id, usersnonzero.address, payseizepairs.ctokenidpay, payseizepairs.ctokenidseize
       FROM usersnonzero INNER JOIN payseizepairs ON (usersnonzero.pairid=payseizepairs.id)
-      WHERE usersnonzero.liquidity<0
+      WHERE usersnonzero.liquidity<1
       ORDER BY usersnonzero.profitability DESC
-      LIMIT 1
+      LIMIT 5
       `
     );
-    if (targets.rows.length > 0) {
-      const target = targets.rows[0];
-      const gasPrice = 2.0 * (await web3.eth.getGasPrice());
+    for (let target of targets.rows) {
+      const gasPrice = 1.5 * (await web3.eth.getGasPrice());
 
       const userAddr = "0x" + target.address;
       const res = await Comptroller.mainnet.accountLiquidityOf(userAddr);
@@ -37,11 +39,25 @@ describe("integration", () => {
           "0x" + (await tableCTokens.getAddress(target.ctokenidseize));
 
         const closeFact = await Comptroller.mainnet.closeFactor();
+        const liqIncent = await Comptroller.mainnet.liquidationIncentive();
 
-        const repayAmnt =
-          (closeFact - 0.001) *
+        let repayAmnt =
+          (closeFact - 0.0001) *
           (await Tokens.mainnetByAddr[repayAddr].uUnitsLoanedOutTo(userAddr));
 
+        const ratio =
+          (await PriceOracle.mainnet.getUnderlyingPrice(seizeAddr)) /
+          (await PriceOracle.mainnet.getUnderlyingPrice(repayAddr));
+        const seizeAmnt =
+          (ratio *
+            (await Tokens.mainnetByAddr[seizeAddr].uUnitsInContractFor(
+              userAddr
+            ))) /
+          liqIncent;
+
+        repayAmnt = Math.min(repayAmnt, seizeAmnt);
+        
+        console.log(userAddr);
         const tx = Tokens.mainnetByAddr[repayAddr].flashLiquidate_uUnits(
           userAddr,
           repayAmnt,
@@ -49,13 +65,8 @@ describe("integration", () => {
           gasPrice
         );
 
-        // const sentTx = EthAccount.shared.signAndSend(
-        //   tx,
-        //   await EthAccount.getHighestConfirmedNonce()
-        // );
-
-        // console.log(sentTx);
+        // TxManager.shared.insert(tx, 0, 6 * 60 * 1000);
       }
     }
-  });
+  }).timeout(600000);
 });
