@@ -1,10 +1,12 @@
 const Database = require("./database");
 // src.network.webthree
-const EthAccount = require("./network/webthree/ethaccount");
+const TxManager = require("./network/webthree/txmanager");
 const Comptroller = require("./network/webthree/compound/comptroller");
+const PriceOracle = require("./network/webthree/compound/priceoracle");
 const Tokens = require("./network/webthree/compound/ctoken");
 
-new EthAccount();
+new TxManager();
+TxManager.shared.init("ACCOUNT_PUBLIC_KEY", "ACCOUNT_PRIVATE_KEY");
 
 class Main extends Database {
   constructor(
@@ -86,6 +88,7 @@ class Main extends Database {
 
   async onNewBlock() {
     const closeFact = await Comptroller.mainnet.closeFactor();
+    const liqIncent = await Comptroller.mainnet.liquidationIncentive();
     const gasPrice = await web3.eth.getGasPrice();
 
     for (let target of this._liquiCandidates) {
@@ -108,9 +111,21 @@ class Main extends Database {
           const seizeAddr =
             "0x" + (await this._tCTokens.getAddress(target.ctokenidseize));
 
-          const repayAmnt =
-            (closeFact - 0.001) *
+          let repayAmnt =
+            (closeFact - 0.0001) *
             (await Tokens.mainnetByAddr[repayAddr].uUnitsLoanedOutTo(userAddr));
+
+          const ratio =
+            (await PriceOracle.mainnet.getUnderlyingPrice(seizeAddr)) /
+            (await PriceOracle.mainnet.getUnderlyingPrice(repayAddr));
+          const seizeAmnt =
+            (ratio *
+              (await Tokens.mainnetByAddr[seizeAddr].uUnitsInContractFor(
+                userAddr
+              ))) /
+            liqIncent;
+
+          repayAmnt = Math.min(repayAmnt, seizeAmnt);
 
           if (repayAmnt == 0.0) {
             console.log(
@@ -130,10 +145,8 @@ class Main extends Database {
                 : this._feeMinMultiplier)
           );
 
-          // TODO if multiple people can be liquidated in a single block, nonce won't increment properly
-          // Solve by moving transaction logic to a separate thread / make it queue based
-          EthAccount.shared.signAndSend(tx);
-          // process.send(tx);
+          TxManager.shared.insert(tx, target.profitability);
+          // TODO process.send(tx);
         }
       });
     }

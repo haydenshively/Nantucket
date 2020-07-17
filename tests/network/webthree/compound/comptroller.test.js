@@ -10,7 +10,7 @@ describe("network/webthree/compound || Comptroller Test", () => {
     });
   });
 
-  it("should retrieve close facetor", () => {
+  it("should retrieve close factor", () => {
     return Comptroller.mainnet.closeFactor().then(result => {
       assert(result > 0.0);
     });
