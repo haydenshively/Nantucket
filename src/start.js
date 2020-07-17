@@ -9,6 +9,19 @@ async function sleep(millis) {
 if (cluster.isMaster) {
   console.log(`Master ${process.pid} is running`);
 
+  // configure TxManagers
+  const TxManager = require("./network/webthree/txmanager");
+  const txManagerA = new TxManager(
+    "ACCOUNT_PUBLIC_KEY_A",
+    "ACCOUNT_PRIVATE_KEY_A",
+    5
+  );
+  const txManagerB = new TxManager(
+    "ACCOUNT_PUBLIC_KEY_B",
+    "ACCOUNT_PRIVATE_KEY_B",
+    5
+  );
+
   const numCPUs = require("os").cpus().length;
   if (numCPUs < 4) {
     console.error("Nantucket requires at least 3 CPU cores");
@@ -23,28 +36,22 @@ if (cluster.isMaster) {
     args: [0, 0, 0, 0, 0, 0, 0]
   });
   // worker #2 watches high-value accounts
-  workers.push(
-    cluster.fork({
-      ...process.env,
-      ACCOUNT_PUBLIC_KEY: process.env.ACCOUNT_PUBLIC_KEY_A,
-      ACCOUNT_PRIVATE_KEY: process.env.ACCOUNT_PRIVATE_KEY_A
-    })
-  );
+  workers.push(cluster.fork());
   workers[1].send({
     desiredType: "webthree",
     args: [1.0, 5.0, 2.0, 30, 50.0, 90, 0]
   });
+  workers[1].on("message", msg => {
+    txManagerA.insert(msg.tx, msg.priority, 60000);
+  });
   // worker #3 watches mid-range accounts
-  workers.push(
-    cluster.fork({
-      ...process.env,
-      ACCOUNT_PUBLIC_KEY: process.env.ACCOUNT_PUBLIC_KEY_B,
-      ACCOUNT_PRIVATE_KEY: process.env.ACCOUNT_PRIVATE_KEY_B
-    })
-  );
+  workers.push(cluster.fork());
   workers[2].send({
     desiredType: "webthree",
     args: [1.2, 4.0, 4.0, 30, 20.0, 90, 15]
+  });
+  workers[2].on("message", msg => {
+    txManagerB.insert(msg.tx, msg.priority, 60000);
   });
 
   process.on("SIGINT", () => {

@@ -2,19 +2,15 @@ const Tx = require("ethereumjs-tx").Transaction;
 
 class TxManager {
   constructor(envKeyAddress, envKeySecret, maxInProgressTxs = 5) {
-    if (!TxManager.shared) {
-      this._envKeyAddress = envKeyAddress;
-      this._envKeySecret = envKeySecret;
+    this._envKeyAddress = envKeyAddress;
+    this._envKeySecret = envKeySecret;
 
-      this._maxInProgressTxs = maxInProgressTxs;
-      this._numInProgressTxs = 0;
+    this._maxInProgressTxs = maxInProgressTxs;
+    this._numInProgressTxs = 0;
 
-      this._nextNonce = null;
-      this._queue = [];
-      this._gasPrices = {};
-
-      TxManager.shared = this;
-    }
+    this._nextNonce = null;
+    this._queue = [];
+    this._gasPrices = {};
   }
 
   async init() {

@@ -1,12 +1,8 @@
 const Database = require("./database");
 // src.network.webthree
-const TxManager = require("./network/webthree/txmanager");
 const Comptroller = require("./network/webthree/compound/comptroller");
 const PriceOracle = require("./network/webthree/compound/priceoracle");
 const Tokens = require("./network/webthree/compound/ctoken");
-
-new TxManager();
-TxManager.shared.init("ACCOUNT_PUBLIC_KEY", "ACCOUNT_PRIVATE_KEY");
 
 class Main extends Database {
   constructor(
@@ -137,7 +133,7 @@ class Main extends Database {
           // to get safe repayAmnt, compare with seizeAmnt (after converting units)
           // conversion factor: ethPerSeizeToken / ethPerRepayToken
           const ratio = uPrices[seizeAddr] / uPrices[repayAddr];
-          repayAmnt = Math.min(repayAmnt, seizeAmnt * ratio);
+          repayAmnt = Math.min(repayAmnt, seizeAmnt * ratio) * 0.999;
           // make sure revenue meets minimums
           const revenue = repayAmnt * (liqIncent - 1.0) * uPrices[repayAddr];
           if (revenue / (gasPrice / 1e18) <= this._minRevenueFeeRatio) {
@@ -156,8 +152,10 @@ class Main extends Database {
                 : this._feeMinMultiplier)
           );
 
-          TxManager.shared.insert(tx, target.profitability);
-          // TODO process.send(tx);
+          process.send({
+            tx: tx,
+            priority: target.profitability
+          });
         }
       });
     }
