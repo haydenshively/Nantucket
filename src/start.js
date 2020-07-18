@@ -6,11 +6,20 @@ async function sleep(millis) {
   return new Promise(resolve => setTimeout(resolve, millis));
 }
 
+// configure web3
+const Web3 = require("web3");
+if (process.env.WEB3_PROVIDER.endsWith(".ipc")) {
+  net = require("net");
+  global.web3 = new Web3(process.env.WEB3_PROVIDER, net);
+} else {
+  global.web3 = new Web3(process.env.WEB3_PROVIDER);
+}
+
 if (cluster.isMaster) {
   console.log(`Master ${process.pid} is running`);
+  const TxManager = require("./network/webthree/txmanager");
 
   // configure TxManagers
-  const TxManager = require("./network/webthree/txmanager");
   const txManagerA = new TxManager(
     "ACCOUNT_PUBLIC_KEY_A",
     "ACCOUNT_PRIVATE_KEY_A",
@@ -31,27 +40,32 @@ if (cluster.isMaster) {
   let workers = [];
   // worker #1 just pulls data from AccountService and cTokenService
   workers.push(cluster.fork());
-  workers[0].send({
-    desiredType: "web",
-    args: [0, 0, 0, 0, 0, 0, 0]
-  });
   // worker #2 watches high-value accounts
   workers.push(cluster.fork());
-  workers[1].send({
-    desiredType: "webthree",
-    args: [1.0, 5.0, 2.0, 30, 50.0, 90, 0]
-  });
   workers[1].on("message", msg => {
-    txManagerA.insert(msg.tx, msg.priority, 60000);
+    txManagerA.insert(msg.tx, msg.priority, 60000, true, msg.key);
   });
   // worker #3 watches mid-range accounts
   workers.push(cluster.fork());
-  workers[2].send({
-    desiredType: "webthree",
-    args: [1.2, 4.0, 4.0, 30, 20.0, 90, 15]
-  });
   workers[2].on("message", msg => {
-    txManagerB.insert(msg.tx, msg.priority, 60000);
+    txManagerB.insert(msg.tx, msg.priority, 60000, true, msg.key);
+  });
+
+  txManagerA.init().then(() => {
+    txManagerB.init().then(() => {
+      workers[0].send({
+        desiredType: "web",
+        args: [0, 0, 0, 0, 0, 0, 0]
+      });
+      workers[1].send({
+        desiredType: "webthree",
+        args: [1.1, 5.0, 2.0, 30, 50.0, 90, 0]
+      });
+      workers[2].send({
+        desiredType: "webthree",
+        args: [1.3, 4.0, 4.0, 30, 20.0, 90, 15]
+      });
+    });
   });
 
   process.on("SIGINT", () => {
@@ -63,15 +77,6 @@ if (cluster.isMaster) {
 
 if (cluster.isWorker) {
   console.log(`Worker ${process.pid} is running`);
-
-  // configure web3
-  const Web3 = require("web3");
-  if (process.env.WEB3_PROVIDER.endsWith(".ipc")) {
-    net = require("net");
-    global.web3 = new Web3(process.env.WEB3_PROVIDER, net);
-  } else {
-    global.web3 = new Web3(process.env.WEB3_PROVIDER);
-  }
   const Tokens = require("./network/webthree/compound/ctoken");
 
   // prepare main functionality

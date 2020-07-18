@@ -37,21 +37,38 @@ class TxManager {
     //   });
   }
 
-  insert(tx, priority = 0, timeout = 60 * 1000) {
+  insert(tx, priority = 0, timeout = 60 * 1000, rejectIfDuplicate = false, key = null) {
     /**
      * Adds a new transaction to the wallet's queue (even if it's a duplicate)
      *
      * @param {object} tx The transaction object {to, gas, gasPrice, data, value}
      * @param {number} priority Sorting criteria. Higher priority txs go first
+     * @param {number} timeout Time (in milliseconds) after which tx slot will be freed;
+     *    if queue contains other txs, they will override this one
+     * @param {boolean} rejectIfDuplicate Ignores the input tx if its "to" and "key" fields
+     *    are the same as a transaction in the current queue
+     * @param {string} key If two txs have the same key, they will be considered duplicates
      *
      */
+    if (rejectIfDuplicate) {
+      if (
+        this._queue.filter(
+          item => item.tx.to === tx.to && item.key === key
+        ).length > 0
+      ) {
+        console.warn("TxManager detected duplicate: skipping tx");
+        return;
+      }
+    }
+
     // add tx to queue
     this._queue.push({
       id: null,
       tx: tx,
       priority: priority,
       inProgress: false,
-      timeout: timeout
+      timeout: timeout,
+      key: key
     });
     // if the priority is nonzero, sort queue
     if (priority) this._queue.sort((a, b) => b.priority - a.priority);

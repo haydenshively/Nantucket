@@ -154,7 +154,8 @@ class Main extends Database {
 
           process.send({
             tx: tx,
-            priority: target.profitability
+            priority: target.profitability,
+            key: userAddr
           });
         }
       });
