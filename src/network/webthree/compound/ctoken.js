@@ -1,3 +1,7 @@
+const Big = require("big.js");
+Big.DP = 40;
+Big.RM = 0;
+
 const Contract = require("../smartcontract");
 const CBATABI = require("../abis/compound/cbat.json");
 const CDAIABI = require("../abis/compound/cdai.json");
@@ -14,7 +18,7 @@ const FlashLiquidator = require("../goldenage/flashliquidator");
 class CToken extends Contract {
   constructor(address, abi, decimalsOfUnderlying = 18, isCETH = false) {
     super(address, abi);
-    this.decimals = Number("1e" + decimalsOfUnderlying.toString());
+    this.decimals = "1e" + decimalsOfUnderlying.toString();
     this.isCETH = isCETH;
   }
 
@@ -22,13 +26,17 @@ class CToken extends Contract {
   // amount: #tokens
   // result: sends (#tokens) and receives (#ctokens = #tokens / exchange_rate)
   supply_uUnits(amount, gasPrice) {
-    const hexAmount = web3.utils.toHex(web3.utils.toBN(Math.floor(amount * this.decimals)));
+    amount = Big(amount)
+      .times(this.decimals)
+      .toFixed(0);
+    const hexAmount = web3.utils.toHex(amount);
+
     if (this.isCETH) {
       const encodedMethod = this.contract.methods.mint().encodeABI();
-      return this.txWithValueFor(encodedMethod, 900000, gasPrice, hexAmount);
+      return this.txWithValueFor(encodedMethod, "900000", gasPrice, hexAmount);
     } else {
       const encodedMethod = this.contract.methods.mint(hexAmount).encodeABI();
-      return this.txFor(encodedMethod, 900000, gasPrice);
+      return this.txFor(encodedMethod, "900000", gasPrice);
     }
   }
 
@@ -37,20 +45,26 @@ class CToken extends Contract {
   // result: sends (#ctokens) and receives (#tokens <= #ctokens * exchange_rate)
   // CAUTION: #tokens <= #ctokens * exchange_rate <= account_liquidity <= market_liquidity
   withdraw_cUnits(amount, gasPrice) {
-    const hexAmount = web3.utils.toHex(web3.utils.toBN(Math.floor(amount * this.decimals)));
+    amount = Big(amount)
+      .times(this.decimals)
+      .toFixed(0);
+    const hexAmount = web3.utils.toHex(amount);
     const encodedMethod = this.contract.methods.redeem(hexAmount).encodeABI();
 
-    return this.txFor(encodedMethod, 900000, gasPrice);
+    return this.txFor(encodedMethod, "900000", gasPrice);
   }
 
   // Just like withdraw_cUnits, but amount is in units of the ordinary asset (SEND -- uses gas)
   withdraw_uUnits(amount, gasPrice) {
-    const hexAmount = web3.utils.toHex(web3.utils.toBN(Math.floor(amount * this.decimals)));
+    amount = Big(amount)
+      .times(this.decimals)
+      .toFixed(0);
+    const hexAmount = web3.utils.toHex(amount);
     const encodedMethod = this.contract.methods
       .redeemUnderlying(hexAmount)
       .encodeABI();
 
-    return this.txFor(encodedMethod, 900000, gasPrice);
+    return this.txFor(encodedMethod, "900000", gasPrice);
   }
 
   // Performs liquidation (SEND -- uses gas)
@@ -59,17 +73,21 @@ class CToken extends Contract {
   // cTokenToSeize: an address of a cToken that the borrower holds as collateral
   // result: funds will be withdrawn from your wallet in order to pay debt
   liquidate_uUnits(borrower, amount, cTokenToSeize, gasPrice) {
-    const hexAmount = web3.utils.toHex(web3.utils.toBN(Math.floor(amount * this.decimals)));
+    amount = Big(amount)
+      .times(this.decimals)
+      .toFixed(0);
+    const hexAmount = web3.utils.toHex(amount);
+
     if (this.isCETH) {
       const encodedMethod = this.contract.methods
         .liquidateBorrow(borrower, cTokenToSeize)
         .encodeABI();
-      return this.txWithValueFor(encodedMethod, 900000, gasPrice, hexAmount);
+      return this.txWithValueFor(encodedMethod, "900000", gasPrice, hexAmount);
     } else {
       const encodedMethod = this.contract.methods
         .liquidateBorrow(borrower, hexAmount, cTokenToSeize)
         .encodeABI();
-      return this.txFor(encodedMethod, 900000, gasPrice);
+      return this.txFor(encodedMethod, "900000", gasPrice);
     }
   }
 
@@ -78,7 +96,7 @@ class CToken extends Contract {
       borrower,
       this.address,
       cTokenToSeize,
-      Math.floor(amount * this.decimals),
+      Big(amount).times(this.decimals),
       gasPrice
     );
   }
@@ -86,52 +104,48 @@ class CToken extends Contract {
   // Returns the current exchange_rate (CALL -- no gas needed)
   // exchange_rate = (uUnitsInContract() + uUnitsLoanedOut() - totalReserves()) / cUnitsInCirculation()
   async exchangeRate() {
-    return (
-      (await this.contract.methods.exchangeRateCurrent().call()) /
-      this.decimals /
-      1e10
-    );
+    return Big(await this.contract.methods.exchangeRateCurrent().call())
+      .div(this.decimals)
+      .div(1e10);
   }
 
   // Returns the current borrow rate per block (CALL -- no gas needed)
   async borrowRate() {
-    return (
-      (await this.contract.methods.borrowRatePerBlock().call()) / this.decimals
+    return Big(await this.contract.methods.borrowRatePerBlock().call()).div(
+      this.decimals
     );
   }
 
   // Returns the current supply rate per block (CALL -- no gas needed)
   async supplyRate() {
-    return (
-      (await this.contract.methods.supplyRatePerBlock().call()) / this.decimals
+    return Big(await this.contract.methods.supplyRatePerBlock().call()).div(
+      this.decimals
     );
   }
 
   // Returns the total amount of cTokens currently in circulation (CALL -- no gas needed)
   async cUnitsInCirculation() {
-    return (
-      ((await this.contract.methods.totalSupply().call()) * 1e10) /
-      this.decimals
-    );
+    return Big(await this.contract.methods.totalSupply().call())
+      .times(1e10)
+      .div(this.decimals);
   }
 
   // Returns the total amount of ordinary asset that the contract owns (CALL -- no gas needed)
   async uUnitsSupplied() {
-    return (await this.contract.methods.getCash().call()) / this.decimals;
+    return Big(await this.contract.methods.getCash().call()).div(this.decimals);
   }
 
   // Returns the amount of ordinary asset that the wallet has placed in the contract (CALL -- no gas needed)
   async uUnitsSuppliedBy(wallet) {
-    return (
-      (await this.contract.methods.balanceOfUnderlying(wallet).call()) /
-      this.decimals
-    );
+    return Big(
+      await this.contract.methods.balanceOfUnderlying(wallet).call()
+    ).div(this.decimals);
   }
 
   // Returns the total amount of ordinary asset that the contract has loaned out (CALL -- no gas needed)
   async uUnitsBorrowed() {
-    return (
-      (await this.contract.methods.totalBorrowsCurrent().call()) / this.decimals
+    return Big(await this.contract.methods.totalBorrowsCurrent().call()).div(
+      this.decimals
     );
   }
 
@@ -139,10 +153,9 @@ class CToken extends Contract {
   // ** includes interest **
   // borrower: account address of any user
   async uUnitsBorrowedBy(borrower) {
-    return (
-      (await this.contract.methods.borrowBalanceCurrent(borrower).call()) /
-      this.decimals
-    );
+    return Big(
+      await this.contract.methods.borrowBalanceCurrent(borrower).call()
+    ).div(this.decimals);
   }
 }
 
