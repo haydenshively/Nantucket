@@ -1,9 +1,13 @@
+const Big = require("big.js");
+Big.DP = 40;
+Big.RM = 0;
+
 const Contract = require("../smartcontract");
 const PRICEORACLEABI = require("../abis/compound/priceoracle.json");
 
 class PriceOracle extends Contract {
   async getUnderlyingPrice(cTokenAddress) {
-    return (await this.contract.methods.getUnderlyingPrice(cTokenAddress).call()) / 1e18;
+    return Big(await this.contract.methods.getUnderlyingPrice(cTokenAddress).call()).div(1e18);
   }
 }
 

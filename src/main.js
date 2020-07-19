@@ -47,7 +47,7 @@ class Main extends Database {
   }
 
   async getGasPrice(forHighValueTarget = false) {
-    const marketValue = await web3.eth.getGasPrice();
+    const marketValue = Number(await web3.eth.getGasPrice()) / 1e9;
 
     return (
       marketValue *
@@ -56,7 +56,7 @@ class Main extends Database {
   }
 
   async getTxFee_Eth(forHighValueTarget = false, gas = 1000000) {
-    return (await this.getGasPrice(forHighValueTarget)) * (gas / 1e18);
+    return (await this.getGasPrice(forHighValueTarget)) * (gas / 1e9);
   }
 
   _liquiCandidatesClear() {
@@ -85,7 +85,7 @@ class Main extends Database {
   async onNewBlock() {
     const closeFact = await Comptroller.mainnet.closeFactor();
     const liqIncent = await Comptroller.mainnet.liquidationIncentive();
-    const gasPrice = await web3.eth.getGasPrice();
+    const gasPrice = Number(await web3.eth.getGasPrice()) / 1e9;
 
     let uPrices = {};
 
@@ -104,7 +104,7 @@ class Main extends Database {
       // check if user can be liquidated
       Comptroller.mainnet.accountLiquidityOf(userAddr).then(async res => {
         // check if target has negative liquidity
-        if (res[1] > 0.0) {
+        if (res[1].gt(0.0)) {
           // retrieve addresses for pre-computed best repay and seize tokens
           const repayAddr =
             "0x" + (await this._tCTokens.getAddress(target.ctokenidpay));
@@ -122,29 +122,32 @@ class Main extends Database {
             uPrices[seizeAddr] = await PriceOracle.mainnet.getUnderlyingPrice(
               seizeAddr
             );
-          // compute max repayAmnt = closeFactor * uUnitsBorrowed
+          // compute max repayAmnt = uUnitsBorrowed * closeFactor
           // compute max seizeAmnt = uUnitsSupplied / liquidationIncentive
-          let repayAmnt =
-            closeFact *
-            (await Tokens.mainnetByAddr[repayAddr].uUnitsBorrowedBy(userAddr));
-          const seizeAmnt =
-            (await Tokens.mainnetByAddr[seizeAddr].uUnitsSuppliedBy(userAddr)) /
-            liqIncent;
+          let repayMax = (
+            await Tokens.mainnetByAddr[repayAddr].uUnitsBorrowedBy(userAddr)
+          ).times(closeFact);
+          let seizeMax = (
+            await Tokens.mainnetByAddr[seizeAddr].uUnitsSuppliedBy(userAddr)
+          ).div(liqIncent);
           // to get safe repayAmnt, compare with seizeAmnt (after converting units)
           // conversion factor: ethPerSeizeToken / ethPerRepayToken
-          const ratio = uPrices[seizeAddr] / uPrices[repayAddr];
-          repayAmnt = Math.min(repayAmnt, seizeAmnt * ratio) * 0.999;
+          seizeMax = seizeMax.times(uPrices[seizeAddr]).div(uPrices[repayAddr]);
+          if (repayMax.gt(seizeMax)) repayMax = seizeMax;
+          repayMax = repayMax.times(0.9999);
           // make sure revenue meets minimums
-          const revenue = repayAmnt * (liqIncent - 1.0) * uPrices[repayAddr];
-          if (revenue / (gasPrice / 1e18) <= this._minRevenueFeeRatio) {
-            console.log(`Proposal ${label}: revenue / fee ratio too low. Token pair likely stale`)
+          const revenue = repayMax.times(liqIncent.minus(1.0)).times(uPrices[repayAddr]);
+          if (revenue.div(gasPrice / 1e9).lte(this._minRevenueFeeRatio)) {
+            console.log(
+              `Proposal ${label}: revenue / fee ratio too low. Token pair likely stale`
+            );
             return;
           }
           console.log(`Proposal ${label}: liquidating`);
 
           const tx = Tokens.mainnetByAddr[repayAddr].flashLiquidate_uUnits(
             userAddr,
-            repayAmnt,
+            repayMax,
             seizeAddr,
             gasPrice *
               (target.profitability >= this._highRevenueThresh

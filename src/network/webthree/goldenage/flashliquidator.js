@@ -1,18 +1,27 @@
+const Big = require("big.js");
+Big.DP = 40;
+Big.RM = 0;
+
 const Contract = require("../smartcontract");
 const LIQUIDATORABI = require("../abis/goldenage/flashliquidator.json");
 
 class FlashLiquidator extends Contract {
-  // Performs liquidation (SEND -- uses gas)
-  // borrower: account address of any user with negative account_liquidity
-  // amount: the amount of debt to repay, in units of the ordinary asset
-  // cTokenToSeize: an address of a cToken that the borrower holds as collateral
   liquidate(borrower, borrowedCToken, collatCToken, amount, gasPrice) {
-    const hexAmount = web3.utils.toHex(web3.utils.toBN(amount));
+    /**
+     * Performs liquidation (SEND -- uses gas)
+     * @param {string} borrower address of any user with negative liquidity
+     * @param {string} borrowedCToken address of token to repay
+     * @param {string} collatCToken address of token to seize
+     * @param {Big} amount debt to repay, in units of the ordinary asset
+     * @param {number} gasPrice the gas price to use, in gwei
+     * @return {Object} the transaction object
+     */
+    const hexAmount = web3.utils.toHex(amount.toFixed(0));
     const encodedMethod = this.contract.methods
       .liquidate(borrower, borrowedCToken, collatCToken, hexAmount)
       .encodeABI();
 
-    return this.txFor(encodedMethod, 3000000, gasPrice);
+    return this.txFor(encodedMethod, "3000000", gasPrice);
   }
 }
 

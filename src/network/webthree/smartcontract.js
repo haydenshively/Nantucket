@@ -1,3 +1,7 @@
+const Big = require("big.js");
+Big.DP = 40;
+Big.RM = 0;
+
 class SmartContract {
   constructor(address, abi) {
     this.address = address;
@@ -9,17 +13,14 @@ class SmartContract {
     return {
       to: this.address,
       gas: web3.utils.toHex(gasLimit),
-      gasPrice: Number(gasPrice),
+      gasPrice: Big(gasPrice).times(1e9).toFixed(0),
       data: encodedMethod
     };
   }
 
   txWithValueFor(encodedMethod, gasLimit, gasPrice, value) {
     return {
-      to: this.address,
-      gas: web3.utils.toHex(gasLimit),
-      gasPrice: Number(gasPrice),
-      data: encodedMethod,
+      ...this.txFor(encodedMethod, gasLimit, gasPrice),
       value: value
     };
   }

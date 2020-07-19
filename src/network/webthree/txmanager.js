@@ -37,7 +37,13 @@ class TxManager {
     //   });
   }
 
-  insert(tx, priority = 0, timeout = 60 * 1000, rejectIfDuplicate = false, key = null) {
+  insert(
+    tx,
+    priority = 0,
+    timeout = 60 * 1000,
+    rejectIfDuplicate = false,
+    key = null
+  ) {
     /**
      * Adds a new transaction to the wallet's queue (even if it's a duplicate)
      *
@@ -52,9 +58,8 @@ class TxManager {
      */
     if (rejectIfDuplicate) {
       if (
-        this._queue.filter(
-          item => item.tx.to === tx.to && item.key === key
-        ).length > 0
+        this._queue.filter(item => item.tx.to === tx.to && item.key === key)
+          .length > 0
       ) {
         console.warn("TxManager detected duplicate: skipping tx");
         return;
@@ -156,6 +161,7 @@ class TxManager {
   // }
 
   _signAndSend(tx, nonce) {
+    tx.gasPrice = Number(tx.gasPrice);
     if (nonce in this._gasPrices)
       tx.gasPrice = Math.max(tx.gasPrice, this._gasPrices[nonce] + 100);
     this._gasPrices[nonce] = tx.gasPrice;
