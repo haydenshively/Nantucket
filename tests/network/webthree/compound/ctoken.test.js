@@ -28,13 +28,13 @@ describe("network/webthree/compound || cToken Test", () => {
   });
 
   it("should retrieve cDAI units in contract", () => {
-    return Tokens.mainnet.cDAI.uUnitsInContract().then(result => {
+    return Tokens.mainnet.cDAI.uUnitsSupplied().then(result => {
       assert(result != 0.0);
     });
   });
 
   it("should retrieve cDAI units loaned out", () => {
-    return Tokens.mainnet.cDAI.uUnitsLoanedOut().then(result => {
+    return Tokens.mainnet.cDAI.uUnitsBorrowed().then(result => {
       assert(result != 0.0);
     });
   });

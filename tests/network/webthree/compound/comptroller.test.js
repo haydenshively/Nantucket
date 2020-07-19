@@ -5,6 +5,9 @@ const Tokens = require("../../../../src/network/webthree/compound/ctoken");
 
 describe("network/webthree/compound || Comptroller Test", () => {
   it("should retrieve liquidation incentive", () => {
+    Comptroller.mainnet.contract.methods.closeFactorMantissa().call().then(result => {
+      console.log(typeof(result));
+    })
     return Comptroller.mainnet.liquidationIncentive().then(result => {
       assert(result > 1.0);
     });
@@ -26,7 +29,7 @@ describe("network/webthree/compound || Comptroller Test", () => {
 
   it("should retrieve active markets", () => {
     return Comptroller.mainnet
-      .marketsEnteredBy(process.env.ACCOUNT_PUBLIC_KEY)
+      .marketsEnteredBy(process.env.TEST_ACCOUNT_ADDRESS)
       .then(result => {
         assert(result.length >= 9);
       });
@@ -34,7 +37,7 @@ describe("network/webthree/compound || Comptroller Test", () => {
 
   it("should retrieve account liquidity", () => {
     return Comptroller.mainnet
-      .accountLiquidityOf(process.env.ACCOUNT_PUBLIC_KEY)
+      .accountLiquidityOf(process.env.TEST_ACCOUNT_ADDRESS)
       .then(result => {
         assert(result[0] > 0.0);
         assert(result[1] == 0);

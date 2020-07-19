@@ -5,7 +5,7 @@ const addressInfo = new AddressInfo();
 
 describe("network/web/ethplorer || Address Info Test", () => {
   it("should retrieve account balance", () => {
-    return addressInfo.fetch(process.env.ACCOUNT_PUBLIC_KEY).then(result => {
+    return addressInfo.fetch(process.env.TEST_ACCOUNT_ADDRESS).then(result => {
       assert(result.error === undefined);
     });
   });
