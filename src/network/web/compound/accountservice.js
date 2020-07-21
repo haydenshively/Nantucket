@@ -1,4 +1,4 @@
-const fetch = require("node-fetch");
+const nfetch = require("node-fetch");
 
 const Fetchable = require("../fetchable");
 
@@ -62,7 +62,7 @@ class Accounts extends Fetchable {
       .join("&");
 
     try {
-      const res = await fetch(
+      const res = await nfetch(
         process.env.COMPOUND_ENDPOINT + "/account?" + urlParams,
         params
       );

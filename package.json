@@ -15,7 +15,8 @@
     "node-fetch": "^2.6.0",
     "perf_hooks": "0.0.1",
     "pg": "^8.2.2",
-    "web3": "^1.2.6"
+    "web3": "^1.2.6",
+    "winston": "^3.3.3"
   },
   "devDependencies": {
     "@openzeppelin/cli": "^2.8.2",
@@ -38,6 +39,7 @@
     "test-integration": "mocha --file './tests/setup.js' './tests/integration.test.js'",
     "test": "mocha --file './tests/setup.js' 'tests/**/*.js' --recursive",
     "test-database": "mocha --file './tests/setup.js' 'tests/database/**/*.js' --recursive",
+    "test-logging": "mocha --file './tests/setup.js' 'tests/logging/**/*.js' --recursive",
     "test-network": "mocha --file './tests/setup.js' 'tests/network/**/*.js' --recursive",
     "test-prediction": "mocha 'tests/prediction/**/*.js' --recursive"
   },

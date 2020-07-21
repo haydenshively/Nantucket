@@ -1,4 +1,5 @@
 const Tx = require("ethereumjs-tx").Transaction;
+const winston = require("winston");
 
 class TxManager {
   constructor(envKeyAddress, envKeySecret, maxInProgressTxs = 5) {
@@ -61,7 +62,7 @@ class TxManager {
         this._queue.filter(item => item.tx.to === tx.to && item.key === key)
           .length > 0
       ) {
-        console.warn("TxManager detected duplicate: skipping tx");
+        winston.log("warn", "💸 *Transaction* | Skipped duplicate");
         return;
       }
     }
@@ -105,24 +106,29 @@ class TxManager {
   }
 
   _setupTxEvents(sentTx, nonce, setIntervalHandle) {
-    const label = `Tx ${nonce} from ${process.env[this._envKeyAddress]}: `;
+    const label = `💸 *Transaction* | ${
+      String(process.env[this._envKeyAddress]).slice(0, 6)
+    }.${nonce} `;
 
-    sentTx.on("transactionHash", transactionHash => {
-      console.log(label + "received hash");
+    sentTx.on("transactionHash", hash => {
+      winston.log(
+        "info",
+        label + `Available on <https://etherscan.io/tx/${hash}|etherscan>`
+      );
     });
     sentTx.on("receipt", receipt => {
       clearInterval(setIntervalHandle);
-      console.log(label + "received receipt");
+      winston.log("info", label + "Successful!");
       this._onTxReceiptFor(nonce);
     });
-    sentTx.on("error", (error, receipt) => {
+    sentTx.on("error", (err, receipt) => {
       clearInterval(setIntervalHandle);
       if (receipt !== undefined) {
-        console.log(label + "received receipt");
+        winston.log("info", label + "Failed on-chain: " + String(err));
         this._onTxReceiptFor(nonce);
         return;
       }
-      console.error(label + "received error");
+      winston.log("error", label + "Failed off-chain: " + String(err));
       this._onTxErrorFor(nonce);
     });
   }

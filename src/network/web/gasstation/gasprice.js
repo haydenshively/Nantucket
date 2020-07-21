@@ -1,10 +1,10 @@
-const fetch = require("node-fetch");
+const nfetch = require("node-fetch");
 
 const Fetchable = require("../fetchable");
 
 class GasPrice extends Fetchable {
   async fetch() {
-    const res = await fetch(process.env.GAS_STATION_ENDPOINT, {
+    const res = await nfetch(process.env.GAS_STATION_ENDPOINT, {
       method: "GET"
     });
     const json = await res.json();
