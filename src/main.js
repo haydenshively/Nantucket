@@ -1,3 +1,5 @@
+const winston = require("winston");
+
 const Database = require("./database");
 // src.network.webthree
 const Comptroller = require("./network/webthree/compound/comptroller");
@@ -136,14 +138,22 @@ class Main extends Database {
           if (repayMax.gt(seizeMax)) repayMax = seizeMax;
           repayMax = repayMax.times(0.9999);
           // make sure revenue meets minimums
-          const revenue = repayMax.times(liqIncent.minus(1.0)).times(uPrices[repayAddr]);
+          const revenue = repayMax
+            .times(liqIncent.minus(1.0))
+            .times(uPrices[repayAddr]);
           if (revenue.div(gasPrice / 1e9).lte(this._minRevenueFeeRatio)) {
-            console.log(
-              `Proposal ${label}: revenue / fee ratio too low. Token pair likely stale`
+            winston.log(
+              "warn",
+              `🐳 *Proposal ${label}* | Revenue/Fee ratio too low, token pair likely stale`
             );
             return;
           }
-          console.log(`Proposal ${label}: liquidating`);
+          winston.log(
+            "info",
+            `🐳 *Proposal ${label}* | Liquidating for ${revenue.toFixed(
+              2
+            )} Eth reward`
+          );
 
           const tx = Tokens.mainnetByAddr[repayAddr].flashLiquidate_uUnits(
             userAddr,
@@ -172,20 +182,21 @@ class Main extends Database {
     const targets = this._liquiCandidates.map(t => "0x" + t.address);
 
     if (!targets.includes(target)) {
-      console.log(
-        `Didn't liquidate ${target.slice(
+      winston.log(
+        "info",
+        `⤼ *Liquidate Event* | Didn't liquidate ${target.slice(
           0,
           6
         )} because they weren't in the candidates list`
       );
     } else {
-      console.warn(
-        `Didn't liquidate ${target.slice(
+      winston.log(
+        "warn",
+        `🚨 *Liquidate Event* | Didn't liquidate ${target.slice(
           0,
           6
         )} based on JS logic (or lost gas bidding war)`
       );
-      console.warn(event);
     }
   }
 }

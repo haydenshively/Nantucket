@@ -15,6 +15,25 @@ if (process.env.WEB3_PROVIDER_TEST.endsWith(".ipc")) {
   global.web3 = new Web3(process.env.WEB3_PROVIDER_TEST);
 }
 
+const winston = require("winston");
+const SlackHook = require("../src/logging/slackhook");
+
+winston.configure({
+  format: winston.format.combine(
+    winston.format.splat(),
+    winston.format.simple()
+  ),
+  transports: [
+    new winston.transports.Console({ handleExceptions: true }),
+    new SlackHook({
+      level: "info",
+      webhookUrl: process.env.SLACK_WEBHOOK,
+      mrkdwn: true
+    })
+  ],
+  exitOnError: false
+});
+
 after(() => {
   try {
     web3.currentProvider.connection.close();
