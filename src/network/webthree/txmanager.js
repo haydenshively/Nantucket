@@ -124,7 +124,7 @@ class TxManager {
     sentTx.on("error", (err, receipt) => {
       clearInterval(setIntervalHandle);
       if (receipt !== undefined) {
-        winston.log("info", label + "Failed on-chain: " + String(err));
+        winston.log("info", label + "Failed on-chain :(");
         this._onTxReceiptFor(nonce);
         return;
       }

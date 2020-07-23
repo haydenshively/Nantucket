@@ -27,8 +27,7 @@ CREATE TABLE PaySeizePairs (
   id                serial primary key not null,
   ctokenIDPay       integer not null    references CTokens(id),
   ctokenIDSeize     integer not null    references CTokens(id),
-  unique (ctokenIDPay, ctokenIDSeize),
-  CHECK (ctokenIDPay!=ctokenIDSeize)
+  unique (ctokenIDPay, ctokenIDSeize)
 );
 
 DROP TABLE IF EXISTS Users CASCADE;

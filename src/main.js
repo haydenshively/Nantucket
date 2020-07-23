@@ -84,17 +84,18 @@ class Main extends Database {
     );
   }
 
-  async onNewBlock() {
+  async onNewBlock(blockNumber) {
     const closeFact = await Comptroller.mainnet.closeFactor();
     const liqIncent = await Comptroller.mainnet.liquidationIncentive();
     const gasPrice = Number(await web3.eth.getGasPrice()) / 1e9;
+    const estTxFee_Eth = gasPrice / 1000;
 
     let uPrices = {};
 
     for (let target of this._liquiCandidates) {
       // this is pairID 13 and 42 (DAI and SAI). There's no AAVE pool for it.
       if (
-        (target.ctokenidpay == 2 && target.ctokenidseize == 6) ||
+        target.ctokenidpay == 2 ||
         (target.ctokenidpay == 6 && target.ctokenidseize == 2)
       )
         continue;
@@ -118,30 +119,33 @@ class Main extends Database {
           // down on async calls to the Ethereum node)
           if (!(repayAddr in uPrices))
             uPrices[repayAddr] = await PriceOracle.mainnet.getUnderlyingPrice(
-              repayAddr
+              Tokens.mainnetByAddr[repayAddr]
             );
           if (!(seizeAddr in uPrices))
             uPrices[seizeAddr] = await PriceOracle.mainnet.getUnderlyingPrice(
-              seizeAddr
+              Tokens.mainnetByAddr[seizeAddr]
             );
           // compute max repayAmnt = uUnitsBorrowed * closeFactor
           // compute max seizeAmnt = uUnitsSupplied / liquidationIncentive
-          let repayMax = (
+          const repayMax = (
             await Tokens.mainnetByAddr[repayAddr].uUnitsBorrowedBy(userAddr)
           ).times(closeFact);
-          let seizeMax = (
+          const seizeMax = (
             await Tokens.mainnetByAddr[seizeAddr].uUnitsSuppliedBy(userAddr)
           ).div(liqIncent);
           // to get safe repayAmnt, compare with seizeAmnt (after converting units)
-          // conversion factor: ethPerSeizeToken / ethPerRepayToken
-          seizeMax = seizeMax.times(uPrices[seizeAddr]).div(uPrices[repayAddr]);
-          if (repayMax.gt(seizeMax)) repayMax = seizeMax;
-          repayMax = repayMax.times(0.9999);
+          const repayMax_Eth = repayMax.times(uPrices[repayAddr]);
+          const seizeMax_Eth = seizeMax.times(uPrices[seizeAddr]);
+
+          const repay_Eth = repayMax_Eth.gt(seizeMax_Eth)
+            ? seizeMax_Eth
+            : repayMax_Eth;
+          let repay = repay_Eth.div(uPrices[repayAddr]);
+          repay = repay.times(0.9999);
+
           // make sure revenue meets minimums
-          const revenue = repayMax
-            .times(liqIncent.minus(1.0))
-            .times(uPrices[repayAddr]);
-          if (revenue.div(gasPrice / 1e9).lte(this._minRevenueFeeRatio)) {
+          const revenue = repay_Eth.times(liqIncent.minus(1.0));
+          if (revenue.div(estTxFee_Eth).lte(this._minRevenueFeeRatio)) {
             winston.log(
               "warn",
               `🐳 *Proposal ${label}* | Revenue/Fee ratio too low, token pair likely stale`
@@ -152,12 +156,12 @@ class Main extends Database {
             "info",
             `🐳 *Proposal ${label}* | Liquidating for ${revenue.toFixed(
               2
-            )} Eth reward`
+            )} Eth reward at block ${blockNumber}`
           );
 
           const tx = Tokens.mainnetByAddr[repayAddr].flashLiquidate_uUnits(
             userAddr,
-            repayMax,
+            repay,
             seizeAddr,
             gasPrice *
               (target.profitability >= this._highRevenueThresh

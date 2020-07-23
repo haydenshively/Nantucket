@@ -78,11 +78,11 @@ if (cluster.isMaster) {
       });
       workers[1].send({
         desiredType: "webthree",
-        args: [1.1, 5.0, 2.0, 10, 40.0, 110, 0]
+        args: [1.2, 5.0, 1.5, 10, 40.0, 110, 0]
       });
       workers[2].send({
         desiredType: "webthree",
-        args: [1.1, 4.0, 2.0, 10, 14.0, 110, 15]
+        args: [1.5, 4.0, 5.0, 10, 14.0, 110, 15]
       });
     });
   });
@@ -133,7 +133,7 @@ if (cluster.isWorker) {
           }
 
           if (Number(block.number) % 240 === 0) winston.log("info", `☑️ *Block Headers* | ${block.number}`);
-          main.onNewBlock.bind(main)();
+          main.onNewBlock.bind(main)(block.number);
         });
         // log losses for debugging purposes
         for (let symbol in Tokens.mainnet) {

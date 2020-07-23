@@ -6,8 +6,12 @@ const Contract = require("../smartcontract");
 const PRICEORACLEABI = require("../abis/compound/priceoracle.json");
 
 class PriceOracle extends Contract {
-  async getUnderlyingPrice(cTokenAddress) {
-    return Big(await this.contract.methods.getUnderlyingPrice(cTokenAddress).call()).div(1e18);
+  async getUnderlyingPrice(cToken) {
+    return Big(
+      await this.contract.methods.getUnderlyingPrice(cToken.address).call()
+    )
+      .div(1e18)
+      .div(1e18 / cToken.decimals);
   }
 }
 
