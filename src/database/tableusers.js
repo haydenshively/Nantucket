@@ -56,39 +56,25 @@ class TableUsers {
         );
         const { collat, costineth } = await this.getCollatAndCost(cTokenID);
 
-        borrow += borrow_uUnits * costineth * collat;
-        supply += supply_uUnits * costineth;
+        borrow += borrow_uUnits * costineth;
+        supply += supply_uUnits * costineth * collat;
 
         const closableAmount_Eth = borrow_uUnits * costineth * closeFactor;
         const seizableAmount_Eth =
           (supply_uUnits * costineth) / liquidationIncentive;
 
-        if (
-          closableAmount_Eth > closableMax_Eth &&
-          seizableAmount_Eth > seizableMax_Eth
-        ) {
-          if (closableAmount_Eth <= seizableMax_Eth) {
-            // In this case, raising closableMax_Eth actually increases rewards
-            // (seizableMax_Eth is sufficient to maximize liquidation incentive)
-            closableMax_Eth = closableAmount_Eth;
-            bestAssetToClose = cTokenID;
-          } else {
-            // In this case, raising closableMax_Eth wouldn't lead to increased rewards
-            // so we increase seizableMax_Eth instead
-            seizableMax_Eth = seizableAmount_Eth;
-            bestAssetToSeize = cTokenID;
-          }
-        } else if (closableAmount_Eth > closableMax_Eth) {
+        if (closableAmount_Eth > closableMax_Eth) {
           closableMax_Eth = closableAmount_Eth;
           bestAssetToClose = cTokenID;
-        } else if (seizableAmount_Eth > seizableMax_Eth) {
+        }
+        if (seizableAmount_Eth > seizableMax_Eth) {
           seizableMax_Eth = seizableAmount_Eth;
           bestAssetToSeize = cTokenID;
         }
       }
 
       // const liquidity = supply - borrow;
-      let liquidity = supply / borrow;// really "health"
+      let liquidity = supply / borrow; // really "health"
       if (!isFinite(liquidity)) liquidity = 1000;
       if (liquidity > 1000) liquidity = 1000;
       const profitability =
