@@ -15,6 +15,25 @@ if (process.env.WEB3_PROVIDER.endsWith(".ipc")) {
   global.web3 = new Web3(process.env.WEB3_PROVIDER);
 }
 
+// configure winston
+const winston = require("winston");
+const SlackHook = require("../src/logging/slackhook");
+winston.configure({
+  format: winston.format.combine(
+    winston.format.splat(),
+    winston.format.simple()
+  ),
+  transports: [
+    new winston.transports.Console({ handleExceptions: true }),
+    new SlackHook({
+      level: "info",
+      webhookUrl: process.env.SLACK_WEBHOOK,
+      mrkdwn: true
+    })
+  ],
+  exitOnError: false
+});
+
 if (cluster.isMaster) {
   console.log(`Master ${process.pid} is running`);
   const TxManager = require("./network/webthree/txmanager");
@@ -109,11 +128,11 @@ if (cluster.isWorker) {
         // check on candidates every block
         web3.eth.subscribe("newBlockHeaders", (err, block) => {
           if (err) {
-            console.error(err);
+            winston.log("error", "🚨 *Block Headers* | " + String(err));
             return;
           }
 
-          if (Number(block.number) % 1000 === 0) console.log(block.number);
+          if (Number(block.number) % 240 === 0) winston.log("info", `☑️ *Block Headers* | ${block.number}`);
           main.onNewBlock.bind(main)();
         });
         // log losses for debugging purposes
@@ -121,7 +140,7 @@ if (cluster.isWorker) {
           const token = Tokens.mainnet[symbol];
           token.subscribeToLogEvent("LiquidateBorrow", (err, event) => {
             if (err) {
-              console.error(err);
+              winston.log("error", "🚨 *Liquidate Event* | " + String(err));
               return;
             }
 

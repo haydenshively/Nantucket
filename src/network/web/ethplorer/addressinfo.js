@@ -1,10 +1,10 @@
-const fetch = require("node-fetch");
+const nfetch = require("node-fetch");
 
 const Fetchable = require("../fetchable");
 
 class AddressInfo extends Fetchable {
   async fetch(withConfig) {
-    const res = await fetch(
+    const res = await nfetch(
       process.env.ETHPLORER_ENDPOINT +
         "/getAddressInfo/" +
         withConfig +
