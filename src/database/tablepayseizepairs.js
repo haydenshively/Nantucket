@@ -14,7 +14,6 @@ class TablePaySeizePairs {
 
     for (let payID of cTokenIDs) {
       for (let seizeID of cTokenIDs) {
-        if (payID === seizeID) continue;
         await this.insert(payID, seizeID);
       }
     }
