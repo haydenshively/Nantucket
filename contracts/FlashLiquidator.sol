@@ -90,27 +90,33 @@ contract FlashLiquidator is FlashLoanReceiverBase {
             // equivalent to the amount we repaid, multiplied by the liquidation incentive.
             CEther(borrowedCToken).liquidateBorrow{value: _amount}(borrower, collatCToken);
 
-            // Convert newly-earned collatCTokens into their underlying asset (which is *not* ETH)
+            // Convert newly-earned collatCTokens into their underlying asset (which may be ETH)
             uint256 reward_cUnits = IERC20(collatCToken).balanceOf(address(this));
-            uint256 reward_uUnits = CErc20(collatCToken).balanceOfUnderlying(address(this));
-            require(CErc20(collatCToken).redeem(reward_cUnits) == 0, "Unable to redeem collateral reward.");
+            uint256 reward_uUnits;
+            if (collatCToken == CETH) {
+                reward_uUnits = CEther(collatCToken).balanceOfUnderlying(address(this));
+                require(CEther(collatCToken).redeem(reward_cUnits) == 0, "Unable to redeem collateral reward.");
+            }else {
+                reward_uUnits = CErc20(collatCToken).balanceOfUnderlying(address(this));
+                require(CErc20(collatCToken).redeem(reward_cUnits) == 0, "Unable to redeem collateral reward.");
 
-            // MARK: - Begin UniswapV2 asset swap (to pay back flash loan in original units)
-            // Set deadline for swap transaction, which shouldn't matter since it's atomic.
-            uint256 deadline = now + 1 minutes;
-            // Figure out what token corresponds to reward_uUnits.
-            // Then tell the router it's approved to swap that amount.
-            address collatToken = CErc20Storage(collatCToken).underlying();
-            TransferHelper.safeApprove(collatToken, address(router), reward_uUnits);
+                // MARK: - Begin UniswapV2 asset swap (to pay back flash loan in original units)
+                // Set deadline for swap transaction, which shouldn't matter since it's atomic.
+                uint256 deadline = now + 1 minutes;
+                // Figure out what token corresponds to reward_uUnits.
+                // Then tell the router it's approved to swap that amount.
+                address collatToken = CErc20Storage(collatCToken).underlying();
+                TransferHelper.safeApprove(collatToken, address(router), reward_uUnits);
 
-            // Define swapping path
-            address[] memory path = new address[](2);
-            path[0] = collatToken;
-            path[1] = router.WETH();
-            //                           desired,   amount traded, path, recipient,     deadline
-            router.swapTokensForExactETH(totalDebt, reward_uUnits, path, address(this), deadline);
-            // Now that we're done, remove router's allowance
-            TransferHelper.safeApprove(collatToken, address(router), 0);
+                // Define swapping path
+                address[] memory path = new address[](2);
+                path[0] = collatToken;
+                path[1] = router.WETH();
+                //                           desired,   amount traded, path, recipient,     deadline
+                router.swapTokensForExactETH(totalDebt, reward_uUnits, path, address(this), deadline);
+                // Now that we're done, remove router's allowance
+                TransferHelper.safeApprove(collatToken, address(router), 0);
+            }
 
         }else {
             // Assuming the flash loan was (1) successful and (2) initiated by the `liquidate` function,
@@ -137,31 +143,33 @@ contract FlashLiquidator is FlashLoanReceiverBase {
                 require(CErc20(collatCToken).redeem(reward_cUnits) == 0, "Unable to redeem collateral reward.");
             }
 
-            // MARK: - Begin UniswapV2 asset swap (to pay back flash loan in original units)
-            // Set deadline for swap transaction, which shouldn't matter since it's atomic.
-            uint256 deadline = now + 1 minutes;
-            if (collatCToken == CETH) {
-                // In this case, we know that reward_uUnits is in ETH. UniswapV2 uses WETH, so the path
-                // must begin with that. Then, we simply convert to the original loan token
-                address[] memory path = new address[](2);
-                path[0] = router.WETH();
-                path[1] = borrowedToken;// equivalent to `_reserve`
-                //                                  amount traded, desired,   path, recipient,     deadline
-                router.swapETHForExactTokens{value: reward_uUnits}(totalDebt, path, address(this), deadline);
-            }else {
-                // In this case, we have to figure out what token corresponds to reward_uUnits.
-                // Then we tell the router it's approved to swap that amount.
-                address collatToken = CErc20Storage(collatCToken).underlying();
-                TransferHelper.safeApprove(collatToken, address(router), reward_uUnits);
-                // Define swapping path
-                address[] memory path = new address[](3);
-                path[0] = collatToken;
-                path[1] = router.WETH();
-                path[2] = borrowedToken;
-                //                              desired,   amount traded, path, recipient,     deadline
-                router.swapTokensForExactTokens(totalDebt, reward_uUnits, path, address(this), deadline);
-                // Now that we're done, remove router's allowance
-                TransferHelper.safeApprove(collatToken, address(router), 0);
+            if (collatCToken != borrowedCToken) {
+                // MARK: - Begin UniswapV2 asset swap (to pay back flash loan in original units)
+                // Set deadline for swap transaction, which shouldn't matter since it's atomic.
+                uint256 deadline = now + 1 minutes;
+                if (collatCToken == CETH) {
+                    // In this case, we know that reward_uUnits is in ETH. UniswapV2 uses WETH, so the path
+                    // must begin with that. Then, we simply convert to the original loan token
+                    address[] memory path = new address[](2);
+                    path[0] = router.WETH();
+                    path[1] = borrowedToken;// equivalent to `_reserve`
+                    //                                  amount traded, desired,   path, recipient,     deadline
+                    router.swapETHForExactTokens{value: reward_uUnits}(totalDebt, path, address(this), deadline);
+                }else {
+                    // In this case, we have to figure out what token corresponds to reward_uUnits.
+                    // Then we tell the router it's approved to swap that amount.
+                    address collatToken = CErc20Storage(collatCToken).underlying();
+                    TransferHelper.safeApprove(collatToken, address(router), reward_uUnits);
+                    // Define swapping path
+                    address[] memory path = new address[](3);
+                    path[0] = collatToken;
+                    path[1] = router.WETH();
+                    path[2] = borrowedToken;
+                    //                              desired,   amount traded, path, recipient,     deadline
+                    router.swapTokensForExactTokens(totalDebt, reward_uUnits, path, address(this), deadline);
+                    // Now that we're done, remove router's allowance
+                    TransferHelper.safeApprove(collatToken, address(router), 0);
+                }
             }
         }
 
