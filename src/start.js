@@ -59,11 +59,11 @@ if (cluster.isMaster) {
       });
       workers[1].send({
         desiredType: "webthree",
-        args: [1.1, 5.0, 2.0, 30, 50.0, 90, 0]
+        args: [1.1, 5.0, 2.0, 10, 40.0, 110, 0]
       });
       workers[2].send({
         desiredType: "webthree",
-        args: [1.3, 4.0, 4.0, 30, 20.0, 90, 15]
+        args: [1.1, 4.0, 2.0, 10, 14.0, 110, 15]
       });
     });
   });
