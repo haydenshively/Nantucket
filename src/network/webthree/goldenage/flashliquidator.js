@@ -27,6 +27,7 @@ class FlashLiquidator extends Contract {
 
 exports.FlashLiquidator = FlashLiquidator;
 exports.mainnet = new FlashLiquidator(
-  "0x6bfdfCC0169C3cFd7b5DC51c8E563063Df059097",
+  // "0x6bfdfCC0169C3cFd7b5DC51c8E563063Df059097", // V1 (repay & seize tokens must be different)
+  "0xFb3c1a8B2Baa50caF52093d7AF2450a143dbb212", // V2 (repay & seize tokens can be same)
   LIQUIDATORABI
 );

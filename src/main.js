@@ -176,7 +176,7 @@ class Main extends Database {
   }
 
   onNewLiquidation(event) {
-    if (event.liquidator == "0x6bfdfCC0169C3cFd7b5DC51c8E563063Df059097")
+    if (event.liquidator == "0xFb3c1a8B2Baa50caF52093d7AF2450a143dbb212")
       return;
     const target = event.borrower;
     const targets = this._liquiCandidates.map(t => "0x" + t.address);
