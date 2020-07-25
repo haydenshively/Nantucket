@@ -12,6 +12,7 @@ class Main extends Database {
     feeMaxMultiplier,
     minRevenueFeeRatio,
     numLowCandidates,
+    maxRevenueToBeLow,
     highRevenueThresh,
     numHighCandidates
   ) {
@@ -29,6 +30,9 @@ class Main extends Database {
      *    `minRevenueFeeRatio` threshold, users are ranked by liquidity
      *    (lowest to highest). This specifies how many candidates
      *    should be taken from the top of that list
+     * @param {number} maxRevenueToBeLow Any user with potential revenue
+     *    greater than this number will be excluded when choosing low-value
+     *    candidates
      * @param {number} highRevenueThresh When choosing high-value liquidation
      *    candidates, ensure the revenue is greater than this amount
      * @param {number} numHighCandidates This specifies how many candidates
@@ -42,6 +46,7 @@ class Main extends Database {
     this._feeMaxMultiplier = feeMaxMultiplier;
     this._minRevenueFeeRatio = minRevenueFeeRatio;
     this._numLowCandidates = Math.floor(numLowCandidates);
+    this._maxRevenueToBeLow = maxRevenueToBeLow;
     this._highRevenueThresh = highRevenueThresh;
     this._numHighCandidates = Math.floor(numHighCandidates);
 
@@ -65,9 +70,9 @@ class Main extends Database {
     this._liquiCandidates = [];
   }
 
-  async _liquiCandidatesConcat(count, min_Eth) {
+  async _liquiCandidatesConcat(count, min_Eth, max_Eth = 100000) {
     this._liquiCandidates = this._liquiCandidates.concat(
-      await this._tUsers.getLiquidationCandidates(count, min_Eth)
+      await this._tUsers.getLiquidationCandidates(count, min_Eth, max_Eth, 1.15)
     );
   }
 
@@ -76,7 +81,8 @@ class Main extends Database {
 
     await this._liquiCandidatesConcat(
       this._numLowCandidates,
-      (await this.getTxFee_Eth()) * this._minRevenueFeeRatio
+      (await this.getTxFee_Eth()) * this._minRevenueFeeRatio,
+      this._maxRevenueToBeLow
     );
     await this._liquiCandidatesConcat(
       this._numHighCandidates,
@@ -185,7 +191,7 @@ class Main extends Database {
     const target = event.borrower;
     const targets = this._liquiCandidates.map(t => "0x" + t.address);
 
-    if (!targets.includes(target)) {
+    if (!targets.includes(target.toLowerCase())) {
       winston.log(
         "info",
         `⤼ *Liquidate Event* | Didn't liquidate ${target.slice(

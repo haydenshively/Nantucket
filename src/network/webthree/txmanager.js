@@ -169,7 +169,7 @@ class TxManager {
   _signAndSend(tx, nonce) {
     tx.gasPrice = Number(tx.gasPrice);
     if (nonce in this._gasPrices)
-      tx.gasPrice = Math.max(tx.gasPrice, this._gasPrices[nonce] + 100);
+      tx.gasPrice = Math.max(tx.gasPrice, this._gasPrices[nonce] * 1.10);
     this._gasPrices[nonce] = tx.gasPrice;
 
     tx.nonce = web3.utils.toHex(nonce);

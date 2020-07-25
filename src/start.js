@@ -78,11 +78,11 @@ if (cluster.isMaster) {
       });
       workers[1].send({
         desiredType: "webthree",
-        args: [1.2, 5.0, 1.5, 10, 40.0, 110, 0]
+        args: [1.2, 5.0, 1.5, 10, 13.0, 13.0, 100, 0]
       });
       workers[2].send({
         desiredType: "webthree",
-        args: [1.5, 4.0, 5.0, 10, 14.0, 110, 15]
+        args: [1.5, 2.0, 1.5, 10, 1.0, 1.0, 100, 15]
       });
     });
   });
@@ -110,8 +110,16 @@ if (cluster.isWorker) {
     }
 
     const args = msg.args;
-    main = new Main(args[0], args[1], args[2], args[3], args[4], args[5]);
-    if (args[6] > 0) await sleep(args[6] * 1000);
+    main = new Main(
+      args[0],
+      args[1],
+      args[2],
+      args[3],
+      args[4],
+      args[5],
+      args[6]
+    );
+    if (args[7] > 0) await sleep(args[7] * 1000);
 
     switch (msg.desiredType) {
       case "web":
@@ -132,7 +140,8 @@ if (cluster.isWorker) {
             return;
           }
 
-          if (Number(block.number) % 240 === 0) winston.log("info", `☑️ *Block Headers* | ${block.number}`);
+          if (Number(block.number) % 240 === 0)
+            winston.log("info", `☑️ *Block Headers* | ${block.number}`);
           main.onNewBlock.bind(main)(block.number);
         });
         // log losses for debugging purposes

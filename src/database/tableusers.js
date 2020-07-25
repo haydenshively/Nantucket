@@ -16,17 +16,22 @@ class TableUsers {
   
   */
 
-  async getLiquidationCandidates(count = 100, min_Eth = 100) {
+  async getLiquidationCandidates(
+    count = 100,
+    min_Eth = 1,
+    max_Eth = 100,
+    maxLiquidity = 1000
+  ) {
     return (
       await this._pool.query(
         `
         SELECT usersnonzero.id, usersnonzero.address, usersnonzero.profitability, payseizepairs.ctokenidpay, payseizepairs.ctokenidseize
         FROM usersnonzero INNER JOIN payseizepairs ON (usersnonzero.pairid=payseizepairs.id)
-        WHERE usersnonzero.profitability>$1
+        WHERE usersnonzero.profitability>$1 AND usersnonzero.profitability<$2 AND usersnonzero.liquidity<$3
         ORDER BY usersnonzero.liquidity ASC
-        LIMIT $2
+        LIMIT $4
         `,
-        [min_Eth, count]
+        [min_Eth, max_Eth, maxLiquidity, count]
       )
     ).rows;
   }
