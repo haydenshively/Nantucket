@@ -101,6 +101,7 @@ if (cluster.isWorker) {
   // prepare main functionality
   const Main = require("./main");
   let main = null;
+  let previousBlockNumber = 0;
 
   // allow messages from master to configure behavior
   process.on("message", async msg => {
@@ -139,10 +140,19 @@ if (cluster.isWorker) {
             winston.log("error", "🚨 *Block Headers* | " + String(err));
             return;
           }
-
-          if (Number(block.number) % 240 === 0)
+          // make sure block number makes sense & log it every so often
+          const blockNumber = Number(block.number);
+          if (blockNumber - previousBlockNumber > 1)
+            winston.log(
+              "warn",
+              `🚨 *Block Headers* | Skipped ahead by ${blockNumber -
+                previousBlockNumber} blocks`
+            );
+          if (blockNumber % 240 === 0)
             winston.log("info", `☑️ *Block Headers* | ${block.number}`);
+          // perform liquidation logic
           main.onNewBlock.bind(main)(block.number);
+          previousBlockNumber = blockNumber;
         });
         // log losses for debugging purposes
         for (let symbol in Tokens.mainnet) {

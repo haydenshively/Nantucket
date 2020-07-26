@@ -26,7 +26,7 @@ describe("network/webthree/compound || Comptroller Test", () => {
 
   it("should retrieve active markets", () => {
     return Comptroller.mainnet
-      .marketsEnteredBy(process.env.TEST_ACCOUNT_ADDRESS)
+      .marketsEnteredBy(process.env.TEST_ACCOUNT_ADDRESS.toLowerCase())
       .then(result => {
         assert(result.length >= 9);
       });
@@ -34,7 +34,7 @@ describe("network/webthree/compound || Comptroller Test", () => {
 
   it("should retrieve account liquidity", () => {
     return Comptroller.mainnet
-      .accountLiquidityOf(process.env.TEST_ACCOUNT_ADDRESS)
+      .accountLiquidityOf(process.env.TEST_ACCOUNT_ADDRESS.toLowerCase())
       .then(result => {
         assert(result[0].gt(0.0));
         assert(result[1].eq(0.0));

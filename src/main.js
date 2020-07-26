@@ -1,5 +1,6 @@
 const winston = require("winston");
 
+// src
 const Database = require("./database");
 // src.network.webthree
 const Comptroller = require("./network/webthree/compound/comptroller");
@@ -99,7 +100,7 @@ class Main extends Database {
     let uPrices = {};
 
     for (let target of this._liquiCandidates) {
-      // this is pairID 13 and 42 (DAI and SAI). There's no AAVE pool for it.
+      // this is pairID DAI and SAI. There's no AAVE pool for it.
       if (
         target.ctokenidpay == 2 ||
         (target.ctokenidpay == 6 && target.ctokenidseize == 2)
@@ -112,6 +113,13 @@ class Main extends Database {
 
       // check if user can be liquidated
       Comptroller.mainnet.accountLiquidityOf(userAddr).then(async res => {
+        if (res === null) {
+          winston.log(
+            "warn",
+            `🚨 *Proposal ${label}* | Failed to retrieve liquidity and shortfall from Comptroller`
+          );
+          return;
+        }
         // check if target has negative liquidity
         if (res[1].gt(0.0)) {
           // retrieve addresses for pre-computed best repay and seize tokens
