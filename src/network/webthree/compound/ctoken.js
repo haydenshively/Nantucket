@@ -14,12 +14,17 @@ const CWBTCABI = require("../abis/compound/cwbtc.json");
 const CZRXABI = require("../abis/compound/czrx.json");
 
 const FlashLiquidator = require("../goldenage/flashliquidator");
+const PriceOracle = require("./priceoracle");
 
 class CToken extends Contract {
   constructor(address, abi, decimalsOfUnderlying = 18, isCETH = false) {
     super(address, abi);
     this.decimals = "1e" + decimalsOfUnderlying.toString();
     this.isCETH = isCETH;
+  }
+
+  priceInEth() {
+    return PriceOracle.mainnet.getUnderlyingPrice(this);
   }
 
   // Converts ordinary asset to the cToken equivalent (SEND -- uses gas)

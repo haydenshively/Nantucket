@@ -4,7 +4,7 @@ const winston = require("winston");
 const Database = require("./database");
 // src.network.webthree
 const Comptroller = require("./network/webthree/compound/comptroller");
-const PriceOracle = require("./network/webthree/compound/priceoracle");
+const FlashLiquidator = require("./network/webthree/goldenage/flashliquidator");
 const Tokens = require("./network/webthree/compound/ctoken");
 
 class Main extends Database {
@@ -52,6 +52,11 @@ class Main extends Database {
     this._numHighCandidates = Math.floor(numHighCandidates);
 
     this._liquiCandidates = [];
+    this._prepared_tx_data = {
+      borrowers: [],
+      repayCTokens: [],
+      seizeCTokens: []
+    };
   }
 
   async getGasPrice(forHighValueTarget = false) {
@@ -92,117 +97,73 @@ class Main extends Database {
   }
 
   async onNewBlock(blockNumber) {
-    const closeFact = await Comptroller.mainnet.closeFactor();
-    const liqIncent = await Comptroller.mainnet.liquidationIncentive();
     const gasPrice = Number(await web3.eth.getGasPrice()) / 1e9;
     const estTxFee_Eth = gasPrice / 1000;
+    const ethPrice_USD = 1.0 / (await Tokens.mainnet.cUSDC.priceInEth());
 
-    let uPrices = {};
-
-    for (let target of this._liquiCandidates) {
+    for (let i of this._liquiCandidates) {
       // this is pairID DAI and SAI. There's no AAVE pool for it.
-      if (
-        target.ctokenidpay == 2 ||
-        (target.ctokenidpay == 6 && target.ctokenidseize == 2)
-      )
+      if (i.ctokenidpay == 2 || (i.ctokenidpay == 6 && i.ctokenidseize == 2))
         continue;
 
       // get the target user's address as a string
-      const userAddr = "0x" + target.address;
-      const label = userAddr.slice(0, 6);
+      const addr = `0x${i.address}`;
+      const label = addr.slice(0, 6);
 
-      // check if user can be liquidated
-      Comptroller.mainnet.accountLiquidityOf(userAddr).then(async res => {
-        if (res === null) {
-          winston.log(
-            "warn",
-            `🚨 *Proposal ${label}* | Failed to retrieve liquidity and shortfall from Comptroller`
-          );
-          return;
-        }
-        // check if target has negative liquidity
-        if (res[1].gt(0.0)) {
-          // retrieve addresses for pre-computed best repay and seize tokens
-          const repayAddr =
-            "0x" + (await this._tCTokens.getAddress(target.ctokenidpay));
-          const seizeAddr =
-            "0x" + (await this._tCTokens.getAddress(target.ctokenidseize));
-          // if we haven't yet obtained this block's underlying prices for
-          // the tokens in question, get them and store them
-          // (storing them may increase CPU/RAM usage slightly, but it cuts
-          // down on async calls to the Ethereum node)
-          if (!(repayAddr in uPrices))
-            uPrices[repayAddr] = await PriceOracle.mainnet.getUnderlyingPrice(
-              Tokens.mainnetByAddr[repayAddr]
-            );
-          if (!(seizeAddr in uPrices))
-            uPrices[seizeAddr] = await PriceOracle.mainnet.getUnderlyingPrice(
-              Tokens.mainnetByAddr[seizeAddr]
-            );
-          // compute max repayAmnt = uUnitsBorrowed * closeFactor
-          // compute max seizeAmnt = uUnitsSupplied / liquidationIncentive
-          const repayMax = (
-            await Tokens.mainnetByAddr[repayAddr].uUnitsBorrowedBy(userAddr)
-          ).times(closeFact);
-          const seizeMax = (
-            await Tokens.mainnetByAddr[seizeAddr].uUnitsSuppliedBy(userAddr)
-          ).div(liqIncent);
-          // to get safe repayAmnt, compare with seizeAmnt (after converting units)
-          const repayMax_Eth = repayMax.times(uPrices[repayAddr]);
-          const seizeMax_Eth = seizeMax.times(uPrices[seizeAddr]);
+      // get the user's liquidity
+      const liquidity = await Comptroller.mainnet.accountLiquidityOf(addr);
+      if (liquidity === null) {
+        winston.log(
+          "warn",
+          `🚨 *Proposal ${label}* | Failed to retrieve liquidity and shortfall from Comptroller`
+        );
+        continue;
+      }
 
-          const repay_Eth = repayMax_Eth.gt(seizeMax_Eth)
-            ? seizeMax_Eth
-            : repayMax_Eth;
-          let repay = repay_Eth.div(uPrices[repayAddr]);
-          repay = repay.times(0.9999);
+      // check if target has negative liquidity (positive shortfall)
+      if (liquidity[1].gt(0.0)) {
+        // retrieve addresses for pre-computed best repay and seize tokens
+        const repayT = `0x${await this._tCTokens.getAddress(i.ctokenidpay)}`;
+        const seizeT = `0x${await this._tCTokens.getAddress(i.ctokenidseize)}`;
 
-          // make sure revenue meets minimums
-          const revenue = repay_Eth.times(liqIncent.minus(1.0));
-          if (revenue.div(estTxFee_Eth).lte(this._minRevenueFeeRatio)) {
-            winston.log(
-              "warn",
-              `🐳 *Proposal ${label}* | Revenue/Fee ratio too low, token pair likely stale`
-            );
-            return;
-          }
-          winston.log(
-            "info",
-            `🐳 *Proposal ${label}* | Liquidating for ${revenue.toFixed(
-              2
-            )} Eth reward at block ${blockNumber}`
-          );
+        // estimate profit and log it
+        const profit = ethPrice_USD.times(i.profitability - estTxFee_Eth);
+        winston.log(
+          "info",
+          `🐳 *Proposal ${label}* | Liquidating for $${profit.toFixed(
+            2
+          )} profit at block ${blockNumber}`
+        );
 
-          const tx = Tokens.mainnetByAddr[repayAddr].flashLiquidate_uUnits(
-            userAddr,
-            repay,
-            seizeAddr,
-            gasPrice *
-              (target.profitability >= this._highRevenueThresh
-                ? this._feeMaxMultiplier
-                : this._feeMinMultiplier)
-          );
+        const tx = FlashLiquidator.mainnet.liquidateMany(
+          [addr],
+          [repayT],
+          [seizeT],
+          gasPrice *
+            (i.profitability >= this._highRevenueThresh
+              ? this._feeMaxMultiplier
+              : this._feeMinMultiplier)
+        );
 
-          process.send({
-            tx: tx,
-            priority: target.profitability,
-            key: userAddr
-          });
-        }
-      });
+        process.send({
+          tx: tx,
+          priority: i.profitability,
+          key: addr
+        });
+      }
     }
   }
 
   onNewLiquidation(event) {
-    if (event.liquidator == "0xFb3c1a8B2Baa50caF52093d7AF2450a143dbb212")
+    if (event.liquidator == FlashLiquidator.mainnet.address)
       return;
-    const target = event.borrower;
-    const targets = this._liquiCandidates.map(t => "0x" + t.address);
+    const addr = event.borrower;
+    const addrs = this._liquiCandidates.map(t => `0x${t.address}`);
 
-    if (!targets.includes(target.toLowerCase())) {
+    if (!addrs.includes(addr.toLowerCase())) {
       winston.log(
         "info",
-        `⤼ *Liquidate Event* | Didn't liquidate ${target.slice(
+        `⤼ *Liquidate Event* | Didn't liquidate ${addr.slice(
           0,
           6
         )} because they weren't in the candidates list`
@@ -210,7 +171,7 @@ class Main extends Database {
     } else {
       winston.log(
         "warn",
-        `🚨 *Liquidate Event* | Didn't liquidate ${target.slice(
+        `🚨 *Liquidate Event* | Didn't liquidate ${addr.slice(
           0,
           6
         )} based on JS logic (or lost gas bidding war)`

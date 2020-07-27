@@ -29,7 +29,7 @@ class FlashLiquidator extends Contract {
       .liquidateMany(borrowers, repayCTokens, seizeCTokens)
       .encodeABI();
 
-    const gas = String(23 * borrowers.length) + "00000";
+    const gas = String(30 * borrowers.length) + "00000";
     return this.txFor(encodedMethod, gas, gasPrice);
   }
 }
