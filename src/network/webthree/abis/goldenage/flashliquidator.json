@@ -10,11 +10,6 @@
                 "internalType": "address",
                 "name": "_addressProvider",
                 "type": "address"
-            },
-            {
-                "internalType": "address",
-                "name": "_uniswapRouter",
-                "type": "address"
             }
         ],
         "stateMutability": "nonpayable",
@@ -45,6 +40,19 @@
         "outputs": [
             {
                 "internalType": "contract ILendingPoolAddressesProvider",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "view",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "comptroller",
+        "outputs": [
+            {
+                "internalType": "contract Comptroller",
                 "name": "",
                 "type": "address"
             }
@@ -89,12 +97,12 @@
             },
             {
                 "internalType": "address",
-                "name": "_borrowedCToken",
+                "name": "_repayCToken",
                 "type": "address"
             },
             {
                 "internalType": "address",
-                "name": "_collatCToken",
+                "name": "_seizeCToken",
                 "type": "address"
             },
             {
@@ -106,6 +114,42 @@
         "name": "liquidate",
         "outputs": [],
         "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [
+            {
+                "internalType": "address[]",
+                "name": "_borrowers",
+                "type": "address[]"
+            },
+            {
+                "internalType": "address[]",
+                "name": "_repayCTokens",
+                "type": "address[]"
+            },
+            {
+                "internalType": "address[]",
+                "name": "_seizeCTokens",
+                "type": "address[]"
+            }
+        ],
+        "name": "liquidateMany",
+        "outputs": [],
+        "stateMutability": "nonpayable",
+        "type": "function"
+    },
+    {
+        "inputs": [],
+        "name": "priceOracle",
+        "outputs": [
+            {
+                "internalType": "contract PriceOracle",
+                "name": "",
+                "type": "address"
+            }
+        ],
+        "stateMutability": "view",
         "type": "function"
     },
     {

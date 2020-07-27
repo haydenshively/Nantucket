@@ -46,7 +46,7 @@ class CToken extends Contract {
   // CAUTION: #tokens <= #ctokens * exchange_rate <= account_liquidity <= market_liquidity
   withdraw_cUnits(amount, gasPrice) {
     amount = Big(amount)
-      .times(this.decimals)
+      .times(1e8)
       .toFixed(0);
     const hexAmount = web3.utils.toHex(amount);
     const encodedMethod = this.contract.methods.redeem(hexAmount).encodeABI();
@@ -104,30 +104,22 @@ class CToken extends Contract {
   // Returns the current exchange_rate (CALL -- no gas needed)
   // exchange_rate = (uUnitsInContract() + uUnitsLoanedOut() - totalReserves()) / cUnitsInCirculation()
   async exchangeRate() {
-    return Big(await this.contract.methods.exchangeRateCurrent().call())
-      .div(this.decimals)
-      .div(1e10);
+    return Big(await this.contract.methods.exchangeRateCurrent().call());
   }
 
   // Returns the current borrow rate per block (CALL -- no gas needed)
   async borrowRate() {
-    return Big(await this.contract.methods.borrowRatePerBlock().call()).div(
-      this.decimals
-    );
+    return Big(await this.contract.methods.borrowRatePerBlock().call());
   }
 
   // Returns the current supply rate per block (CALL -- no gas needed)
   async supplyRate() {
-    return Big(await this.contract.methods.supplyRatePerBlock().call()).div(
-      this.decimals
-    );
+    return Big(await this.contract.methods.supplyRatePerBlock().call());
   }
 
   // Returns the total amount of cTokens currently in circulation (CALL -- no gas needed)
   async cUnitsInCirculation() {
-    return Big(await this.contract.methods.totalSupply().call())
-      .times(1e10)
-      .div(this.decimals);
+    return Big(await this.contract.methods.totalSupply().call());
   }
 
   // Returns the total amount of ordinary asset that the contract owns (CALL -- no gas needed)

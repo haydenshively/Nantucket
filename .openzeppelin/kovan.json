@@ -104,6 +104,13 @@
         "admin": "0x415e60Bd397D57641fee1fad64E75338978Ce24B",
         "kind": "Upgradeable"
       }
+    ],
+    "Flash Loan Liquidation/FlashLiquidator": [
+      {
+        "address": "0xBf72784347772BE402b2C3C1C45ea9946AD02eA7",
+        "kind": "NonProxy",
+        "bytecodeHash": "78314b666beddcb285d7080ebce7e92f7f6ca2a73d7e643118dba189ee8c42f1"
+      }
     ]
   },
   "manifestVersion": "2.2",

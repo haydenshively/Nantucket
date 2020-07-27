@@ -166,6 +166,17 @@ if (cluster.isWorker) {
             main.onNewLiquidation.bind(main)(event);
           });
         }
+
+        const OracleV1 = require("./network/webthree/compound/oraclev1")
+        OracleV1.mainnet.onNewPendingEvent("PricePosted").on("data", (event) => {
+          console.log(`Tx index: ${event.transactionIndex}`);
+          web3.eth.getTransaction(event.transactionHash).then(tx => {
+            web3.eth.getGasPrice().then(price => {
+              console.log(`Ratio: ${tx.gasPrice / price}`);
+            });
+          });
+        });
+
         break;
     }
   });

@@ -46,9 +46,22 @@ class SmartContract {
           result.data,
           result.topics.slice(1)
         );
+        console.log(result);
         callback(error, eventObj);
       }
     );
+  }
+
+  onNewPendingEvent(eventName) {
+    /*
+    .on("connected", (subscriptionID) => {})
+    .on("changed", (event) => {}) // event.removed = true
+    .on("error", (error, receipt) => {}) // receipt only present if failed on-chain
+    .on("data", (event) => {}) // event.removed = undefined
+    */
+    return this.contract.events[eventName]({
+      fromBlock: "pending"
+    });
   }
 }
 
