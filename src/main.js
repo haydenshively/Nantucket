@@ -1,9 +1,11 @@
 const winston = require("winston");
 
 // src
+const Candidate = require("./candidate");
 const Database = require("./database");
+// src.network.web
+const Tickers = require("./network/web/coinbase/ticker");
 // src.network.webthree
-const Comptroller = require("./network/webthree/compound/comptroller");
 const FlashLiquidator = require("./network/webthree/goldenage/flashliquidator");
 const Tokens = require("./network/webthree/compound/ctoken");
 
@@ -52,11 +54,7 @@ class Main extends Database {
     this._numHighCandidates = Math.floor(numHighCandidates);
 
     this._liquiCandidates = [];
-    this._prepared_tx_data = {
-      borrowers: [],
-      repayCTokens: [],
-      seizeCTokens: []
-    };
+    this._prepared_tx_data = [];
   }
 
   async getGasPrice(forHighValueTarget = false) {
@@ -77,8 +75,14 @@ class Main extends Database {
   }
 
   async _liquiCandidatesConcat(count, min_Eth, max_Eth = 100000) {
+    const cs = await this._tUsers.getLiquidationCandidates(
+      count,
+      min_Eth,
+      max_Eth,
+      1.15
+    );
     this._liquiCandidates = this._liquiCandidates.concat(
-      await this._tUsers.getLiquidationCandidates(count, min_Eth, max_Eth, 1.15)
+      cs.map(c => new Candidate(c))
     );
   }
 
@@ -98,45 +102,33 @@ class Main extends Database {
 
   async onNewBlock(blockNumber) {
     const gasPrice = Number(await web3.eth.getGasPrice()) / 1e9;
-    const estTxFee_Eth = gasPrice / 1000;
-    const ethPrice_USD = 1.0 / (await Tokens.mainnet.cUSDC.priceInEth());
+    const estTxFee_Eth = (gasPrice * 2) / 1000;
+    const ethPrice_USD =
+      1.0 / (await Tokens.mainnet.cUSDC.priceInEth()).toFixed(8);
+
+    this._prepared_tx_data = [];
 
     for (let i of this._liquiCandidates) {
       // this is pairID DAI and SAI. There's no AAVE pool for it.
       if (i.ctokenidpay == 2 || (i.ctokenidpay == 6 && i.ctokenidseize == 2))
         continue;
 
-      // get the target user's address as a string
-      const addr = `0x${i.address}`;
-      const label = addr.slice(0, 6);
+      // retrieve addresses for pre-computed best repay and seize tokens
+      const repayT = `0x${await this._tCTokens.getAddress(i.ctokenidpay)}`;
+      const seizeT = `0x${await this._tCTokens.getAddress(i.ctokenidseize)}`;
 
-      // get the user's liquidity
-      const liquidity = await Comptroller.mainnet.accountLiquidityOf(addr);
-      if (liquidity === null) {
-        winston.log(
-          "warn",
-          `🚨 *Proposal ${label}* | Failed to retrieve liquidity and shortfall from Comptroller`
-        );
-        continue;
-      }
-
-      // check if target has negative liquidity (positive shortfall)
-      if (liquidity[1].gt(0.0)) {
-        // retrieve addresses for pre-computed best repay and seize tokens
-        const repayT = `0x${await this._tCTokens.getAddress(i.ctokenidpay)}`;
-        const seizeT = `0x${await this._tCTokens.getAddress(i.ctokenidseize)}`;
-
+      if (await i.isLiquidatable()) {
         // estimate profit and log it
-        const profit = ethPrice_USD.times(i.profitability - estTxFee_Eth);
+        const profit = ethPrice_USD * (i.profitability - estTxFee_Eth);
         winston.log(
           "info",
-          `🐳 *Proposal ${label}* | Liquidating for $${profit.toFixed(
+          `🐳 *Proposal ${i.label}* | Liquidating for $${profit.toFixed(
             2
           )} profit at block ${blockNumber}`
         );
 
         const tx = FlashLiquidator.mainnet.liquidateMany(
-          [addr],
+          [i.address],
           [repayT],
           [seizeT],
           gasPrice *
@@ -148,15 +140,68 @@ class Main extends Database {
         process.send({
           tx: tx,
           priority: i.profitability,
-          key: addr
+          key: i.address
+        });
+      } else if (i.liquidityOffChain(Tickers.mainnet) < 0.0) {
+        // estimate profit and log it
+        const profit = ethPrice_USD.times(i.profitability - estTxFee_Eth);
+        winston.log(
+          "info",
+          `🌊 *Proposal ${
+            i.label
+          }* | Will try to liquidate for $${profit.toFixed(
+            2
+          )} profit on next price update`
+        );
+
+        this._prepared_tx_data.push({
+          borrower: i.address,
+          repayCToken: repayT,
+          seizeCToken: seizeT
         });
       }
     }
+
+    Tickers.mainnet.update();
+  }
+
+  onNewPricesOnChain(oracleTx) {
+    if (this._prepared_tx_data.length === 0) return;
+    this._prepared_tx_data = this._prepared_tx_data.slice(0, 6);
+
+    const borrowers = this._prepared_tx_data.map(d => d.borrower);
+    const repayCTokens = this._prepared_tx_data.map(d => d.repayCToken);
+    const seizeCTokens = this._prepared_tx_data.map(d => d.seizeCToken);
+
+    this._prepared_tx_data = [];
+
+    const txA = FlashLiquidator.mainnet.liquidateMany(
+      borrowers,
+      repayCTokens,
+      seizeCTokens,
+      oracleTx.gasPrice / 1e9
+    );
+    const txB = FlashLiquidator.mainnet.liquidateMany(
+      borrowers,
+      repayCTokens,
+      seizeCTokens,
+      (oracleTx.gasPrice + 100) / 1e9
+    );
+
+    process.send({
+      tx: txB,
+      priority: 1001,
+      key: borrowers[1]
+    });
+    process.send({
+      tx: txA,
+      priority: 1000,
+      key: borrowers[0]
+    });
   }
 
   onNewLiquidation(event) {
-    if (event.liquidator == FlashLiquidator.mainnet.address)
-      return;
+    if (event.liquidator == FlashLiquidator.mainnet.address) return;
     const addr = event.borrower;
     const addrs = this._liquiCandidates.map(t => `0x${t.address}`);
 

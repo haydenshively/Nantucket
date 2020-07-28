@@ -103,6 +103,8 @@ if (cluster.isWorker) {
   let main = null;
   let previousBlockNumber = 0;
 
+  const OracleV1 = require("./network/webthree/compound/oraclev1");
+
   // allow messages from master to configure behavior
   process.on("message", async msg => {
     if (main !== null) {
@@ -167,15 +169,15 @@ if (cluster.isWorker) {
           });
         }
 
-        // const OracleV1 = require("./network/webthree/compound/oraclev1")
-        // OracleV1.mainnet.onNewPendingEvent("PricePosted").on("data", (event) => {
-        //   console.log(`Tx index: ${event.transactionIndex}`);
-        //   web3.eth.getTransaction(event.transactionHash).then(tx => {
-        //     web3.eth.getGasPrice().then(price => {
-        //       console.log(`Ratio: ${tx.gasPrice / price}`);
-        //     });
-        //   });
-        // });
+        OracleV1.mainnet.onNewPendingEvent("PricePosted").on("data", event => {
+          winston.log(
+            "info",
+            `🏷 *Prices Posted* | block index ${event.transactionIndex}`
+          );
+          web3.eth.getTransaction(event.transactionHash).then(tx => {
+            main.onNewPricesOnChain.bind(main)(tx);
+          });
+        });
 
         break;
     }
