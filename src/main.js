@@ -66,7 +66,7 @@ class Main extends Database {
     );
   }
 
-  async getTxFee_Eth(forHighValueTarget = false, gas = 1000000) {
+  async getTxFee_Eth(forHighValueTarget = false, gas = 2000000) {
     return (await this.getGasPrice(forHighValueTarget)) * (gas / 1e9);
   }
 
@@ -101,12 +101,15 @@ class Main extends Database {
   }
 
   async onNewBlock(blockNumber) {
+    const oldNumInPriceWave = this._prepared_tx_data.length;
+    this._prepared_tx_data = [];
+
     const gasPrice = Number(await web3.eth.getGasPrice()) / 1e9;
-    const estTxFee_Eth = (gasPrice * 2) / 1000;
+    const estTxFee_Eth = gasPrice / 500;
     const ethPrice_USD =
       1.0 / (await Tokens.mainnet.cUSDC.priceInEth()).toFixed(8);
 
-    this._prepared_tx_data = [];
+    let totalProfit = 0.0;
 
     for (let i of this._liquiCandidates) {
       // this is pairID DAI and SAI. There's no AAVE pool for it.
@@ -142,17 +145,8 @@ class Main extends Database {
           priority: i.profitability,
           key: i.address
         });
-      } else if (i.liquidityOffChain(Tickers.mainnet) < 0.0) {
-        // estimate profit and log it
-        const profit = ethPrice_USD.times(i.profitability - estTxFee_Eth);
-        winston.log(
-          "info",
-          `🌊 *Proposal ${
-            i.label
-          }* | Will try to liquidate for $${profit.toFixed(
-            2
-          )} profit on next price update`
-        );
+      } else if ((await i.liquidityOffChain(Tickers.mainnet)) < 0.0) {
+        totalProfit += ethPrice_USD * (i.profitability - estTxFee_Eth);
 
         this._prepared_tx_data.push({
           borrower: i.address,
@@ -163,10 +157,34 @@ class Main extends Database {
     }
 
     Tickers.mainnet.update();
+
+    const newNumInPriceWave = this._prepared_tx_data.length;
+    if (oldNumInPriceWave === newNumInPriceWave) return;
+    if (oldNumInPriceWave > newNumInPriceWave)
+      winston.log(
+        "info",
+        `🌊 *Price Wave* | Removed ${oldNumInPriceWave -
+          newNumInPriceWave} candidates for a new total profit of $${totalProfit.toFixed(
+          2
+        )} if prices get posted`
+      );
+    else
+      winston.log(
+        "info",
+        `🌊 *Price Wave* | Added ${newNumInPriceWave -
+          oldNumInPriceWave} candidates for a new total profit of $${totalProfit.toFixed(
+          2
+        )} if prices get posted`
+      );
   }
 
   onNewPricesOnChain(oracleTx) {
+    winston.log(
+      "info",
+      `🏷 *Prices Posted* | ${this._prepared_tx_data.length} item(s) in wave queue`
+    );
     if (this._prepared_tx_data.length === 0) return;
+
     this._prepared_tx_data = this._prepared_tx_data.slice(0, 6);
 
     const borrowers = this._prepared_tx_data.map(d => d.borrower);
@@ -203,15 +221,17 @@ class Main extends Database {
   onNewLiquidation(event) {
     if (event.liquidator == FlashLiquidator.mainnet.address) return;
     const addr = event.borrower;
-    const addrs = this._liquiCandidates.map(t => `0x${t.address}`);
+    const candidate = this._liquiCandidates.filter(
+      c => c.address === addr.toLowerCase()
+    );
 
-    if (!addrs.includes(addr.toLowerCase())) {
+    if (candidate.length === 0) {
       winston.log(
         "info",
         `⤼ *Liquidate Event* | Didn't liquidate ${addr.slice(
           0,
           6
-        )} because they weren't in the candidates list`
+        )} because they weren't a candidate.`
       );
     } else {
       winston.log(
@@ -219,7 +239,7 @@ class Main extends Database {
         `🚨 *Liquidate Event* | Didn't liquidate ${addr.slice(
           0,
           6
-        )} based on JS logic (or lost gas bidding war)`
+        )} due to bad logic (or gas war). In list ${candidate.length} times`
       );
     }
   }

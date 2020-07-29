@@ -170,10 +170,6 @@ if (cluster.isWorker) {
         }
 
         OracleV1.mainnet.onNewPendingEvent("PricePosted").on("data", event => {
-          winston.log(
-            "info",
-            `🏷 *Prices Posted* | block index ${event.transactionIndex}`
-          );
           web3.eth.getTransaction(event.transactionHash).then(tx => {
             main.onNewPricesOnChain.bind(main)(tx);
           });

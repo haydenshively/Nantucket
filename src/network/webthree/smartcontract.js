@@ -46,7 +46,6 @@ class SmartContract {
           result.data,
           result.topics.slice(1)
         );
-        console.log(result);
         callback(error, eventObj);
       }
     );

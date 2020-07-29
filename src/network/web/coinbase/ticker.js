@@ -16,7 +16,12 @@ class Ticker extends Oracle {
       process.env.COINBASE_ENDPOINT + `/products/${withConfig}/ticker`,
       { method: "GET" }
     );
-    const json = await res.json();
+    let json = {};
+    try {
+      json = await res.json();
+    } catch {
+      console.log("Coinbase fetch failed. Error converting JSON");
+    }
     if (json.message === "NotFound") {
       switch (withConfig) {
         case "SAI-USD":
@@ -42,11 +47,12 @@ class Ticker extends Oracle {
       this._prices[token.address] = json.price;
       this._counter = (this._counter + 1) % this._tokens.length;
 
-      if (this._counter !== 0) setTimeout(this.update.bind(this), 334);
+      if (this._counter !== 0) setTimeout(this.update.bind(this), 350);
     });
   }
 
   getPrice(tokenAddress) {
+    tokenAddress = tokenAddress.toLowerCase();
     if (
       this._prices[tokenAddress] === undefined ||
       this._prices["0x4ddc2d193948926d02f9b1fe9e1daa0718270ed5"] === undefined

@@ -45,10 +45,10 @@ class TableUsers {
     for (let account of accounts) {
       let supply = 0.0;
       let borrow = 0.0;
-      let bestAssetToClose = null;
-      let bestAssetToSeize = null;
-      let closableMax_Eth = 0.0;
-      let seizableMax_Eth = 0.0;
+      let bestAssetToClose = [null, null];
+      let bestAssetToSeize = [null, null];
+      let closableMax_Eth = [0.0, 0.0];
+      let seizableMax_Eth = [0.0, 0.0];
 
       for (let token of account.tokens) {
         const borrow_uUnits = Number(token.borrowBalanceUnderlying());
@@ -68,33 +68,75 @@ class TableUsers {
         const seizableAmount_Eth =
           (supply_uUnits * costineth) / liquidationIncentive;
 
-        if (closableAmount_Eth > closableMax_Eth) {
-          closableMax_Eth = closableAmount_Eth;
-          bestAssetToClose = cTokenID;
+        if (closableMax_Eth[0] < closableAmount_Eth) {
+          closableMax_Eth = [closableAmount_Eth, closableMax_Eth[0]];
+          bestAssetToClose = [cTokenID, bestAssetToClose[0]];
+        } else if (closableMax_Eth[1] < closableAmount_Eth) {
+          closableMax_Eth[1] = closableAmount_Eth;
+          bestAssetToClose[1] = cTokenID;
         }
-        if (seizableAmount_Eth > seizableMax_Eth) {
-          seizableMax_Eth = seizableAmount_Eth;
-          bestAssetToSeize = cTokenID;
+
+        if (seizableMax_Eth[0] < seizableAmount_Eth) {
+          seizableMax_Eth = [seizableAmount_Eth, seizableMax_Eth[0]];
+          bestAssetToSeize = [cTokenID, bestAssetToSeize[0]];
+        } else if (seizableMax_Eth[1] < seizableAmount_Eth) {
+          seizableMax_Eth[1] = seizableAmount_Eth;
+          bestAssetToSeize[1] = cTokenID;
         }
+      }
+
+      const isV2Token =
+        bestAssetToClose[0] !== bestAssetToSeize[0] ||
+        ["6", "9"].includes(String(bestAssetToClose[0]));
+
+      let pairID = null;
+      let profitability = 0;
+
+      if (bestAssetToClose[0] !== null && bestAssetToSeize[0] !== null) {
+        const closeIdx = Number(
+          !isV2Token && bestAssetToClose[1] > bestAssetToSeize[1]
+        );
+        const seizeIdx = Number(isV2Token ? false : !closeIdx);
+
+        bestAssetToClose = bestAssetToClose[closeIdx];
+        bestAssetToSeize = bestAssetToSeize[seizeIdx];
+        closableMax_Eth = closableMax_Eth[closeIdx];
+        seizableMax_Eth = seizableMax_Eth[seizeIdx];
+
+        // if (isV2Token) {
+        //   // V2 tokens allow for repaying/seizing the same asset
+        //   bestAssetToClose = bestAssetToClose[0];
+        //   bestAssetToSeize = bestAssetToSeize[0];
+        //   closableMax_Eth = closableMax_Eth[0];
+        //   seizableMax_Eth = seizableMax_Eth[0];
+        // } else {
+        //   // V1 tokens don't
+        //   if (bestAssetToClose[1] > bestAssetToSeize[1]) {
+        //     bestAssetToClose = bestAssetToClose[1];
+        //     bestAssetToSeize = bestAssetToSeize[0];
+        //     closableMax_Eth = closableMax_Eth[1];
+        //     seizableMax_Eth = closableMax_Eth[0];
+        //   } else {
+        //     bestAssetToClose = bestAssetToClose[0];
+        //     bestAssetToSeize = bestAssetToSeize[1];
+        //     closableMax_Eth = closableMax_Eth[0];
+        //     seizableMax_Eth = closableMax_Eth[1];
+        //   }
+        // }
+
+        pairID = await this._tablePaySeizePairs.getID(
+          bestAssetToClose,
+          bestAssetToSeize
+        );
+        profitability =
+          Math.min(closableMax_Eth, seizableMax_Eth) *
+          (liquidationIncentive - 1.0);
       }
 
       // const liquidity = supply - borrow;
       let liquidity = supply / borrow; // really "health"
       if (!isFinite(liquidity)) liquidity = 1000;
       if (liquidity > 1000) liquidity = 1000;
-      const profitability =
-        Math.min(closableMax_Eth, seizableMax_Eth) *
-        (liquidationIncentive - 1.0);
-
-      let pairID;
-      if (bestAssetToClose === null || bestAssetToSeize === null) {
-        pairID = null;
-      } else {
-        pairID = await this._tablePaySeizePairs.getID(
-          bestAssetToClose,
-          bestAssetToSeize
-        );
-      }
 
       await this.upsert(
         account.address().slice(2),

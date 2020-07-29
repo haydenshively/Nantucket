@@ -21,9 +21,9 @@ class Candidate {
       const token = Tokens.mainnetByAddr[addr.toLowerCase()];
       markets.push({
         address: addr,
-        borrow_uUnits: await token.uUnitsBorrowedBy(this.address),
-        supply_uUnits: await token.uUnitsSuppliedBy(this.address),
-        collat: await Comptroller.mainnet.collateralFactorFor(token)
+        borrow_uUnits: Number(await token.uUnitsBorrowedBy(this.address)),
+        supply_uUnits: Number(await token.uUnitsSuppliedBy(this.address)),
+        collat: Number(await Comptroller.mainnet.collateralFactorFor(token))
       });
     }
 
@@ -38,10 +38,10 @@ class Candidate {
 
     for (let market of this._markets) {
       const costInEth = await oracle.getPrice(market.address);
-      if (costInEth === null) continue; 
+      if (costInEth === null) return 0; 
 
-      borrow += market.borrow_uUnits.times(costInEth);
-      supply += market.supply_uUnits.times(costInEth).times(market.collat);
+      borrow += market.borrow_uUnits * costInEth;
+      supply += market.supply_uUnits * costInEth * market.collat;
     }
 
     return supply - borrow;
