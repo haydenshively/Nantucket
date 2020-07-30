@@ -164,7 +164,7 @@ class Main extends Database {
       winston.log(
         "info",
         `🌊 *Price Wave* | Removed ${oldNumInPriceWave -
-          newNumInPriceWave} candidates for a new total profit of $${totalProfit.toFixed(
+          newNumInPriceWave} candidate(s) for a new total profit of $${totalProfit.toFixed(
           2
         )} if prices get posted`
       );
@@ -172,7 +172,7 @@ class Main extends Database {
       winston.log(
         "info",
         `🌊 *Price Wave* | Added ${newNumInPriceWave -
-          oldNumInPriceWave} candidates for a new total profit of $${totalProfit.toFixed(
+          oldNumInPriceWave} candidate(s) for a new total profit of $${totalProfit.toFixed(
           2
         )} if prices get posted`
       );

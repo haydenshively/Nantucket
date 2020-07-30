@@ -78,7 +78,7 @@ if (cluster.isMaster) {
       });
       workers[1].send({
         desiredType: "webthree",
-        args: [1.2, 5.0, 1.5, 10, 13.0, 13.0, 100, 0]
+        args: [1.2, 20.0, 1.5, 10, 13.0, 13.0, 100, 0]
       });
       workers[2].send({
         desiredType: "webthree",
@@ -169,11 +169,12 @@ if (cluster.isWorker) {
           });
         }
 
-        OracleV1.mainnet.onNewPendingEvent("PricePosted").on("data", event => {
-          web3.eth.getTransaction(event.transactionHash).then(tx => {
+        OracleV1.mainnet
+          .onNewPendingEvent("PricePosted")
+          .on("data", async event => {
+            tx = await web3.eth.getTransaction(event.transactionHash);
             main.onNewPricesOnChain.bind(main)(tx);
           });
-        });
 
         break;
     }
