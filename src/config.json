@@ -1,0 +1,49 @@
+{
+  "txManagers": {
+    "A": {
+      "envKeyAddress": "ACCOUNT_ADDRESS_A",
+      "envKeySecret": "ACCOUNT_SECRET_A",
+      "maxInProgressTxs": 5
+    },
+    "B": {
+      "envKeyAddress": "ACCOUNT_ADDRESS_B",
+      "envKeySecret": "ACCOUNT_SECRET_B",
+      "maxInProgressTxs": 5
+    }
+  },
+  "txTimeoutMS": 60000,
+  "liquidators": [
+    {
+      "gasPriceMultiplier": 1.2,
+      "minRevenue": 1,
+      "maxRevenue": 9,
+      "maxHealth": null,
+      "numCandidates": 40,
+      "txManager": "B"
+    },
+    {
+      "gasPriceMultiplier": 5.0,
+      "minRevenue": 9,
+      "maxRevenue": 20,
+      "maxHealth": null,
+      "numCandidates": 50,
+      "txManager": "B"
+    },
+    {
+      "gasPriceMultiplier": 10.0,
+      "minRevenue": 20,
+      "maxRevenue": 50,
+      "maxHealth": null,
+      "numCandidates": 60,
+      "txManager": "B"
+    },
+    {
+      "gasPriceMultiplier": 100.0,
+      "minRevenue": 50,
+      "maxRevenue": null,
+      "maxHealth": null,
+      "numCandidates": 100,
+      "txManager": "A"
+    }
+  ]
+}

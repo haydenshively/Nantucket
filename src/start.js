@@ -1,90 +1,95 @@
 require("dotenv").config();
+require("./setup");
 
 const cluster = require("cluster");
+const winston = require("winston");
+
+const Main = require("./main");
+const Oracle = require("./network/webthree/compound/oraclev1");
+const Tokens = require("./network/webthree/compound/ctoken");
+const TxManager = require("./network/webthree/txmanager");
+
+const config = require("./config.json");
 
 async function sleep(millis) {
   return new Promise(resolve => setTimeout(resolve, millis));
 }
 
-// configure web3
-const Web3 = require("web3");
-if (process.env.WEB3_PROVIDER.endsWith(".ipc")) {
-  net = require("net");
-  global.web3 = new Web3(process.env.WEB3_PROVIDER, net);
-} else {
-  global.web3 = new Web3(process.env.WEB3_PROVIDER);
-}
-
-// configure winston
-const winston = require("winston");
-const SlackHook = require("../src/logging/slackhook");
-winston.configure({
-  format: winston.format.combine(
-    winston.format.splat(),
-    winston.format.simple()
-  ),
-  transports: [
-    new winston.transports.Console({ handleExceptions: true }),
-    new SlackHook({
-      level: "info",
-      webhookUrl: process.env.SLACK_WEBHOOK,
-      mrkdwn: true
-    })
-  ],
-  exitOnError: false
-});
-
 if (cluster.isMaster) {
   console.log(`Master ${process.pid} is running`);
-  const TxManager = require("./network/webthree/txmanager");
 
   // configure TxManagers
-  const txManagerA = new TxManager(
-    "ACCOUNT_PUBLIC_KEY_A",
-    "ACCOUNT_PRIVATE_KEY_A",
-    5
-  );
-  const txManagerB = new TxManager(
-    "ACCOUNT_PUBLIC_KEY_B",
-    "ACCOUNT_PRIVATE_KEY_B",
-    5
-  );
+  let txManagers = config.txManagers;
+  for (key in txManagers) {
+    txManagers[key] = new TxManager(
+      txManagers[key].envKeyAddress,
+      txManagers[key].envKeySecret,
+      txManagers[key].maxInProgressTxs
+    );
+    // this property isn't there by default
+    txManagers[key].liquidators = [];
+  }
 
   const numCPUs = require("os").cpus().length;
-  if (numCPUs < 4) {
-    console.error("Nantucket requires at least 3 CPU cores");
+  if (numCPUs < config.liquidators.length + 1) {
+    console.error("Nantucket requires more CPU cores for this config");
     process.exit();
   }
 
   let workers = [];
-  // worker #1 just pulls data from AccountService and cTokenService
+  // worker 0 just pulls data from AccountService and cTokenService
   workers.push(cluster.fork());
-  // worker #2 watches high-value accounts
-  workers.push(cluster.fork());
-  workers[1].on("message", msg => {
-    txManagerA.insert(msg.tx, msg.priority, 60000, true, msg.key);
+  workers[0].send({
+    desiredType: "web",
+    args: [0, 0, 0, 0, 0, 0]
   });
-  // worker #3 watches mid-range accounts
-  workers.push(cluster.fork());
-  workers[2].on("message", msg => {
-    txManagerB.insert(msg.tx, msg.priority, 60000, true, msg.key);
+  // other workers watch accounts and liquidate
+  let i = 1;
+  for (let liquidator of config.liquidators) {
+    workers.push(cluster.fork());
+    workers[i].on("message", msg => {
+      txManagers[liquidator.txManager].insert(
+        msg.tx,
+        msg.priority,
+        config.txTimeoutMS,
+        true,
+        msg.key
+      );
+    });
+    txManagers[liquidator.txManager].liquidators.push(i - 1);
+    i++;
+  }
+
+  const onTxManagerInits = config.liquidators.map((liquidator, i) => {
+    return () => {
+      workers[i + 1].send({
+        desiredType: "webthree",
+        args: [
+          liquidator.gasPriceMultiplier,
+          liquidator.minRevenue,
+          liquidator.maxRevenue,
+          liquidator.maxHealth,
+          liquidator.numCandidates,
+          i * 15
+        ]
+      });
+    };
   });
 
-  txManagerA.init().then(() => {
-    txManagerB.init().then(() => {
-      workers[0].send({
-        desiredType: "web",
-        args: [0, 0, 0, 0, 0, 0, 0]
-      });
-      workers[1].send({
-        desiredType: "webthree",
-        args: [1.2, 5.0, 1.5, 10, 13.0, 13.0, 100, 0]
-      });
-      workers[2].send({
-        desiredType: "webthree",
-        args: [1.5, 2.0, 1.5, 10, 1.0, 1.0, 100, 15]
-      });
+  for (key in txManagers) {
+    const txManager = txManagers[key];
+    txManager.init().then(() => {
+      for (let i of txManager.liquidators) onTxManagerInits[i]();
     });
+  }
+
+  web3.eth.subscribe("newBlockHeaders", (err, block) => {
+    if (err) {
+      winston.log("error", "🚨 *Block Headers* | " + String(err));
+      return;
+    }
+    if (block.number % 240 === 0)
+      winston.log("info", `☑️ *Block Headers* | ${block.number}`);
   });
 
   process.on("SIGINT", () => {
@@ -96,14 +101,8 @@ if (cluster.isMaster) {
 
 if (cluster.isWorker) {
   console.log(`Worker ${process.pid} is running`);
-  const Tokens = require("./network/webthree/compound/ctoken");
 
-  // prepare main functionality
-  const Main = require("./main");
   let main = null;
-  let previousBlockNumber = 0;
-
-  const OracleV1 = require("./network/webthree/compound/oraclev1");
 
   // allow messages from master to configure behavior
   process.on("message", async msg => {
@@ -113,16 +112,8 @@ if (cluster.isWorker) {
     }
 
     const args = msg.args;
-    main = new Main(
-      args[0],
-      args[1],
-      args[2],
-      args[3],
-      args[4],
-      args[5],
-      args[6]
-    );
-    if (args[7] > 0) await sleep(args[7] * 1000);
+    main = new Main(args[0], args[1], args[2], args[3], args[4]);
+    if (args[5] > 0) await sleep(args[5] * 1000);
 
     switch (msg.desiredType) {
       case "web":
@@ -133,28 +124,14 @@ if (cluster.isWorker) {
 
       case "webthree":
         // populate liquidation candidate list immediately
-        main.updateLiquidationCandidates.bind(main)();
+        main.updateCandidates.bind(main)();
         // also schedule it to run repeatedly
-        setInterval(main.updateLiquidationCandidates.bind(main), 5 * 60 * 1000);
+        setInterval(main.updateCandidates.bind(main), 5 * 60 * 1000);
         // check on candidates every block
         web3.eth.subscribe("newBlockHeaders", (err, block) => {
-          if (err) {
-            winston.log("error", "🚨 *Block Headers* | " + String(err));
-            return;
-          }
-          // make sure block number makes sense & log it every so often
-          const blockNumber = Number(block.number);
-          if (blockNumber - previousBlockNumber > 1)
-            winston.log(
-              "warn",
-              `🚨 *Block Headers* | Skipped ahead by ${blockNumber -
-                previousBlockNumber} blocks`
-            );
-          if (blockNumber % 240 === 0)
-            winston.log("info", `☑️ *Block Headers* | ${block.number}`);
-          // perform liquidation logic
+          if (err) return;
+
           main.onNewBlock.bind(main)(block.number);
-          previousBlockNumber = blockNumber;
         });
         // log losses for debugging purposes
         for (let symbol in Tokens.mainnet) {
@@ -169,12 +146,12 @@ if (cluster.isWorker) {
           });
         }
 
-        OracleV1.mainnet.onNewPendingEvent("PricePosted").on("data", event => {
-          web3.eth.getTransaction(event.transactionHash).then(tx => {
+        Oracle.mainnet
+          .onNewPendingEvent("PricePosted")
+          .on("data", async event => {
+            tx = await web3.eth.getTransaction(event.transactionHash);
             main.onNewPricesOnChain.bind(main)(tx);
           });
-        });
-
         break;
     }
   });
