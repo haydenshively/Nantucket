@@ -42,7 +42,7 @@ class Main extends Database {
     this._numCandidates = Math.floor(numCandidates);
 
     this._candidates = [];
-    this._prepared_tx_data = [];
+    this._prepared_tx_data = {};
   }
 
   async getGasPrice_Gwei() {
@@ -67,15 +67,10 @@ class Main extends Database {
   }
 
   async onNewBlock(blockNumber) {
-    const oldNumInPriceWave = this._prepared_tx_data.length;
-    this._prepared_tx_data = [];
-
     const gasPrice_Gwei = await this.getGasPrice_Gwei();
     const estTxFee_Eth = await this.getTxFee_Eth(undefined, gasPrice_Gwei);
     const ethPrice_USD =
       1.0 / (await Tokens.mainnet.cUSDC.priceInEth()).toFixed(8);
-
-    let totalProfit = 0.0;
 
     for (let i of this._candidates) {
       // this is pairID DAI and SAI. There's no AAVE pool for it.
@@ -113,63 +108,55 @@ class Main extends Database {
       }
       // liquidatable off-chain
       else if ((await i.liquidityOffChain(Tickers.mainnet)) < 0.0) {
-        totalProfit += ethPrice_USD * (i.profitability - estTxFee_Eth);
+        const profit = ethPrice_USD * (i.profitability - estTxFee_Eth);
+        if (profit < 0) continue;
 
-        this._prepared_tx_data.push({
-          borrower: i.address,
+        if (!(i.address in this._prepared_tx_data))
+          winston.log(
+            "info",
+            `🌊 *Price Wave* | Added ${i.label} for $${profit.toFixed(
+              2
+            )} profit if prices get posted`
+          );
+
+        this._prepared_tx_data[i.address] = {
           repayCToken: repay,
           seizeCToken: seize
-        });
+        };
       }
     }
 
     Tickers.mainnet.update();
-
-    const newNumInPriceWave = this._prepared_tx_data.length;
-    if (oldNumInPriceWave === newNumInPriceWave) return;
-    if (oldNumInPriceWave > newNumInPriceWave)
-      winston.log(
-        "info",
-        `🌊 *Price Wave* | Removed ${oldNumInPriceWave -
-          newNumInPriceWave} candidate(s) for a new total profit of $${totalProfit.toFixed(
-          2
-        )} if prices get posted`
-      );
-    else
-      winston.log(
-        "info",
-        `🌊 *Price Wave* | Added ${newNumInPriceWave -
-          oldNumInPriceWave} candidate(s) for a new total profit of $${totalProfit.toFixed(
-          2
-        )} if prices get posted`
-      );
   }
 
   onNewPricesOnChain(oracleTx) {
-    if (this._prepared_tx_data.length === 0) return;
+    let borrowers = [];
+    let repayCTokens = [];
+    let seizeCTokens = [];
+    for (let address in this._prepared_tx_data) {
+      borrowers.push(address);
+      repayCTokens.push(this._prepared_tx_data[address].repayCToken);
+      seizeCTokens.push(this._prepared_tx_data[address].seizeCToken);
+    }
+    this._prepared_tx_data = {};
+    if (borrowers.length === 0) return;
+
     winston.log(
       "info",
-      `🏷 *Prices Posted* | ${this._prepared_tx_data.length} item(s) in wave queue`
+      `🏷 *Prices Posted* | ${borrowers.length} item(s) in wave queue`
     );
-    this._prepared_tx_data = this._prepared_tx_data.slice(0, 6);
-
-    const borrowers = this._prepared_tx_data.map(d => d.borrower);
-    const repayCTokens = this._prepared_tx_data.map(d => d.repayCToken);
-    const seizeCTokens = this._prepared_tx_data.map(d => d.seizeCToken);
-
-    this._prepared_tx_data = [];
 
     const txA = FlashLiquidator.mainnet.liquidateMany(
       borrowers,
       repayCTokens,
       seizeCTokens,
-      oracleTx.gasPrice / 1e9
+      oracleTx.gasPrice / 1e12
     );
     const txB = FlashLiquidator.mainnet.liquidateMany(
       borrowers,
       repayCTokens,
       seizeCTokens,
-      (oracleTx.gasPrice + 100) / 1e9
+      (oracleTx.gasPrice + 100) / 1e12
     );
 
     process.send({
@@ -184,28 +171,28 @@ class Main extends Database {
     });
   }
 
-  onNewLiquidation(event) {
+  onNewLiquidation(event, logNonCandidates = false) {
     if (event.liquidator == FlashLiquidator.mainnet.address) return;
     const addr = event.borrower;
-    const candidate = this._candidates.filter(
-      c => c.address === addr.toLowerCase()
-    );
+    delete this._prepared_tx_data[addr.toLowerCase()];
 
-    if (candidate.length === 0) {
-      winston.log(
-        "info",
-        `⤼ *Liquidate Event* | Didn't liquidate ${addr.slice(
-          0,
-          6
-        )} because they weren't a candidate.`
-      );
+    if (!this._candidates.includes(addr.toLowerCase())) {
+      if (logNonCandidates) {
+        winston.log(
+          "info",
+          `⤼ *Liquidate Event* | Didn't liquidate ${addr.slice(
+            0,
+            6
+          )} because they weren't a candidate.`
+        );
+      }
     } else {
       winston.log(
         "warn",
         `🚨 *Liquidate Event* | Didn't liquidate ${addr.slice(
           0,
           6
-        )} due to bad logic (or gas war). In list ${candidate.length} times`
+        )} due to bad logic (or gas war).`
       );
     }
   }

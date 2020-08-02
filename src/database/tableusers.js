@@ -132,7 +132,7 @@ class TableUsers {
         );
         profitability =
           Math.min(closableMax_Eth, seizableMax_Eth) *
-          (liquidationIncentive - 1.0);
+          (liquidationIncentive - 1.0 - 0.0009 - 0.003);
       }
 
       // const liquidity = supply - borrow;

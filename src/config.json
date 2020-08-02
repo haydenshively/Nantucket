@@ -22,7 +22,7 @@
       "txManager": "B"
     },
     {
-      "gasPriceMultiplier": 5.0,
+      "gasPriceMultiplier": 3.0,
       "minRevenue": 9,
       "maxRevenue": 20,
       "maxHealth": null,
@@ -30,7 +30,7 @@
       "txManager": "B"
     },
     {
-      "gasPriceMultiplier": 10.0,
+      "gasPriceMultiplier": 8.0,
       "minRevenue": 20,
       "maxRevenue": 50,
       "maxHealth": null,
@@ -38,7 +38,7 @@
       "txManager": "B"
     },
     {
-      "gasPriceMultiplier": 100.0,
+      "gasPriceMultiplier": 10.0,
       "minRevenue": 50,
       "maxRevenue": null,
       "maxHealth": null,
