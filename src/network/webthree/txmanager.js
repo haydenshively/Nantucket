@@ -1,3 +1,7 @@
+const Big = require("big.js");
+Big.DP = 40;
+Big.RM = 0;
+
 const Tx = require("ethereumjs-tx").Transaction;
 const winston = require("winston");
 
@@ -36,6 +40,43 @@ class TxManager {
     //       value: tx.value
     //     });
     //   });
+  }
+
+  increaseGasPriceFor(key, newPrice) {
+    newPrice = Big(newPrice);
+    let didFindTx = false;
+
+    for (let i = 0; i < this._queue.length; i++) {
+      if (this._queue[i].key === key) {
+        didFindTx = true;
+        if (
+          newPrice.times(1.1).lte(Number(this._queue[i].tx.gasPrice).toFixed(0))
+        )
+          continue;
+        this._queue[i].tx.gasPrice = newPrice.toFixed(0);
+
+        if (this._queue[i].inProgress) {
+          // Send replacement transaction
+          const sentTx = this._signAndSend(
+            this._queue[i].tx,
+            this._queue[i].id
+          );
+          const handle = setInterval(
+            this._onTxErrorFor.bind(this),
+            this._queue[i].timeout,
+            this._queue[i].id
+          );
+          this._setupTxEvents(
+            sentTx,
+            this._queue[i].id,
+            this._queue[i].tx.gasPrice,
+            handle
+          );
+        }
+      }
+    }
+
+    return didFindTx;
   }
 
   insert(
@@ -98,17 +139,22 @@ class TxManager {
           this._queue[i].timeout,
           this._queue[i].id
         );
-        this._setupTxEvents(sentTx, this._queue[i].id, handle);
+        this._setupTxEvents(
+          sentTx,
+          this._queue[i].id,
+          this._queue[i].tx.gasPrice,
+          handle
+        );
         // now that tx is in progress, update state
         this._numInProgressTxs++;
       }
     }
   }
 
-  _setupTxEvents(sentTx, nonce, setIntervalHandle) {
-    const label = `💸 *Transaction* | ${
-      String(process.env[this._envKeyAddress]).slice(0, 6)
-    }.${nonce} `;
+  _setupTxEvents(sentTx, nonce, gasPrice, setIntervalHandle) {
+    const label = `💸 *Transaction* | ${String(
+      process.env[this._envKeyAddress]
+    ).slice(0, 6)}.${nonce} `;
 
     sentTx.on("transactionHash", hash => {
       winston.log(
@@ -118,7 +164,10 @@ class TxManager {
     });
     sentTx.on("receipt", receipt => {
       clearInterval(setIntervalHandle);
-      winston.log("info", label + `Successful at block ${receipt.blockNumber}!`);
+      winston.log(
+        "info",
+        label + `Successful at block ${receipt.blockNumber}!`
+      );
       this._onTxReceiptFor(nonce);
     });
     sentTx.on("error", (err, receipt) => {
@@ -128,12 +177,13 @@ class TxManager {
         this._onTxReceiptFor(nonce);
         return;
       }
+
+      const matches = this._queue.filter(
+        q => q.id === nonce && q.tx.gasPrice === gasPrice
+      );
+      if (matches.length === 0) return;
       winston.log("error", label + "Failed off-chain: " + String(err));
-      // If the tx is "failing" because it's taking too long to be mined,
-      // then we've almost certainly already replaced it due to timeout callback.
-      // As such, we don't need to call _onTxErrorFor(nonce) again.
-      if (String(err).includes("Be aware that it might still be mined")) return;
-      this._onTxErrorFor(nonce);
+      this._onTxErrorFor(nonce, gasPrice);
     });
   }
 
@@ -144,7 +194,18 @@ class TxManager {
     this._maximizeNumInProgressTxs();
   }
 
-  _onTxErrorFor(nonce) {
+  _onTxErrorFor(nonce, gasPrice) {
+    // If the tx times-out, fails, or errors when it's nonce has
+    // already left the queue, we can infer that it was replaced
+    // and succeeded under a separate tx hash. As such, we can
+    // ignore whatever dropped tx is calling this function.
+    // Ideally we would remove callbacks when dropping
+    // transactions, but that's easier said than done.
+    const matches = this._queue.filter(
+      q => q.id === nonce && q.tx.gasPrice === gasPrice
+    );
+    if (matches.length === 0) return;
+
     const queueOld = [...this._queue];
     this._queue = [];
 
@@ -171,14 +232,13 @@ class TxManager {
   // }
 
   _signAndSend(tx, nonce) {
-    tx.gasPrice = Number(tx.gasPrice);
     if (nonce in this._gasPrices)
-      tx.gasPrice = Math.max(tx.gasPrice, this._gasPrices[nonce] * 1.10);
-    this._gasPrices[nonce] = tx.gasPrice;
+      tx.gasPrice = Math.max(tx.gasPrice, Number(this._gasPrices[nonce]) * 1.1);
+    this._gasPrices[nonce] = Math.floor(tx.gasPrice).toFixed(0);
 
     tx.nonce = web3.utils.toHex(nonce);
     tx.from = process.env[this._envKeyAddress];
-    tx.gasPrice = web3.utils.toHex(Math.floor(tx.gasPrice));
+    tx.gasPrice = web3.utils.toHex(this._gasPrices[nonce]);
     return TxManager._send(this._sign(tx));
   }
 
