@@ -107,7 +107,7 @@ class Main extends Database {
         });
       }
       // liquidatable off-chain
-      else if ((await i.liquidityOffChain(Tickers.mainnet)).health < 1.001) {
+      else if ((await i.liquidityOffChain(Tickers.mainnet)).health < 1.0) {
         const profit = ethPrice_USD * (i.profitability - estTxFee_Eth);
         if (profit < 0) continue;
 
@@ -125,11 +125,13 @@ class Main extends Database {
         };
       }
     }
-
+    this._prepareForNewPricesOnChain(gasPrice_Gwei);
     Tickers.mainnet.update();
   }
 
-  onNewPricesOnChain(oracleTx) {
+  _prepareForNewPricesOnChain(gasPrice_Gwei) {
+    if (Object.keys(this._prepared_tx_data).length === 0) return;
+
     let borrowers = [];
     let repayCTokens = [];
     let seizeCTokens = [];
@@ -138,36 +140,36 @@ class Main extends Database {
       repayCTokens.push(this._prepared_tx_data[address].repayCToken);
       seizeCTokens.push(this._prepared_tx_data[address].seizeCToken);
     }
-    this._prepared_tx_data = {};
-    if (borrowers.length === 0) return;
+
+    const tx = FlashLiquidator.mainnet.liquidateMany(
+      borrowers,
+      repayCTokens,
+      seizeCTokens,
+      gasPrice_Gwei * 0.7 / this._gasPriceMultiplier
+    );
+    // send to TxManager worker
+    process.send({
+      tx: tx,
+      priority: 1000,
+      key: `${process.pid}PricesPosted1`
+    });
+  }
+
+  onNewPricesOnChain(oracleTx) {
+    const waveLength = Object.keys(this._prepared_tx_data).length;
+    if (waveLength === 0) return;
 
     winston.log(
       "info",
-      `🏷 *Prices Posted* | ${borrowers.length} item(s) in wave queue at block ${oracleTx.blockNumber}`
+      `🏷 *Prices Posted* | ${waveLength} item(s) in wave queue at block ${oracleTx.blockNumber}`
     );
-
-    const txA = FlashLiquidator.mainnet.liquidateMany(
-      borrowers,
-      repayCTokens,
-      seizeCTokens,
-      Number(oracleTx.gasPrice) / 1e9
-    );
-    const txB = FlashLiquidator.mainnet.liquidateMany(
-      borrowers,
-      repayCTokens,
-      seizeCTokens,
-      (Number(oracleTx.gasPrice) + 100) / 1e9
-    );
+    this._prepared_tx_data = {};
 
     process.send({
-      tx: txB,
-      priority: 1001,
-      key: borrowers[1]
-    });
-    process.send({
-      tx: txA,
-      priority: 1000,
-      key: borrowers[0]
+      tx: {
+        gasPrice: oracleTx.gasPrice
+      },
+      key: `${process.pid}PricesPosted1`
     });
   }
 

@@ -48,6 +48,11 @@ if (cluster.isMaster) {
   for (let liquidator of config.liquidators) {
     workers.push(cluster.fork());
     workers[i].on("message", msg => {
+      const replaced = txManagers[liquidator.txManager].increaseGasPriceFor(
+        msg.key,
+        msg.tx.gasPrice
+      );
+      if (replaced) return;
       txManagers[liquidator.txManager].insert(
         msg.tx,
         msg.priority,
