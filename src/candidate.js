@@ -44,7 +44,10 @@ class Candidate {
       supply += market.supply_uUnits * costInEth * market.collat;
     }
 
-    return supply - borrow;
+    return {
+      liquidity: supply - borrow,
+      health: supply / borrow
+    };
   }
 
   liquidityOnChain() {

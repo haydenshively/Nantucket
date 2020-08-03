@@ -118,7 +118,7 @@ class TxManager {
     });
     sentTx.on("receipt", receipt => {
       clearInterval(setIntervalHandle);
-      winston.log("info", label + "Successful!");
+      winston.log("info", label + `Successful at block ${receipt.blockNumber}!`);
       this._onTxReceiptFor(nonce);
     });
     sentTx.on("error", (err, receipt) => {
@@ -129,6 +129,10 @@ class TxManager {
         return;
       }
       winston.log("error", label + "Failed off-chain: " + String(err));
+      // If the tx is "failing" because it's taking too long to be mined,
+      // then we've almost certainly already replaced it due to timeout callback.
+      // As such, we don't need to call _onTxErrorFor(nonce) again.
+      if (String(err).includes("Be aware that it might still be mined")) return;
       this._onTxErrorFor(nonce);
     });
   }

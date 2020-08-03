@@ -107,7 +107,7 @@ class Main extends Database {
         });
       }
       // liquidatable off-chain
-      else if ((await i.liquidityOffChain(Tickers.mainnet)) < 0.0) {
+      else if ((await i.liquidityOffChain(Tickers.mainnet)).health < 1.001) {
         const profit = ethPrice_USD * (i.profitability - estTxFee_Eth);
         if (profit < 0) continue;
 
@@ -143,20 +143,20 @@ class Main extends Database {
 
     winston.log(
       "info",
-      `🏷 *Prices Posted* | ${borrowers.length} item(s) in wave queue`
+      `🏷 *Prices Posted* | ${borrowers.length} item(s) in wave queue at block ${oracleTx.blockNumber}`
     );
 
     const txA = FlashLiquidator.mainnet.liquidateMany(
       borrowers,
       repayCTokens,
       seizeCTokens,
-      oracleTx.gasPrice / 1e12
+      Number(oracleTx.gasPrice) / 1e9
     );
     const txB = FlashLiquidator.mainnet.liquidateMany(
       borrowers,
       repayCTokens,
       seizeCTokens,
-      (oracleTx.gasPrice + 100) / 1e12
+      (Number(oracleTx.gasPrice) + 100) / 1e9
     );
 
     process.send({
