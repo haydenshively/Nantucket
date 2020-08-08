@@ -15,10 +15,11 @@
   "liquidators": [
     {
       "gasPriceMultiplier": 1.2,
-      "minRevenue": 0.3,
+      "minRevenue": 0.1,
       "maxRevenue": 9,
       "maxHealth": null,
       "numCandidates": 40,
+      "priceWaveHealthThresh": 1.0002,
       "txManager": "B"
     },
     {
@@ -27,6 +28,7 @@
       "maxRevenue": 20,
       "maxHealth": null,
       "numCandidates": 50,
+      "priceWaveHealthThresh": 1.0003,
       "txManager": "B"
     },
     {
@@ -35,6 +37,7 @@
       "maxRevenue": 50,
       "maxHealth": null,
       "numCandidates": 60,
+      "priceWaveHealthThresh": 1.0005,
       "txManager": "B"
     },
     {
@@ -43,6 +46,7 @@
       "maxRevenue": null,
       "maxHealth": null,
       "numCandidates": 100,
+      "priceWaveHealthThresh": 1.001,
       "txManager": "A"
     }
   ]

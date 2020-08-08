@@ -41,7 +41,7 @@ if (cluster.isMaster) {
   workers.push(cluster.fork());
   workers[0].send({
     desiredType: "web",
-    args: [0, 0, 0, 0, 0, 0]
+    args: [0, 0, 0, 0, 0, 0, 0]
   });
   // other workers watch accounts and liquidate
   let i = 1;
@@ -75,6 +75,7 @@ if (cluster.isMaster) {
           liquidator.maxRevenue,
           liquidator.maxHealth,
           liquidator.numCandidates,
+          liquidator.priceWaveHealthThresh,
           i * 15
         ]
       });
@@ -117,8 +118,8 @@ if (cluster.isWorker) {
     }
 
     const args = msg.args;
-    main = new Main(args[0], args[1], args[2], args[3], args[4]);
-    if (args[5] > 0) await sleep(args[5] * 1000);
+    main = new Main(args[0], args[1], args[2], args[3], args[4], args[5]);
+    if (args[6] > 0) await sleep(args[6] * 1000);
 
     switch (msg.desiredType) {
       case "web":

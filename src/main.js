@@ -15,7 +15,8 @@ class Main extends Database {
     minRevenue,
     maxRevenue,
     maxHealth,
-    numCandidates
+    numCandidates,
+    priceWaveHealthThresh
   ) {
     /**
      * Constructs a `Main` object
@@ -31,6 +32,9 @@ class Main extends Database {
      * @param {number} numCandidates Users are ranked by liquidity
      *    (lowest to highest). This specifies how many candidates
      *    should be taken from the top of that list
+     * @param {number} priceWaveHealthThresh Users with off-chain health
+     *    less than or equal to this number will be added to the price-wave
+     *    candidates list
      *
      */
     super();
@@ -40,6 +44,7 @@ class Main extends Database {
     this._maxRevenue = maxRevenue;
     this._maxHealth = maxHealth;
     this._numCandidates = Math.floor(numCandidates);
+    this._priceWaveHealthThresh = priceWaveHealthThresh;
 
     this._candidates = [];
     this._prepared_tx_data = {};
@@ -102,12 +107,15 @@ class Main extends Database {
         // send to TxManager worker
         process.send({
           tx: tx,
-          priority: profit,
-          key: i.address
+          priority: 1000,
+          key: "1st"
         });
       }
       // liquidatable off-chain
-      else if ((await i.liquidityOffChain(Tickers.mainnet)).health < 1.0) {
+      else if (
+        (await i.liquidityOffChain(Tickers.mainnet)).health <
+        this._priceWaveHealthThresh
+      ) {
         const profit = ethPrice_USD * (i.profitability - estTxFee_Eth);
         if (profit < 0) continue;
 
@@ -145,31 +153,41 @@ class Main extends Database {
       borrowers,
       repayCTokens,
       seizeCTokens,
-      gasPrice_Gwei * 0.7 / this._gasPriceMultiplier
+      (gasPrice_Gwei * 0.7) / this._gasPriceMultiplier
     );
     // send to TxManager worker
     process.send({
       tx: tx,
       priority: 1000,
-      key: `${process.pid}PricesPosted1`
+      key: "1st"
+    });
+    process.send({
+      tx: tx,
+      priority: 999,
+      key: "2nd"
+    });
+    process.send({
+      tx: tx,
+      priority: 998,
+      key: "3rd"
     });
   }
 
   onNewPricesOnChain(oracleTx) {
     const waveLength = Object.keys(this._prepared_tx_data).length;
-    if (waveLength === 0) return;
-
     winston.log(
       "info",
       `🏷 *Prices Posted* | ${waveLength} item(s) in wave queue at block ${oracleTx.blockNumber}`
     );
+
+    if (waveLength === 0) return;
     this._prepared_tx_data = {};
 
-    process.send({
-      tx: {
-        gasPrice: oracleTx.gasPrice
-      },
-      key: `${process.pid}PricesPosted1`
+    ["1st", "2nd", "3rd"].forEach(key => {
+      process.send({
+        tx: { gasPrice: oracleTx.gasPrice },
+        key: key
+      });
     });
   }
 
@@ -178,7 +196,7 @@ class Main extends Database {
     const addr = event.borrower;
     delete this._prepared_tx_data[addr.toLowerCase()];
 
-    if (!this._candidates.includes(addr.toLowerCase())) {
+    if (!this._candidates.map(c => c.address).includes(addr.toLowerCase())) {
       if (logNonCandidates) {
         winston.log(
           "info",
