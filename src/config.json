@@ -15,7 +15,7 @@
   "liquidators": [
     {
       "gasPriceMultiplier": 1.2,
-      "minRevenue": 0.3,
+      "minRevenue": 0.1,
       "maxRevenue": 9,
       "maxHealth": null,
       "numCandidates": 40,
