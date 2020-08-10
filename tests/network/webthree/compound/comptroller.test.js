@@ -24,19 +24,26 @@ describe("network/webthree/compound || Comptroller Test", () => {
       });
   });
 
+  let TEST_ACCOUNT_ADDRESS;
+  for (let key in process.env) {
+    if (key.startsWith("ACCOUNT_ADDRESS")) {
+      TEST_ACCOUNT_ADDRESS = process.env[key];
+    }
+  }
+
   it("should retrieve active markets", () => {
     return Comptroller.mainnet
-      .marketsEnteredBy(process.env.TEST_ACCOUNT_ADDRESS.toLowerCase())
+      .marketsEnteredBy(TEST_ACCOUNT_ADDRESS.toLowerCase())
       .then(result => {
-        assert(result.length >= 9);
+        assert(result.length === 0);
       });
   });
 
   it("should retrieve account liquidity", () => {
     return Comptroller.mainnet
-      .accountLiquidityOf(process.env.TEST_ACCOUNT_ADDRESS.toLowerCase())
+      .accountLiquidityOf(TEST_ACCOUNT_ADDRESS.toLowerCase())
       .then(result => {
-        assert(result[0].gt(0.0));
+        assert(result[0].eq(0.0));
         assert(result[1].eq(0.0));
       });
   });

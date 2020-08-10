@@ -10,7 +10,7 @@ try {
 const GramianAngularField = require("../../src/prediction/gramianangularfield.js");
 
 describe("prediction || Gramian Angular Field Test", () => {
-  it("should match pre-computed", () => {
+  (inCI ? xit : it)("should match pre-computed", () => {
     const series = [0, 1, 2, 3, 4];
     const expected = tf.tensor2d([
       [1.0, 0.5, 0.0, -0.5, -1],
