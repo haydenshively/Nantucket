@@ -1,3 +1,5 @@
+require("dotenv").config();
+
 // configure web3
 const Web3 = require("web3");
 if (process.env.WEB3_PROVIDER.endsWith(".ipc")) {

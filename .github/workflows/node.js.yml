@@ -9,8 +9,23 @@ on:
   pull_request:
     branches: [ master ]
 
+env:
+  ACCOUNT_ADDRESS_TEST: ${{ secrets.ACCOUNT_ADDRESS_TEST }}
+  ACCOUNT_SECRET_TEST: ${{ secrets.ACCOUNT_SECRET_TEST }}
+  COINBASE_ENDPOINT: ${{ secrets.COINBASE_ENDPOINT }}
+  COMPOUND_ENDPOINT: ${{ secrets.COMPOUND_ENDPOINT }}
+  ETHPLORER_ENDPOINT: ${{ secrets.ETHPLORER_ENDPOINT }}
+  GAS_STATION_ENDPOINT: ${{ secrets.GAS_STATION_ENDPOINT }}
+  PGDATABASE: ${{ secrets.PGDATABASE }}
+  PGHOST: ${{ secrets.PGHOST }}
+  PGPASSWORD: ${{ secrets.PGPASSWORD }}
+  PGPORT: ${{ secrets.PGPORT }}
+  PGUSER: ${{ secrets.PGUSER }}
+  SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+  WEB3_PROVIDER: ${{ secrets.WEB3_PROVIDER }}
+
 jobs:
-  test:
+  Tests:
 
     runs-on: [ self-hosted, psql-db-access ]
 
@@ -24,6 +39,27 @@ jobs:
       uses: actions/setup-node@v1
       with:
         node-version: ${{ matrix.node-version }}
-    - run: touch .env
-    - run: yarn install
-    - run: yarn test-database
+    
+    - name: Create .env file
+      run: |
+        touch .env
+        echo "ACCOUNT_ADDRESS_TEST="$ACCOUNT_ADDRESS_TEST >> .env
+        echo "ACCOUNT_SECRET_TEST"=$ACCOUNT_SECRET_TEST >> .env
+        echo "COINBASE_ENDPOINT"=$COINBASE_ENDPOINT >> .env
+        echo "COMPOUND_ENDPOINT"=$COMPOUND_ENDPOINT >> .env
+        echo "ETHPLORER_ENDPOINT"=$ETHPLORER_ENDPOINT >> .env
+        echo "GAS_STATION_ENDPOINT"=$GAS_STATION_ENDPOINT >> .env
+        echo "PGDATABASE"=$PGDATABASE >> .env
+        echo "PGHOST"=$PGHOST >> .env
+        echo "PGPASSWORD"=$PGPASSWORD >> .env
+        echo "PGPORT"=$PGPORT >> .env
+        echo "PGUSER"=$PGUSER >> .env
+        echo "SLACK_WEBHOOK"=$SLACK_WEBHOOK >> .env
+        echo "WEB3_PROVIDER"=$WEB3_PROVIDER >> .env
+        cat .env
+      shell: bash
+
+    - run: |
+      yarn install
+      yarn remove tfjs-node-gpu
+    - run: yarn test
