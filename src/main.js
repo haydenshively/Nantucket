@@ -122,7 +122,7 @@ class Main extends Database {
         if (!(i.address in this._prepared_tx_data))
           winston.log(
             "info",
-            `🌊 *Price Wave* | Added ${i.label} for $${profit.toFixed(
+            `🌊 *Price Wave* | ${i.label} now listed for $${profit.toFixed(
               2
             )} profit if prices get posted`
           );
@@ -131,6 +131,10 @@ class Main extends Database {
           repayCToken: repay,
           seizeCToken: seize
         };
+      }
+      // no longer liquidatable off-chain
+      else {
+        delete this._prepared_tx_data[i.address];
       }
     }
     this._prepareForNewPricesOnChain(gasPrice_Gwei);
@@ -161,29 +165,19 @@ class Main extends Database {
       priority: 1000,
       key: "1st"
     });
-    process.send({
-      tx: tx,
-      priority: 999,
-      key: "2nd"
-    });
-    process.send({
-      tx: tx,
-      priority: 998,
-      key: "3rd"
-    });
   }
 
-  onNewPricesOnChain(oracleTx) {
+  onNewPricesOnChain(oracleTx, hash) {
     const waveLength = Object.keys(this._prepared_tx_data).length;
     winston.log(
       "info",
-      `🏷 *Prices Posted* | ${waveLength} item(s) in wave queue at block ${oracleTx.blockNumber}`
+      `🏷 *Prices Posted* | ${waveLength} item(s) in wave queue at block ${oracleTx.blockNumber} -- <https://etherscan.io/tx/${hash}|etherscan>`
     );
 
     if (waveLength === 0) return;
     this._prepared_tx_data = {};
 
-    ["1st", "2nd", "3rd"].forEach(key => {
+    ["1st"].forEach(key => {
       process.send({
         tx: { gasPrice: oracleTx.gasPrice },
         key: key

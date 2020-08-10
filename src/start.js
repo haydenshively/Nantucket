@@ -1,4 +1,3 @@
-require("dotenv").config();
 require("./setup");
 
 const cluster = require("cluster");
@@ -9,7 +8,11 @@ const Oracle = require("./network/webthree/compound/oraclev1");
 const Tokens = require("./network/webthree/compound/ctoken");
 const TxManager = require("./network/webthree/txmanager");
 
-const config = require("./config.json");
+if (process.argv.length < 3) {
+  console.log("Please pass path to config.json");
+  process.exit();
+}
+const config = require(process.argv[2]);
 
 async function sleep(millis) {
   return new Promise(resolve => setTimeout(resolve, millis));
@@ -156,7 +159,7 @@ if (cluster.isWorker) {
           .onNewPendingEvent("PricePosted")
           .on("data", async event => {
             tx = await web3.eth.getTransaction(event.transactionHash);
-            main.onNewPricesOnChain.bind(main)(tx);
+            main.onNewPricesOnChain.bind(main)(tx, event.transactionHash);
           });
         break;
     }

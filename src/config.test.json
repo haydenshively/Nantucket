@@ -1,0 +1,21 @@
+{
+  "txManagers": {
+    "TEST": {
+      "envKeyAddress": "ACCOUNT_ADDRESS_TEST",
+      "envKeySecret": "ACCOUNT_SECRET_TEST",
+      "maxInProgressTxs": 5
+    }
+  },
+  "txTimeoutMS": 60000,
+  "liquidators": [
+    {
+      "gasPriceMultiplier": 1.0,
+      "minRevenue": 0.05,
+      "maxRevenue": 9,
+      "maxHealth": null,
+      "numCandidates": 40,
+      "priceWaveHealthThresh": 1.0,
+      "txManager": "TEST"
+    }
+  ]
+}

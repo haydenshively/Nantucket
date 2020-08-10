@@ -1,6 +1,11 @@
 const assert = require("assert");
 
-const tf = require("@tensorflow/tfjs-node-gpu");
+let tf;
+try {
+  tf = require("@tensorflow/tfjs-node-gpu");
+} catch {
+  tf = require("@tensorflow/tfjs");
+}
 
 const GramianAngularField = require("../../src/prediction/gramianangularfield.js");
 

@@ -14,15 +14,6 @@
   "txTimeoutMS": 60000,
   "liquidators": [
     {
-      "gasPriceMultiplier": 1.2,
-      "minRevenue": 0.1,
-      "maxRevenue": 9,
-      "maxHealth": null,
-      "numCandidates": 40,
-      "priceWaveHealthThresh": 1.0002,
-      "txManager": "B"
-    },
-    {
       "gasPriceMultiplier": 3.0,
       "minRevenue": 9,
       "maxRevenue": 20,

@@ -182,6 +182,8 @@ class TxManager {
         q => q.id === nonce && q.tx.gasPrice === gasPrice
       );
       if (matches.length === 0) return;
+      // TODO something like this to detect when nonce is too low
+      // if (String(err).includes("nonce too low")) this._nextNonce++;
       winston.log("error", label + "Failed off-chain: " + String(err));
       this._onTxErrorFor(nonce, gasPrice);
     });

@@ -11,46 +11,56 @@
 //   const tableCTokens = new TableCTokens(pool, tableUTokens);
 
 //   const txManager = new TxManager(
-//     "ACCOUNT_PUBLIC_KEY_B",
-//     "ACCOUNT_PRIVATE_KEY_B",
+//     "ACCOUNT_ADDRESS_B",
+//     "ACCOUNT_SECRET_B",
 //     5
 //   );
 
 //   it("should liquidate one account", async function() {
 //     await txManager.init();
 
-//     targets = await pool.query(
-//       `
-//       SELECT usersnonzero.id, usersnonzero.address, payseizepairs.ctokenidpay, payseizepairs.ctokenidseize
-//       FROM usersnonzero INNER JOIN payseizepairs ON (usersnonzero.pairid=payseizepairs.id)
-//       WHERE usersnonzero.liquidity<1
-//       ORDER BY usersnonzero.profitability DESC
-//       LIMIT 3
-//       `
-//     );
-//     let borrowers = [];
-//     let repayCTokens = [];
-//     let seizeCTokens = [];
+//     const tx = {
+//       to: process.env[txManager._envKeyAddress],
+//       gas: 21000,
+//       gasPrice: 50000000000,
+//       value: 0
+//     };
 
-//     for (let target of targets.rows) {
-//       borrowers.push("0x" + String(target.address));
-//       repayCTokens.push(
-//         "0x" + (await tableCTokens.getAddress(target.ctokenidpay))
-//       );
-//       seizeCTokens.push(
-//         "0x" + (await tableCTokens.getAddress(target.ctokenidseize))
-//       );
-//     }
+//     const sentTx = await txManager._signAndSend(tx, 152)
+//     console.log(sentTx);
 
-//     const tx = FlashLiquidator.mainnet.liquidateMany(
-//       borrowers,
-//       repayCTokens,
-//       seizeCTokens,
-//       1.4 * (await web3.eth.getGasPrice()) / 1e9
-//     );
+//     // targets = await pool.query(
+//     //   `
+//     //   SELECT usersnonzero.id, usersnonzero.address, payseizepairs.ctokenidpay, payseizepairs.ctokenidseize
+//     //   FROM usersnonzero INNER JOIN payseizepairs ON (usersnonzero.pairid=payseizepairs.id)
+//     //   WHERE usersnonzero.liquidity<1
+//     //   ORDER BY usersnonzero.profitability DESC
+//     //   LIMIT 3
+//     //   `
+//     // );
+//     // let borrowers = [];
+//     // let repayCTokens = [];
+//     // let seizeCTokens = [];
 
-//     console.log(tx);
+//     // for (let target of targets.rows) {
+//     //   borrowers.push("0x" + String(target.address));
+//     //   repayCTokens.push(
+//     //     "0x" + (await tableCTokens.getAddress(target.ctokenidpay))
+//     //   );
+//     //   seizeCTokens.push(
+//     //     "0x" + (await tableCTokens.getAddress(target.ctokenidseize))
+//     //   );
+//     // }
 
-//     txManager.insert(tx, 0, 6 * 60 * 1000);
+//     // const tx = FlashLiquidator.mainnet.liquidateMany(
+//     //   borrowers,
+//     //   repayCTokens,
+//     //   seizeCTokens,
+//     //   1.4 * (await web3.eth.getGasPrice()) / 1e9
+//     // );
+
+//     // console.log(tx);
+
+//     // txManager.insert(tx, 0, 6 * 60 * 1000);
 //   }).timeout(600000);
 // });

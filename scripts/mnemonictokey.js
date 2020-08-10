@@ -4,4 +4,5 @@ const mnemonic = "YOUR 24 WORD MNEMONIC";
 const path = "wallet/path'/0";
 
 const mnemonicWallet = ethers.Wallet.fromMnemonic(mnemonic, path);
+console.log(mnemonicWallet.address);
 console.log(mnemonicWallet.privateKey);
