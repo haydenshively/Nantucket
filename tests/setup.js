@@ -1,5 +1,7 @@
 require("dotenv").config();
 
+global.inCI = process.env.CI;
+
 const { Pool } = require("pg");
 global.pool = new Pool({
   max: 20,

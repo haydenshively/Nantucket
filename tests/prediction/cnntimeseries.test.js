@@ -10,7 +10,7 @@ try {
 const CNNTimeSeries = require("../../src/prediction/cnntimeseries.js");
 
 describe("prediction || CNN Time Series Test", () => {
-  it("should match saved architecture", async function() {
+  (inCI ? xit : it)("should match saved architecture", async function() {
     const cnn = new CNNTimeSeries([40, 40, 1], 5, 16);
     cnn.build();
     cnn.compile();
@@ -20,14 +20,27 @@ describe("prediction || CNN Time Series Test", () => {
     );
     const cnn_saved = await tf.loadLayersModel(handler);
 
-    let a;
-    let b;
-    cnn.model.summary(res => (a = res));
-    cnn_saved.summary(res => (b = res));
+    let a = "";
+    let b = "";
+
+    await new Promise((resolve, reject) => {
+      cnn.model.summary(undefined, undefined, res => {
+        a = a.concat(res.includes("[") ? res.split("[")[1] : "");
+        if (res.includes("Non-trainable params")) resolve();
+      });
+    });
+
+    await new Promise((resolve, reject) => {
+      cnn_saved.summary(undefined, undefined, res => {
+        b = b.concat(res.includes("[") ? res.split("[")[1] : "");
+        if (res.includes("Non-trainable params")) resolve();
+      });
+    });
+
     assert(a === b);
   });
 
-  it("should learn sloped cosine in 600 steps", async function() {
+  (inCI ? xit : it)("should learn sloped cos in 600 steps", async function() {
     const cnn = new CNNTimeSeries([40, 40, 1], 5, 16);
     cnn.build();
     cnn.compile();
@@ -47,7 +60,7 @@ describe("prediction || CNN Time Series Test", () => {
     assert(loss < 0.1);
   }).timeout(60000);
 
-  it("should learn square wave in 700 steps", async function() {
+  (inCI ? xit : it)("should learn square wave in 700 steps", async function() {
     const cnn = new CNNTimeSeries([40, 40, 1], 5, 16);
     cnn.build();
     cnn.compile(0.01);
@@ -79,7 +92,7 @@ describe("prediction || CNN Time Series Test", () => {
     );
   }).timeout(60000);
 
-  it("should transfer learn abs(cos) in 200 steps", async function() {
+  (inCI ? xit : it)("should trnsfr learn |cos| in 200 steps", async function() {
     const cnn = new CNNTimeSeries([40, 40, 1], 5, 16);
     const handler = tf.io.fileSystem(
       "./src/prediction/tfjs_artifacts/model.json"

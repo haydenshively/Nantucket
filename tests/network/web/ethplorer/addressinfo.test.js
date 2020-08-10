@@ -5,8 +5,12 @@ const addressInfo = new AddressInfo();
 
 describe("network/web/ethplorer || Address Info Test", () => {
   it("should retrieve account balance", () => {
-    return addressInfo.fetch(process.env.TEST_ACCOUNT_ADDRESS).then(result => {
-      assert(result.error === undefined);
-    });
+    for (let key in process.env) {
+      if (key.startsWith("ACCOUNT_ADDRESS")) {
+        return addressInfo.fetch(process.env[key]).then(result => {
+          assert(result.error === undefined);
+        });
+      }
+    }
   });
 });

@@ -58,8 +58,13 @@ jobs:
         echo "WEB3_PROVIDER"=$WEB3_PROVIDER >> .env
         cat .env
       shell: bash
+    
+    - name: Install dependencies
+      run: |
+        yarn install --ignore-optional
+        # The tfjs folks haven't published arm binaries yet
+        # yarn add @tensorflow/tfjs-node
+        # npm rebuild @tensorflow/tfjs-node --build-from-source
+      shell: bash
 
-    - run: |
-      yarn install
-      yarn remove tfjs-node-gpu
     - run: yarn test

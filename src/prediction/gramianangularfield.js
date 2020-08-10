@@ -1,4 +1,9 @@
-const tf = require("@tensorflow/tfjs-node-gpu");
+let tf;
+try {
+  tf = require("@tensorflow/tfjs-node-gpu");
+} catch {
+  tf = require("@tensorflow/tfjs");
+}
 
 class GramianAngularField {
   constructor(series, extremes = [NaN, NaN]) {
