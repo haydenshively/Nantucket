@@ -59,3 +59,26 @@ the same for DAI and USDT, but must be different otherwise
 
 This logic can be found in the [contracts folder](./contracts).
 
+## Pipeline
+
+Compound (the company) provides an HTTP endpoint that returns information about all users (address, supply amounts, and borrow amounts). They provide another HTTP
+endpoint that returns information about all tokens (address, real-world price, collateral factor). Nantucket periodically polls this information, does some
+computation, and stores it in a Postgres database. The "computation" is really just to answer the questions "Which type of token should I repay and seize if this
+user becomes liquidatable?" and "How profitable would this be?"
+
+A separate process periodically polls the database to get a subset of Compound users. This subset is configurable via the arguments passed to the `Main`
+constructor. Whenever a new block gets added to the Ethereum blockchain (~ every 15 seconds), Nantucket loops through the users to decide (1) if they are
+liquidatable according to the Compound Dapp and (2) if they are liquidatable according to token prices on Coinbase.
+
+In case 1, the code immediately sends a transaction to liquidate them. The gas price of that transaction is
+`gasPriceRecommendedByGethBlockchainClient * someMultiplier` where `someMultiplier` is configurable in `Main`'s constructor. For example, if a `Main` instance is
+configured to look only at users where the potential profit is >$10000, the gas price multiplier may be set higher so that the transaction goes through faster --
+after all, there's lots of competition for these high value liquidations.
+
+In case 2, the user is added to the "price wave" list. A transaction is sent with the intent that it will remain "pending" for a while. This is done by sending it
+with a relatively low gas price (high enough that miners keep it in the transaction pool, but low enough that it takes a while to be included in a block).
+
+Nantucket also watches for the signature of Compound's price update transactions. This is when Compound (the company) updates the Dapp's knowledge of token prices
+to match those of the real world (on Coinbase, for example). As soon as one of these price update transactions is pending, Nantucket raises the gas price of pending
+transactions to match the gas price of the price update transaction. In theory, this should make the transactions happen consecutively, guaranteeing that we win the
+first-come first-serve liquidation battle. **In practice, other liquidators manage to put themselves in that position more reliably, and Nantucket loses.**
