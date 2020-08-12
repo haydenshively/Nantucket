@@ -57,7 +57,8 @@ the same for DAI and USDT, but must be different otherwise
 5. Repay AAVE loan using X tokens of type A. Technically AAVE also expects a small fee (0.0009%).
 6. Keep `Z - X` tokens of type A as profit.
 
-This logic can be found in the [contracts folder](./contracts).
+This logic can be found in the [contracts folder](./contracts). I've already deployed the Solidity code to the blockchain, so it's now accessible via
+[wrappers](./src/network/webthree).
 
 ## Pipeline
 
@@ -82,3 +83,8 @@ Nantucket also watches for the signature of Compound's price update transactions
 to match those of the real world (on Coinbase, for example). As soon as one of these price update transactions is pending, Nantucket raises the gas price of pending
 transactions to match the gas price of the price update transaction. In theory, this should make the transactions happen consecutively, guaranteeing that we win the
 first-come first-serve liquidation battle. **In practice, other liquidators manage to put themselves in that position more reliably, and Nantucket loses.**
+
+Key Files:
+- [Start](./src/start.js)
+- [Main](./src/main.js)
+- [TxManager](./src/network/webthree/txmanager.js)
