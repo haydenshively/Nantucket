@@ -15,6 +15,8 @@ USDC. If Bob's belief comes true, he'll be able to re-trade the USDC for Bitcoin
 If, on the other hand, Bob is wrong -- the price of Bitcoin rises -- then Bob is in trouble. In this situation, the value of his borrowed Bitcoin may grow to exceed
 the `collateralFactor * valueOfSuppliedUSDC`. If Bob fails to pay off his loan before this happens, then Bob is subject to liquidation.
 
+For more introductory information, see [this paper](https://arxiv.org/pdf/1904.05234.pdf).
+
 ## Liquidation
 
 ```js
