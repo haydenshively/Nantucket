@@ -1,9 +1,12 @@
+const Message = require("./message");
 // src.network.webthree
 const Comptroller = require("./network/webthree/compound/comptroller");
 const Tokens = require("./network/webthree/compound/ctoken");
 
-class Candidate {
+class Candidate extends Message {
   constructor(dbUserEntry) {
+    super("Candidates");
+
     this.address = "0x" + dbUserEntry.address;
     this.ctokenidpay = dbUserEntry.ctokenidpay;
     this.ctokenidseize = dbUserEntry.ctokenidseize;
@@ -11,6 +14,17 @@ class Candidate {
 
     this.label = this.address.slice(0, 6);
     this._markets = null;
+  }
+
+  msg() {
+    this.__data = {
+      address: this.address,
+      ctokenidpay: this.ctokenidpay,
+      ctokenidseize: this.ctokenidseize,
+      profitability: this.profitability,
+      label: this.label
+    };
+    return this;
   }
 
   async init() {

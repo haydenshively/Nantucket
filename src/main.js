@@ -3,6 +3,7 @@ const winston = require("winston");
 // src
 const Candidate = require("./candidate");
 const Database = require("./database");
+const Message = require("./message");
 // src.network.web
 const Tickers = require("./network/web/coinbase/ticker");
 // src.network.webthree
@@ -105,11 +106,20 @@ class Main extends Database {
           gasPrice_Gwei
         );
         // send to TxManager worker
-        process.send({
+        // TODO create a Transaction class that extends Message, or just
+        // send candidates (i.e. `candidate.msg().broadcast("LiquidateNow")`)
+        // process.send({
+        //   tx: tx,
+        //   priority: 1000,
+        //   key: "1st"
+        // });
+        let msg = new Message("Transactions");
+        msg.__data = {
           tx: tx,
           priority: 1000,
           key: "1st"
-        });
+        };
+        msg.msg().broadcast();
       }
       // liquidatable off-chain
       else if (
@@ -160,29 +170,38 @@ class Main extends Database {
       (gasPrice_Gwei * 0.7) / this._gasPriceMultiplier
     );
     // send to TxManager worker
-    process.send({
+    // see TODO above
+    // process.send({
+    //   tx: tx,
+    //   priority: 1000,
+    //   key: "1st"
+    // });
+    let msg = new Message("Transactions");
+    msg.__data = {
       tx: tx,
       priority: 1000,
       key: "1st"
-    });
+    };
+    msg.msg().broadcast();
   }
 
   onNewPricesOnChain(oracleTx, hash) {
     const waveLength = Object.keys(this._prepared_tx_data).length;
-    winston.log(
-      "info",
-      `🏷 *Prices Posted* | ${waveLength} item(s) in wave queue at block ${oracleTx.blockNumber} -- <https://etherscan.io/tx/${hash}|etherscan>`
-    );
+    let msgP = new Message("PricesPosted");
+    msgP.__data = {
+      waveLength: waveLength
+    }
+    msgP.msg().broadcast("Report");
 
     if (waveLength === 0) return;
     this._prepared_tx_data = {};
 
-    ["1st"].forEach(key => {
-      process.send({
-        tx: { gasPrice: oracleTx.gasPrice },
-        key: key
-      });
-    });
+    let msgT = new Message("Transactions");
+    msgT.__data = {
+      tx: { gasPrice: oracleTx.gasPrice },
+      key: "1st"
+    };
+    msgT.msg().broadcast();
   }
 
   onNewLiquidation(event, logNonCandidates = false) {

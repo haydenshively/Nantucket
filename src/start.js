@@ -18,6 +18,9 @@ async function sleep(millis) {
   return new Promise(resolve => setTimeout(resolve, millis));
 }
 
+let numPricePostedReports = 0;
+let pricePostedReportsSum = 0;
+
 if (cluster.isMaster) {
   console.log(`Master ${process.pid} is running`);
 
@@ -51,6 +54,24 @@ if (cluster.isMaster) {
   for (let liquidator of config.liquidators) {
     workers.push(cluster.fork());
     workers[i].on("message", msg => {
+      if (msg.channel === "PricesPosted" && msg.action === "Report") {
+        numPricePostedReports++;
+        pricePostedReportsSum += msg.data.waveLength;
+
+        if (numPricePostedReports === config.liquidators.length) {
+          winston.log(
+            "info",
+            `🏷 *Prices Posted* | ${pricePostedReportsSum} item(s) in wave queue at block ${oracleTx.blockNumber} -- <https://etherscan.io/tx/${hash}|etherscan>`
+          );
+          numPricePostedReports = 0;
+          pricePostedReportsSum = 0;
+        }
+
+        return;
+      }
+      // TODO hack for now
+      msg = msg.data;
+
       const replaced = txManagers[liquidator.txManager].increaseGasPriceFor(
         msg.key,
         msg.tx.gasPrice
