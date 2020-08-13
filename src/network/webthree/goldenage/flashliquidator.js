@@ -6,16 +6,17 @@ const Contract = require("../smartcontract");
 const LIQUIDATORABI = require("../abis/goldenage/flashliquidator.json");
 
 class FlashLiquidator extends Contract {
+  /**
+   * Performs liquidation (SEND -- uses gas)
+   * 
+   * @param {string} borrower address of any user with negative liquidity
+   * @param {string} repayCToken address of token to repay
+   * @param {string} seizeCToken address of token to seize
+   * @param {Big} amount debt to repay, in units of the ordinary asset
+   * @param {number} gasPrice the gas price to use, in gwei
+   * @return {Object} the transaction object
+   */
   liquidate(borrower, repayCToken, seizeCToken, amount, gasPrice) {
-    /**
-     * Performs liquidation (SEND -- uses gas)
-     * @param {string} borrower address of any user with negative liquidity
-     * @param {string} borrowedCToken address of token to repay
-     * @param {string} collatCToken address of token to seize
-     * @param {Big} amount debt to repay, in units of the ordinary asset
-     * @param {number} gasPrice the gas price to use, in gwei
-     * @return {Object} the transaction object
-     */
     const hexAmount = web3.utils.toHex(amount.toFixed(0));
     const encodedMethod = this.contract.methods
       .liquidate(borrower, repayCToken, seizeCToken, hexAmount)
@@ -24,12 +25,21 @@ class FlashLiquidator extends Contract {
     return this.txFor(encodedMethod, "2300000", gasPrice);
   }
 
+  /**
+   * Performs liquidation on multiple accounts (SEND -- uses gas)
+   * 
+   * @param {Array.<String>} borrowers addresses of users with negative liquidity
+   * @param {Array.<String>} repayCTokens address of token to repay
+   * @param {Array.<String>} seizeCTokens address of token to seize
+   * @param {number} gasPrice the gas price to use, in gwei
+   * @return {Object} the transaction object
+   */
   liquidateMany(borrowers, repayCTokens, seizeCTokens, gasPrice) {
     const encodedMethod = this.contract.methods
       .liquidateMany(borrowers, repayCTokens, seizeCTokens)
       .encodeABI();
 
-    const gas = String(30 * borrowers.length) + "00000";
+    const gas = String(25 * borrowers.length) + "00000";
     return this.txFor(encodedMethod, gas, gasPrice);
   }
 }
