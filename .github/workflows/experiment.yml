@@ -1,0 +1,65 @@
+# This is a basic workflow that is manually triggered
+
+name: Experiment
+
+on:
+  workflow_dispatch:
+    inputs:
+      description:
+        description: 'What are you hoping to test with this experiment?'
+
+env:
+  ACCOUNT_ADDRESS_TEST: ${{ secrets.ACCOUNT_ADDRESS_TEST }}
+  ACCOUNT_SECRET_TEST: ${{ secrets.ACCOUNT_SECRET_TEST }}
+  COINBASE_ENDPOINT: ${{ secrets.COINBASE_ENDPOINT }}
+  COMPOUND_ENDPOINT: ${{ secrets.COMPOUND_ENDPOINT }}
+  ETHPLORER_ENDPOINT: ${{ secrets.ETHPLORER_ENDPOINT }}
+  GAS_STATION_ENDPOINT: ${{ secrets.GAS_STATION_ENDPOINT }}
+  PGDATABASE: ${{ secrets.PGDATABASE }}
+  PGHOST: ${{ secrets.PGHOST }}
+  PGPASSWORD: ${{ secrets.PGPASSWORD }}
+  PGPORT: ${{ secrets.PGPORT }}
+  PGUSER: ${{ secrets.PGUSER }}
+  SLACK_WEBHOOK: ${{ secrets.SLACK_WEBHOOK }}
+  WEB3_PROVIDER: ${{ secrets.WEB3_PROVIDER }}
+
+jobs:
+  Start:
+
+    runs-on: [ self-hosted, psql-db-access ]
+
+    steps:
+    - uses: actions/checkout@v2
+    - name: Use Node.js 12
+      uses: actions/setup-node@v1
+      with:
+        node-version: '12'
+    
+    - name: Create .env file
+      run: |
+        touch .env
+        echo "ACCOUNT_ADDRESS_TEST="$ACCOUNT_ADDRESS_TEST >> .env
+        echo "ACCOUNT_SECRET_TEST"=$ACCOUNT_SECRET_TEST >> .env
+        echo "COINBASE_ENDPOINT"=$COINBASE_ENDPOINT >> .env
+        echo "COMPOUND_ENDPOINT"=$COMPOUND_ENDPOINT >> .env
+        echo "ETHPLORER_ENDPOINT"=$ETHPLORER_ENDPOINT >> .env
+        echo "GAS_STATION_ENDPOINT"=$GAS_STATION_ENDPOINT >> .env
+        echo "PGDATABASE"=$PGDATABASE >> .env
+        echo "PGHOST"=$PGHOST >> .env
+        echo "PGPASSWORD"=$PGPASSWORD >> .env
+        echo "PGPORT"=$PGPORT >> .env
+        echo "PGUSER"=$PGUSER >> .env
+        echo "SLACK_WEBHOOK"=$SLACK_WEBHOOK >> .env
+        echo "WEB3_PROVIDER"=$WEB3_PROVIDER >> .env
+        cat .env
+      shell: bash
+    
+    - name: Install dependencies
+      run: |
+        yarn install --ignore-optional
+        # The tfjs folks haven't published arm binaries yet
+        # yarn add @tensorflow/tfjs-node
+        # npm rebuild @tensorflow/tfjs-node --build-from-source
+      shell: bash
+
+    - run: yarn nantucket-test
