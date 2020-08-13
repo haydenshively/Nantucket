@@ -23,13 +23,23 @@ class CToken extends Contract {
     this.isCETH = isCETH;
   }
 
+  /**
+   * Convenience function that calls `getUnderlyingPrice` for this cToken
+   *
+   * @return {Big} the token's price in Eth
+   */
   priceInEth() {
     return PriceOracle.mainnet.getUnderlyingPrice(this);
   }
 
-  // Converts ordinary asset to the cToken equivalent (SEND -- uses gas)
-  // amount: #tokens
-  // result: sends (#tokens) and receives (#ctokens = #tokens / exchange_rate)
+  /**
+   * Converts ordinary asset to the cToken equivalent (SEND -- uses gas)
+   * Sends `amount` uTokens and receives `amount / exchangeRate` cTokens
+   *
+   * @param {Number} amount how much to supply, in units of underlying
+   * @param {Number} gasPrice the gas price to use, in gwei
+   * @return {Object} the transaction object
+   */
   supply_uUnits(amount, gasPrice) {
     amount = Big(amount)
       .times(this.decimals)
@@ -45,10 +55,15 @@ class CToken extends Contract {
     }
   }
 
-  // Converts the cToken to its ordinary asset equivalent (SEND -- uses gas)
-  // amount: #ctokens
-  // result: sends (#ctokens) and receives (#tokens <= #ctokens * exchange_rate)
-  // CAUTION: #tokens <= #ctokens * exchange_rate <= account_liquidity <= market_liquidity
+  /**
+   * Converts cTokens to their underlying asset (SEND -- uses gas)
+   * Sends `amount` cTokens and receives `amount * exchangeRate` uTokens
+   * CAUTION: `amount * exchangeRate <= accountLiquidity <= marketLiquidity`
+   *
+   * @param {Number} amount how much to withdraw
+   * @param {Number} gasPrice the gas price to use, in gwei
+   * @return {Object} the transaction object
+   */
   withdraw_cUnits(amount, gasPrice) {
     amount = Big(amount)
       .times(1e8)
@@ -59,7 +74,15 @@ class CToken extends Contract {
     return this.txFor(encodedMethod, "900000", gasPrice);
   }
 
-  // Just like withdraw_cUnits, but amount is in units of the ordinary asset (SEND -- uses gas)
+  /**
+   * Converts cTokens to their underlying asset (SEND -- uses gas)
+   * Sends `amount` cTokens and receives `amount * exchangeRate` uTokens
+   * CAUTION: `amount * exchangeRate <= accountLiquidity <= marketLiquidity`
+   *
+   * @param {Number} amount how much to withdraw, in units of underlying
+   * @param {Number} gasPrice the gas price to use, in gwei
+   * @return {Object} the transaction object
+   */
   withdraw_uUnits(amount, gasPrice) {
     amount = Big(amount)
       .times(this.decimals)
@@ -72,11 +95,15 @@ class CToken extends Contract {
     return this.txFor(encodedMethod, "900000", gasPrice);
   }
 
-  // Performs liquidation (SEND -- uses gas)
-  // borrower: account address of any user with negative account_liquidity
-  // amount: the amount of debt to repay, in units of the ordinary asset
-  // cTokenToSeize: an address of a cToken that the borrower holds as collateral
-  // result: funds will be withdrawn from your wallet in order to pay debt
+  /**
+   * Performs liquidation (SEND -- uses gas)
+   *
+   * @param {String} borrower address of any user with negative account liquidity
+   * @param {Number} amount the amount of debt to repay, in units of underlying
+   * @param {String} cTokenToSeize an address of a cToken that the borrower holds as collateral
+   * @param {Number} gasPrice the gas price to use, in gwei
+   * @return {Object} the transaction object
+   */
   liquidate_uUnits(borrower, amount, cTokenToSeize, gasPrice) {
     amount = Big(amount)
       .times(this.decimals)
@@ -87,15 +114,24 @@ class CToken extends Contract {
       const encodedMethod = this.contract.methods
         .liquidateBorrow(borrower, cTokenToSeize)
         .encodeABI();
-      return this.txWithValueFor(encodedMethod, "900000", gasPrice, hexAmount);
+      return this.txWithValueFor(encodedMethod, "700000", gasPrice, hexAmount);
     } else {
       const encodedMethod = this.contract.methods
         .liquidateBorrow(borrower, hexAmount, cTokenToSeize)
         .encodeABI();
-      return this.txFor(encodedMethod, "900000", gasPrice);
+      return this.txFor(encodedMethod, "700000", gasPrice);
     }
   }
 
+  /**
+   * Convenience function that calls the `liquidate` function of FlashLiquidator
+   *
+   * @param {String} borrower address of any user with negative account liquidity
+   * @param {Number} amount the amount of debt to repay, in units of underlying
+   * @param {String} cTokenToSeize an address of a cToken that the borrower holds as collateral
+   * @param {Number} gasPrice the gas price to use, in gwei
+   * @return {Object} the transaction object
+   */
   flashLiquidate_uUnits(borrower, amount, cTokenToSeize, gasPrice) {
     return FlashLiquidator.mainnet.liquidate(
       borrower,
@@ -106,49 +142,79 @@ class CToken extends Contract {
     );
   }
 
-  // Returns the current exchange_rate (CALL -- no gas needed)
-  // exchange_rate = (uUnitsInContract() + uUnitsLoanedOut() - totalReserves()) / cUnitsInCirculation()
+  /**
+   * Gets the current exchange rate
+   * (uUnitsSupplied() + uUnitsBorrowed() - totalReserves()) / cUnitsInCirculation()
+   *
+   * @return {Big} the exchange rate
+   */
   async exchangeRate() {
     return Big(await this.contract.methods.exchangeRateCurrent().call());
   }
 
-  // Returns the current borrow rate per block (CALL -- no gas needed)
+  /**
+   * Gets the current borrow rate per block
+   *
+   * @return {Big} the borrow rate
+   */
   async borrowRate() {
     return Big(await this.contract.methods.borrowRatePerBlock().call());
   }
 
-  // Returns the current supply rate per block (CALL -- no gas needed)
+  /**
+   * Gets the current supply rate per block
+   *
+   * @return {Big} the supply rate
+   */
   async supplyRate() {
     return Big(await this.contract.methods.supplyRatePerBlock().call());
   }
 
-  // Returns the total amount of cTokens currently in circulation (CALL -- no gas needed)
+  /**
+   * Gets the total number of cTokens in circulation
+   *
+   * @return {Big} cTokens in circulation
+   */
   async cUnitsInCirculation() {
     return Big(await this.contract.methods.totalSupply().call());
   }
 
-  // Returns the total amount of ordinary asset that the contract owns (CALL -- no gas needed)
+  /**
+   * Gets the total number of uTokens supplied to Compound
+   *
+   * @return {Big} uTokens supplied
+   */
   async uUnitsSupplied() {
     return Big(await this.contract.methods.getCash().call()).div(this.decimals);
   }
 
-  // Returns the amount of ordinary asset that the wallet has placed in the contract (CALL -- no gas needed)
-  async uUnitsSuppliedBy(wallet) {
+  /**
+   * Gets the number of uTokens supplied by a given user
+   *
+   * @param {String} supplier address of any user
+   */
+  async uUnitsSuppliedBy(supplier) {
     return Big(
-      await this.contract.methods.balanceOfUnderlying(wallet).call()
+      await this.contract.methods.balanceOfUnderlying(supplier).call()
     ).div(this.decimals);
   }
 
-  // Returns the total amount of ordinary asset that the contract has loaned out (CALL -- no gas needed)
+  /**
+   * Gets the total number of uTokens borrowed from Compound
+   *
+   * @return {Big} uTokens borrowed
+   */
   async uUnitsBorrowed() {
     return Big(await this.contract.methods.totalBorrowsCurrent().call()).div(
       this.decimals
     );
   }
 
-  // Returns the amount of ordinary asset that the contract has loaned out to borrower (CALL -- no gas needed)
-  // ** includes interest **
-  // borrower: account address of any user
+  /**
+   * Gets the number of uTokens borrowed by a given user (includes interest)
+   * 
+   * @param {String} borrower address of any user
+   */
   async uUnitsBorrowedBy(borrower) {
     return Big(
       await this.contract.methods.borrowBalanceCurrent(borrower).call()
