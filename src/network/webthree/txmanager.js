@@ -2,20 +2,19 @@ const Big = require("big.js");
 Big.DP = 40;
 Big.RM = 0;
 
-const Tx = require("ethereumjs-tx").Transaction;
 const winston = require("winston");
+
+const Wallet = require("./wallet");
 
 class TxManager {
   constructor(envKeyAddress, envKeySecret, maxInProgressTxs = 5) {
-    this._envKeyAddress = envKeyAddress;
-    this._envKeySecret = envKeySecret;
+    this._wallet = new Wallet(envKeyAddress, envKeySecret);
 
     this._maxInProgressTxs = maxInProgressTxs;
     this._numInProgressTxs = 0;
 
     this._nextNonce = null;
     this._queue = [];
-    this._gasPrices = {};
   }
 
   async init() {
@@ -24,22 +23,7 @@ class TxManager {
       return;
     }
 
-    this._nextNonce = await web3.eth.getTransactionCount(
-      process.env[this._envKeyAddress]
-    );
-
-    // TODO web3 returns empty tx array, even before filtering
-    // (await TxManager._getPendingTxsFrom(process.env[this._envKeyAddress]))
-    //   .sort((a, b) => a.nonce - b.nonce)
-    //   .forEach(tx => {
-    //     this.insert({
-    //       to: tx.to,
-    //       gas: tx.gas,
-    //       gasPrice: tx.gasPrice,
-    //       data: tx.input,
-    //       value: tx.value
-    //     });
-    //   });
+    this._nextNonce = await this._wallet.getTransactionCount();
   }
 
   increaseGasPriceFor(key, newPrice) {
@@ -55,30 +39,25 @@ class TxManager {
           continue;
         this._queue[i].tx.gasPrice = newPrice.toFixed(0);
 
-        if (this._queue[i].inProgress) {
-          // Send replacement transaction
-          const sentTx = this._signAndSend(
-            this._queue[i].tx,
-            this._queue[i].id
-          );
-          const handle = setInterval(
-            this._onTxErrorFor.bind(this),
-            this._queue[i].timeout,
-            this._queue[i].id
-          );
-          this._setupTxEvents(
-            sentTx,
-            this._queue[i].id,
-            this._queue[i].tx.gasPrice,
-            handle
-          );
-        }
+        if (this._queue[i].inProgress) this._doItem(i);
       }
     }
 
     return didFindTx;
   }
 
+  /**
+   * Adds a new transaction to the wallet's queue (even if it's a duplicate)
+   *
+   * @param {Object} tx The transaction object {to, gas, gasPrice, data, value}
+   * @param {Number} priority Sorting criteria. Higher priority txs go first
+   * @param {Number} timeout Time (in milliseconds) after which tx slot will be freed;
+   *    if queue contains other txs, they will override this one
+   * @param {Boolean} rejectIfDuplicate Ignores the input tx if its "to" and "key" fields
+   *    are the same as a transaction in the current queue
+   * @param {String} key If two txs have the same key, they will be considered duplicates
+   *
+   */
   insert(
     tx,
     priority = 0,
@@ -86,18 +65,6 @@ class TxManager {
     rejectIfDuplicate = false,
     key = null
   ) {
-    /**
-     * Adds a new transaction to the wallet's queue (even if it's a duplicate)
-     *
-     * @param {object} tx The transaction object {to, gas, gasPrice, data, value}
-     * @param {number} priority Sorting criteria. Higher priority txs go first
-     * @param {number} timeout Time (in milliseconds) after which tx slot will be freed;
-     *    if queue contains other txs, they will override this one
-     * @param {boolean} rejectIfDuplicate Ignores the input tx if its "to" and "key" fields
-     *    are the same as a transaction in the current queue
-     * @param {string} key If two txs have the same key, they will be considered duplicates
-     *
-     */
     if (rejectIfDuplicate) {
       if (
         this._queue.filter(item => item.tx.to === tx.to && item.key === key)
@@ -128,27 +95,34 @@ class TxManager {
       if (this._numInProgressTxs === this._maxInProgressTxs) break;
 
       if (!this._queue[i].inProgress) {
-        // set tx nonce
         this._queue[i].inProgress = true;
+        this._numInProgressTxs++;
+
         this._queue[i].id = this._nextNonce;
         this._nextNonce++;
-        // send tx and setup its callback events
-        const sentTx = this._signAndSend(this._queue[i].tx, this._queue[i].id);
-        const handle = setInterval(
-          this._onTxErrorFor.bind(this),
-          this._queue[i].timeout,
-          this._queue[i].id
-        );
-        this._setupTxEvents(
-          sentTx,
-          this._queue[i].id,
-          this._queue[i].tx.gasPrice,
-          handle
-        );
-        // now that tx is in progress, update state
-        this._numInProgressTxs++;
+
+        this._doItem(i);
       }
     }
+  }
+
+  _doItem(i) {
+    // send tx and setup its callback events
+    const sentTx = this.wallet.signAndSend(
+      this._queue[i].tx,
+      this._queue[i].id
+    );
+    const handle = setInterval(
+      this._onTxErrorFor.bind(this),
+      this._queue[i].timeout,
+      this._queue[i].id
+    );
+    this._setupTxEvents(
+      sentTx,
+      this._queue[i].id,
+      this._queue[i].tx.gasPrice,
+      handle
+    );
   }
 
   _setupTxEvents(sentTx, nonce, gasPrice, setIntervalHandle) {
@@ -222,42 +196,6 @@ class TxManager {
     this._nextNonce = nonce;
     this._numInProgressTxs = 0;
     this._maximizeNumInProgressTxs();
-  }
-
-  // _emptyTx(gasPrice) {
-  //   return {
-  //     to: process.env[this._envKeyAddress],
-  //     gas: 21000,
-  //     gasPrice: gasPrice,
-  //     value: 0
-  //   };
-  // }
-
-  _signAndSend(tx, nonce) {
-    if (nonce in this._gasPrices)
-      tx.gasPrice = Math.max(tx.gasPrice, Number(this._gasPrices[nonce]) * 1.1);
-    this._gasPrices[nonce] = Math.floor(tx.gasPrice).toFixed(0);
-
-    tx.nonce = web3.utils.toHex(nonce);
-    tx.from = process.env[this._envKeyAddress];
-    tx.gasPrice = web3.utils.toHex(this._gasPrices[nonce]);
-    return TxManager._send(this._sign(tx));
-  }
-
-  _sign(tx) {
-    tx = new Tx(tx); // Could add chain/hardfork specifics here
-    tx.sign(Buffer.from(process.env[this._envKeySecret], "hex"));
-    return "0x" + tx.serialize().toString("hex");
-  }
-
-  static _send(signedTx) {
-    return web3.eth.sendSignedTransaction(signedTx);
-  }
-
-  static async _getPendingTxsFrom(address) {
-    return (await web3.eth.getPendingTransactions()).filter(
-      tx => tx.from === address
-    );
   }
 }
 
