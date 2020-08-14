@@ -10,7 +10,7 @@ describe("network/webthree || Wallet Test", () => {
   const wallet = new Wallet("ACCOUNT_ADDRESS_TEST", "ACCOUNT_SECRET_TEST");
 
   it("should retrieve lowest unconfirmed nonce", async () => {
-    const nonce = await wallet.getTransactionCount();
+    const nonce = await wallet.getLowestLiquidNonce();
     assert(typeof nonce === "number");
     assert(Number.isInteger(nonce));
   });
@@ -32,10 +32,8 @@ describe("network/webthree || Wallet Test", () => {
   });
 
   it("should send a transaction", async () => {
-    const nonce = await wallet.getTransactionCount();
-    const gasPrice = Big(await web3.eth.getGasPrice());
-    wallet._gasPrices[nonce] = gasPrice;
-
+    const nonce = await wallet.getLowestLiquidNonce();
+    wallet.emptyTx.gasPrice = Big(await web3.eth.getGasPrice());
     const sentTx = wallet.signAndSend(wallet.emptyTx, nonce, true);
 
     return sentTx.then(receipt => {

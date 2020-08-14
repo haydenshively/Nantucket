@@ -47,7 +47,6 @@ class Wallet {
    * @param {Number} nonce the transaction's nonce, as an integer (base 10)
    * @param {Boolean} useMinGasPrice whether to set the tx's gas price to the minimum; default `false`
    * @returns {PromiEvent?} See [here](https://web3js.readthedocs.io/en/v1.2.0/callbacks-promises-events.html#promievent)
-   *  ...or null if gas price isn't high enough
    *
    * @example
    * // Send the following tx with nonce 0
@@ -64,12 +63,7 @@ class Wallet {
    * // Send an empty tx with nonce 0 and min gas price
    * const sentTx = wallet.signAndSend(wallet.emptyTx, 0, true);
    */
-  signAndSend(tx, nonce, useMinGasPrice = false) {
-    const minGasPrice = this.minGasPriceFor(nonce);
-
-    if (useMinGasPrice) tx.gasPrice = minGasPrice;
-    else if (tx.gasPrice.lt(minGasPrice)) return null;
-
+  signAndSend(tx, nonce) {
     this._gasPrices[nonce] = tx.gasPrice;
 
     tx.nonce = web3.utils.toHex(nonce);
@@ -118,7 +112,7 @@ class Wallet {
    *
    * @returns {Promise} the next unconfirmed (possibly pending) nonce (base 10)
    */
-  async getTransactionCount() {
+  async getLowestLiquidNonce() {
     return web3.eth.getTransactionCount(process.env[this._envKeyAddress]);
   }
 }

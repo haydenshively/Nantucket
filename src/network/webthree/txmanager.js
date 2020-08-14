@@ -23,7 +23,7 @@ class TxManager {
       return;
     }
 
-    this._nextNonce = await this._wallet.getTransactionCount();
+    this._nextNonce = await this._wallet.getLowestLiquidNonce();
   }
 
   replaceAllPendingWithEmpty() {
