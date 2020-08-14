@@ -15,11 +15,14 @@ class Wallet {
     this._envKeyAddress = envKeyAddress;
     this._envKeySecret = envKeySecret;
 
+    // Nothing is ever deleted from _gasPrices. If this code were
+    // to run forever, this would cause memory to grow forever (very slowly).
     this._gasPrices = {};
 
+    this.label = String(process.env[envKeyAddress]).slice(0, 6);
     this.emptyTx = {
       gasLimit: 21000,
-      to: process.env[this._envKeyAddress],
+      to: process.env[envKeyAddress],
       value: 0
     };
   }

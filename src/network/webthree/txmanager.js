@@ -26,6 +26,26 @@ class TxManager {
     this._nextNonce = await this._wallet.getTransactionCount();
   }
 
+  replaceAllPendingWithEmpty() {
+    for (let i = 0; i < this._queue.length; i++) {
+      if (this._queue[i].inProgress) {
+        this._queue[i].tx = this._wallet.emptyTx;
+        this._doItem(i);
+      }
+    }
+  }
+
+  /**
+   * If an item in the queue has the given key, update it's gas price.
+   * If that item is already in progress (it's a pending tx), and the
+   * new gas price is at least 12% higher than the old one, rebroadcast
+   * the tx.
+   *
+   * @param {String} key identifier to match items against
+   * @param {Big} newPrice the new gas price in wei (gwei * 10^9)
+   *
+   * @returns {Boolean} whether any item in the queue matched the given key
+   */
   increaseGasPriceFor(key, newPrice) {
     newPrice = Big(newPrice);
     let didFindTx = false;
@@ -33,12 +53,9 @@ class TxManager {
     for (let i = 0; i < this._queue.length; i++) {
       if (this._queue[i].key === key) {
         didFindTx = true;
-        if (
-          newPrice.times(1.1).lte(Number(this._queue[i].tx.gasPrice).toFixed(0))
-        )
-          continue;
-        this._queue[i].tx.gasPrice = newPrice.toFixed(0);
+        if (newPrice.times(1.12).lte(this._queue[i].tx.gasPrice)) continue;
 
+        this._queue[i].tx.gasPrice = newPrice;
         if (this._queue[i].inProgress) this._doItem(i);
       }
     }
@@ -49,7 +66,7 @@ class TxManager {
   /**
    * Adds a new transaction to the wallet's queue (even if it's a duplicate)
    *
-   * @param {Object} tx The transaction object {to, gas, gasPrice, data, value}
+   * @param {Object} tx The transaction object {to, gasLimit, gasPrice, data, value}
    * @param {Number} priority Sorting criteria. Higher priority txs go first
    * @param {Number} timeout Time (in milliseconds) after which tx slot will be freed;
    *    if queue contains other txs, they will override this one
@@ -106,16 +123,26 @@ class TxManager {
     }
   }
 
+  /**
+   * Send tx and setup its callback events
+   *
+   * @param {Number} i item index in this._queue
+   */
   _doItem(i) {
-    // send tx and setup its callback events
-    const sentTx = this.wallet.signAndSend(
+    const sentTx = this._wallet.signAndSend(
       this._queue[i].tx,
-      this._queue[i].id
+      this._queue[i].id,
+      !(gasPrice in this._queue[i].tx)
     );
-    const handle = setInterval(
+    if (sentTx === null) {
+      this._onTxErrorFor(this._queue[i].id, this._queue[i].tx.gasPrice);
+      return;
+    }
+    const handle = setTimeout(
       this._onTxErrorFor.bind(this),
       this._queue[i].timeout,
-      this._queue[i].id
+      this._queue[i].id,
+      this._queue[i].tx.gasPrice
     );
     this._setupTxEvents(
       sentTx,
@@ -125,60 +152,59 @@ class TxManager {
     );
   }
 
-  _setupTxEvents(sentTx, nonce, gasPrice, setIntervalHandle) {
-    const label = `💸 *Transaction* | ${String(
-      process.env[this._envKeyAddress]
-    ).slice(0, 6)}.${nonce} `;
+  _setupTxEvents(sentTx, nonce, gasPrice, timeoutHandle) {
+    const label = `💸 *Transaction* | ${this._wallet.label}:${nonce} `;
 
+    // After receiving the transaction hash, log its Etherscan link
     sentTx.on("transactionHash", hash => {
-      winston.log(
-        "info",
-        label + `Available on <https://etherscan.io/tx/${hash}|etherscan>`
-      );
+      winston.info(`${label}On <https://etherscan.io/tx/${hash}|etherscan>`);
     });
+    // After receiving receipt, log success and perform cleanup
     sentTx.on("receipt", receipt => {
-      clearInterval(setIntervalHandle);
-      winston.log(
-        "info",
-        label + `Successful at block ${receipt.blockNumber}!`
-      );
-      this._onTxReceiptFor(nonce);
+      winston.info(`${label}Successful at block ${receipt.blockNumber}!`);
+      this._onTxReceiptFor(nonce, timeoutHandle);
     });
+    // After receiving an error, check if it occurred on or off chain
     sentTx.on("error", (err, receipt) => {
-      clearInterval(setIntervalHandle);
+      // If it occurred on-chain, receipt will be defined.
+      // Treat it the same as the successful receipt case.
       if (receipt !== undefined) {
-        winston.log("info", label + "Failed on-chain :(");
-        this._onTxReceiptFor(nonce);
+        winston.info(label + "Failed on-chain :(");
+        this._onTxReceiptFor(nonce, timeoutHandle);
         return;
       }
-
-      const matches = this._queue.filter(
-        q => q.id === nonce && q.tx.gasPrice === gasPrice
-      );
-      if (matches.length === 0) return;
-      // TODO something like this to detect when nonce is too low
-      // if (String(err).includes("nonce too low")) this._nextNonce++;
-      winston.log("error", label + "Failed off-chain: " + String(err));
-      this._onTxErrorFor(nonce, gasPrice);
+      // If it occurred off-chain, move on to the next transaction. If the
+      // error was that the nonce was too low, raise the nonce (overrides
+      // the default behavior of this._onTxErrorFor)
+      this._onTxErrorFor(nonce, gasPrice, timeoutHandle, () => {
+        winston.log("error", label + String(err));
+        if (String(err).includes("nonce too low")) this._nextNonce++;
+      });
     });
   }
 
-  _onTxReceiptFor(nonce) {
-    delete this._gasPrices[nonce];
+  _onTxReceiptFor(nonce, timeoutHandle) {
+    clearTimeout(timeoutHandle);
     this._queue = this._queue.filter(tx => tx.id !== nonce);
     this._numInProgressTxs--;
     this._maximizeNumInProgressTxs();
   }
 
-  _onTxErrorFor(nonce, gasPrice) {
-    // If the tx times-out, fails, or errors when it's nonce has
-    // already left the queue, we can infer that it was replaced
-    // and succeeded under a separate tx hash. As such, we can
+  _onTxErrorFor(nonce, gasPrice, timeoutHandle = null, f = null) {
+    if (timeoutHandle !== null) clearTimeout(timeoutHandle);
+    // If the sent tx times-out, fails, or errors when it no longer
+    // has a matching tx in the queue, we can infer that it was replaced
+    // and/or succeeded under a separate hash. As such, we can
     // ignore whatever dropped tx is calling this function.
     // Ideally we would remove callbacks when dropping
     // transactions, but that's easier said than done.
+    // TODO Switch to ethersjs instead of Web3js and remove
+    // callbacks when dropping transactions
     const matches = this._queue.filter(
-      q => q.id === nonce && q.tx.gasPrice === gasPrice
+      q =>
+        q.id === nonce &&
+        ((gasPrice === undefined && !(gasPrice in q.tx)) ||
+          q.tx.gasPrice.eq(gasPrice))
     );
     if (matches.length === 0) return;
 
@@ -195,6 +221,7 @@ class TxManager {
 
     this._nextNonce = nonce;
     this._numInProgressTxs = 0;
+    if (f !== null) f.bind(this)();
     this._maximizeNumInProgressTxs();
   }
 }
