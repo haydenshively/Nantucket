@@ -4,26 +4,18 @@ Big.RM = 0;
 
 const winston = require("winston");
 
-const Wallet = require("./wallet");
+const Candidate = require("../../messaging/candidate")
+const TxQueue = require("./txqueue");
 
 class TxManager {
-  constructor(envKeyAddress, envKeySecret, maxInProgressTxs = 5) {
-    this._wallet = new Wallet(envKeyAddress, envKeySecret);
-
-    this._maxInProgressTxs = maxInProgressTxs;
-    this._numInProgressTxs = 0;
-
-    this._nextNonce = null;
-    this._queue = [];
+  constructor(envKeyAddress, envKeySecret) {
+    this._queue = new TxQueue(envKeyAddress, envKeySecret);
+    this._initialized = false;
   }
 
   async init() {
-    if (this._nextNonce !== null) {
-      console.error("Already initialized TxManager. Aborting");
-      return;
-    }
-
-    this._nextNonce = await this._wallet.getLowestLiquidNonce();
+    await this._queue.rebase();
+    this._initialized = true;
   }
 
   replaceAllPendingWithEmpty() {

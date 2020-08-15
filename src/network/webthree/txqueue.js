@@ -153,6 +153,7 @@ class TxQueue {
     sentTx.on("receipt", receipt => {
       winston.info(`${label}Successful at block ${receipt.blockNumber}!`);
       this.rebase();
+      sentTx.removeAllListeners();
     });
     // After receiving an error, check if it occurred on or off chain
     sentTx.on("error", (err, receipt) => {
@@ -164,6 +165,7 @@ class TxQueue {
         return;
       }
       winston.error(label + "Off-chain " + String(err));
+      sentTx.removeAllListeners();
     });
   }
 }

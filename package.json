@@ -40,6 +40,7 @@
     "test": "mocha --file './tests/setup.js' 'tests/**/*.js' --recursive",
     "test-database": "mocha --file './tests/setup.js' 'tests/database/**/*.js' --recursive",
     "test-logging": "mocha --file './tests/setup.js' 'tests/logging/**/*.js' --recursive",
+    "test-messaging": "mocha --file './tests/setup.js' 'tests/messaging/**/*.js' --recursive",
     "test-network": "mocha --file './tests/setup.js' 'tests/network/**/*.js' --recursive",
     "test-prediction": "mocha 'tests/prediction/**/*.js' --recursive"
   },

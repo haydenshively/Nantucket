@@ -1,20 +1,39 @@
+const Message = require("./message");
 // src.network.webthree
-const Comptroller = require("./network/webthree/compound/comptroller");
-const Tokens = require("./network/webthree/compound/ctoken");
+const Comptroller = require("../network/webthree/compound/comptroller");
+const Tokens = require("../network/webthree/compound/ctoken");
 
-class Candidate {
-  constructor(dbUserEntry) {
-    this.address = "0x" + dbUserEntry.address;
-    this.ctokenidpay = dbUserEntry.ctokenidpay;
-    this.ctokenidseize = dbUserEntry.ctokenidseize;
-    this.profitability = dbUserEntry.profitability;
+class Candidate extends Message {
+  constructor(data) {
+    super();
 
-    this.label = this.address.slice(0, 6);
-    this._markets = null;
+    this.address = data.address;
+    this.ctokenidpay = data.ctokenidpay;
+    this.ctokenidseize = data.ctokenidseize;
+    this.profitability = data.profitability;
+
+    if (this.address.length === 40) this.address = "0x" + this.address;
+
+    this._markets = "markets" in data ? data.markets : null;
+  }
+
+  get label() {
+    return this.address.slice(0, 6);
+  }
+
+  msg() {
+    super.__data = {
+      address: this.address,
+      ctokenidpay: this.ctokenidpay,
+      ctokenidseize: this.ctokenidseize,
+      profitability: this.profitability,
+      markets: this._markets
+    };
+    return this;
   }
 
   async init() {
-    let markets = []
+    let markets = [];
 
     const addrs = await Comptroller.mainnet.marketsEnteredBy(this.address);
     for (let addr of addrs) {
@@ -38,7 +57,7 @@ class Candidate {
 
     for (let market of this._markets) {
       const costInEth = await oracle.getPrice(market.address);
-      if (costInEth === null) return 0; 
+      if (costInEth === null) return 0;
 
       borrow += market.borrow_uUnits * costInEth;
       supply += market.supply_uUnits * costInEth * market.collat;

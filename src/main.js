@@ -1,8 +1,11 @@
 const winston = require("winston");
 
 // src
-const Candidate = require("./candidate");
 const Database = require("./database");
+// src.messaging
+const Candidate = require("./messaging/candidate");
+const Channel = require("./messaging/channel");
+const Message = require("./messaging/message");
 // src.network.web
 const Tickers = require("./network/web/coinbase/ticker");
 // src.network.webthree
@@ -10,6 +13,25 @@ const FlashLiquidator = require("./network/webthree/goldenage/flashliquidator");
 const Tokens = require("./network/webthree/compound/ctoken");
 
 class Main extends Database {
+  /**
+   * Constructs a `Main` object
+   *
+   * @param {number} gasPriceMultiplier When sending transactions, use
+   *    market-recommended gas price multiplied by this amount
+   * @param {number} minRevenue Any user with potential revenue less
+   *    than this number will be excluded when choosing candidates
+   * @param {number} maxRevenue Any user with potential revenue greater
+   *    than this number will be excluded when choosing candidates
+   * @param {number} maxHealth Any user with a health greater than this
+   *    number will be excluded when choosing candidates
+   * @param {number} numCandidates Users are ranked by liquidity
+   *    (lowest to highest). This specifies how many candidates
+   *    should be taken from the top of that list
+   * @param {number} priceWaveHealthThresh Users with off-chain health
+   *    less than or equal to this number will be added to the price-wave
+   *    candidates list
+   *
+   */
   constructor(
     gasPriceMultiplier,
     minRevenue,
@@ -18,25 +40,6 @@ class Main extends Database {
     numCandidates,
     priceWaveHealthThresh
   ) {
-    /**
-     * Constructs a `Main` object
-     *
-     * @param {number} gasPriceMultiplier When sending transactions, use
-     *    market-recommended gas price multiplied by this amount
-     * @param {number} minRevenue Any user with potential revenue less
-     *    than this number will be excluded when choosing candidates
-     * @param {number} maxRevenue Any user with potential revenue greater
-     *    than this number will be excluded when choosing candidates
-     * @param {number} maxHealth Any user with a health greater than this
-     *    number will be excluded when choosing candidates
-     * @param {number} numCandidates Users are ranked by liquidity
-     *    (lowest to highest). This specifies how many candidates
-     *    should be taken from the top of that list
-     * @param {number} priceWaveHealthThresh Users with off-chain health
-     *    less than or equal to this number will be added to the price-wave
-     *    candidates list
-     *
-     */
     super();
 
     this._gasPriceMultiplier = gasPriceMultiplier;
@@ -48,6 +51,8 @@ class Main extends Database {
 
     this._candidates = [];
     this._prepared_tx_data = {};
+
+    Channel(Message).on("DetermineLiquidatableCandidates", _ => this.onNewBlock.bind(this)());
   }
 
   async getGasPrice_Gwei() {

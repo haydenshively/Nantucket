@@ -7,7 +7,7 @@ const assert = require("assert");
 const TxQueue = require("../../../src/network/webthree/txqueue");
 
 describe("network/webthree || TxQueue Test", () => {
-  const txQueue = new TxQueue("ACCOUNT_ADDRESS_B", "ACCOUNT_SECRET_B");
+  const txQueue = new TxQueue("ACCOUNT_ADDRESS_TEST", "ACCOUNT_SECRET_TEST");
 
   it("should map nonces to indices", async () => {
     await txQueue.rebase();
