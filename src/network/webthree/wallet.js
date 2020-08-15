@@ -21,14 +21,14 @@ class Wallet {
 
     this.label = String(process.env[envKeyAddress]).slice(0, 6);
     this.emptyTx = {
-      gasLimit: 21000,
+      gasLimit: web3.utils.toHex("21000"),
       to: process.env[envKeyAddress],
-      value: 0
+      value: web3.utils.toHex("0")
     };
   }
 
   /**
-   * Gets the minimum gas price necessary to submit or replace a transaction.
+   * Gets the minimum gas price necessary to submit or replace a transaction.  
    * CAUTION: If a transaction was submitted by means other than this Wallet
    * code, the returned number could be inaccurate.
    *
@@ -42,11 +42,11 @@ class Wallet {
   }
 
   /**
-   *
+   * Signs and sends a transaction
+   * 
    * @param {Object} tx an object describing the transaction
    * @param {Number} nonce the transaction's nonce, as an integer (base 10)
-   * @param {Boolean} useMinGasPrice whether to set the tx's gas price to the minimum; default `false`
-   * @returns {PromiEvent?} See [here](https://web3js.readthedocs.io/en/v1.2.0/callbacks-promises-events.html#promievent)
+   * @returns {PromiEvent} See [here](https://web3js.readthedocs.io/en/v1.2.0/callbacks-promises-events.html#promievent)
    *
    * @example
    * // Send the following tx with nonce 0
@@ -58,12 +58,9 @@ class Wallet {
    *  data: '0x7f74657374320...',
    * };
    * const sentTx = wallet.signAndSend(tx, 0);
-   *
-   * @example
-   * // Send an empty tx with nonce 0 and min gas price
-   * const sentTx = wallet.signAndSend(wallet.emptyTx, 0, true);
    */
   signAndSend(tx, nonce) {
+    tx = {...tx};
     this._gasPrices[nonce] = tx.gasPrice;
 
     tx.nonce = web3.utils.toHex(nonce);
