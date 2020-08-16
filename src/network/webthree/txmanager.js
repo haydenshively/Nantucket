@@ -4,10 +4,13 @@ Big.RM = 0;
 
 const winston = require("winston");
 
-const Candidate = require("../../messaging/candidate")
+// src.messaging
+const Candidate = require("./messaging/candidate");
+const Channel = require("./messaging/channel");
+const Oracle = require("./messaging/oracle");
+// src.network.webthree
 const TxQueue = require("./txqueue");
 
-// src.network.webthree
 const FlashLiquidator = require("./network/webthree/goldenage/flashliquidator");
 const Tokens = require("./network/webthree/compound/ctoken");
 
@@ -18,32 +21,28 @@ class TxManager {
    */
   constructor(envKeyAddress, envKeySecret) {
     this._queue = new TxQueue(envKeyAddress, envKeySecret);
-    this._initialized = false;
+    this._oracle = null;
+
+    Channel(Oracle).on("Set", oracle => (this._oracle = oracle));
   }
 
   async init() {
     await this._queue.rebase();
-    this._initialized = true;
+
+    Channel(Candidate).on("LiquidateWithPriceUpdate", c => {});
+    Channel(Candidate).on("Liquidate", c => {});
   }
 
-  replaceAllPendingWithEmpty() {
-    for (let i = 0; i < this._queue.length; i++) {
-      if (this._queue[i].inProgress) {
-        this._queue[i].tx = this._wallet.emptyTx;
-        this._doItem(i);
-      }
-    }
-  }
-
-  async getGasPrice_Gwei() {
-    const market_Gwei = Number(await web3.eth.getGasPrice()) / 1e9;
-    return market_Gwei * this._gasPriceMultiplier;
+  async getGasPrice() {
+    return Big(await web3.eth.getGasPrice());
   }
 
   async getTxFee_Eth(gas = 2000000, gasPrice = null) {
     if (gasPrice === null) gasPrice = await this.getGasPrice_Gwei();
-    return (gasPrice * gas) / 1e9;
+    return (gasPrice * gas) / 1e18;
   }
+
+  // BLIND RAISE EVERY 0.2 seconds
 
   // const gasPrice_Gwei = await this.getGasPrice_Gwei();
   // const estTxFee_Eth = await this.getTxFee_Eth(undefined, gasPrice_Gwei);
@@ -138,122 +137,12 @@ class TxManager {
     this._maximizeNumInProgressTxs();
   }
 
-  _maximizeNumInProgressTxs() {
-    for (let i = 0; i < this._queue.length; i++) {
-      if (this._numInProgressTxs === this._maxInProgressTxs) break;
-
-      if (!this._queue[i].inProgress) {
-        this._queue[i].inProgress = true;
-        this._numInProgressTxs++;
-
-        this._queue[i].id = this._nextNonce;
-        this._nextNonce++;
-
-        this._doItem(i);
-      }
-    }
-  }
-
   /**
-   * Send tx and setup its callback events
-   *
-   * @param {Number} i item index in this._queue
+   * Replaces all known pending transactions with empty transactions.
+   * Intended to be run when terminating the process
    */
-  _doItem(i) {
-    const sentTx = this._wallet.signAndSend(
-      this._queue[i].tx,
-      this._queue[i].id,
-      !(gasPrice in this._queue[i].tx)
-    );
-    if (sentTx === null) {
-      this._onTxErrorFor(this._queue[i].id, this._queue[i].tx.gasPrice);
-      return;
-    }
-    const handle = setTimeout(
-      this._onTxErrorFor.bind(this),
-      this._queue[i].timeout,
-      this._queue[i].id,
-      this._queue[i].tx.gasPrice
-    );
-    this._setupTxEvents(
-      sentTx,
-      this._queue[i].id,
-      this._queue[i].tx.gasPrice,
-      handle
-    );
-  }
-
-  _setupTxEvents(sentTx, nonce, gasPrice, timeoutHandle) {
-    const label = `💸 *Transaction* | ${this._wallet.label}:${nonce} `;
-
-    // After receiving the transaction hash, log its Etherscan link
-    sentTx.on("transactionHash", hash => {
-      winston.info(`${label}On <https://etherscan.io/tx/${hash}|etherscan>`);
-    });
-    // After receiving receipt, log success and perform cleanup
-    sentTx.on("receipt", receipt => {
-      winston.info(`${label}Successful at block ${receipt.blockNumber}!`);
-      this._onTxReceiptFor(nonce, timeoutHandle);
-    });
-    // After receiving an error, check if it occurred on or off chain
-    sentTx.on("error", (err, receipt) => {
-      // If it occurred on-chain, receipt will be defined.
-      // Treat it the same as the successful receipt case.
-      if (receipt !== undefined) {
-        winston.info(label + "Failed on-chain :(");
-        this._onTxReceiptFor(nonce, timeoutHandle);
-        return;
-      }
-      // If it occurred off-chain, move on to the next transaction. If the
-      // error was that the nonce was too low, raise the nonce (overrides
-      // the default behavior of this._onTxErrorFor)
-      this._onTxErrorFor(nonce, gasPrice, timeoutHandle, () => {
-        winston.log("error", label + String(err));
-        if (String(err).includes("nonce too low")) this._nextNonce++;
-      });
-    });
-  }
-
-  _onTxReceiptFor(nonce, timeoutHandle) {
-    clearTimeout(timeoutHandle);
-    this._queue = this._queue.filter(tx => tx.id !== nonce);
-    this._numInProgressTxs--;
-    this._maximizeNumInProgressTxs();
-  }
-
-  _onTxErrorFor(nonce, gasPrice, timeoutHandle = null, f = null) {
-    if (timeoutHandle !== null) clearTimeout(timeoutHandle);
-    // If the sent tx times-out, fails, or errors when it no longer
-    // has a matching tx in the queue, we can infer that it was replaced
-    // and/or succeeded under a separate hash. As such, we can
-    // ignore whatever dropped tx is calling this function.
-    // Ideally we would remove callbacks when dropping
-    // transactions, but that's easier said than done.
-    // TODO Switch to ethersjs instead of Web3js and remove
-    // callbacks when dropping transactions
-    const matches = this._queue.filter(
-      q =>
-        q.id === nonce &&
-        ((gasPrice === undefined && !(gasPrice in q.tx)) ||
-          q.tx.gasPrice.eq(gasPrice))
-    );
-    if (matches.length === 0) return;
-
-    const queueOld = [...this._queue];
-    this._queue = [];
-
-    for (let item of queueOld) {
-      if (item.id !== nonce) {
-        item.id = null;
-        item.inProgress = false;
-        this._queue.push(item);
-      }
-    }
-
-    this._nextNonce = nonce;
-    this._numInProgressTxs = 0;
-    if (f !== null) f.bind(this)();
-    this._maximizeNumInProgressTxs();
+  dumpAll() {
+    for (let i = 0; i < this._queue.length; i++) this._queue.dump(i);
   }
 }
 

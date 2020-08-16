@@ -32,7 +32,7 @@ describe("network/webthree || Wallet Test", () => {
   });
 
   // Interferes with TxQueue tests
-  xit("should send a transaction", async () => {
+  it("should send a transaction", async () => {
     const nonce = await wallet.getLowestLiquidNonce();
     wallet.emptyTx.gasPrice = Big(await web3.eth.getGasPrice());
     const sentTx = wallet.signAndSend(wallet.emptyTx, nonce, true);
@@ -43,5 +43,5 @@ describe("network/webthree || Wallet Test", () => {
       assert(receipt.to === receipt.from);
       assert(receipt.gasUsed === 21000);
     })
-  }).timeout(60000);
+  }).timeout(60000).skip();
 });
