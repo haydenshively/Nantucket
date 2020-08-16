@@ -69,6 +69,10 @@ class Candidate extends Message {
     };
   }
 
+  async isLiquidatableWithPriceFrom(oracle) {
+    return (await this.liquidityOffChain(oracle)).liquidity < 0.0;
+  }
+
   liquidityOnChain() {
     return Comptroller.mainnet.accountLiquidityOf(this.address);
   }

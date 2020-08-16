@@ -93,9 +93,9 @@ class TxQueue {
    * @param {Number} idx a queue index
    * @param {Object} tx an object describing the transaction
    * @param {String} gasPriceMode how to update the gas price:
-   *  `"as_is"`: use gas price specified in the `tx` arg
-   *  `"clip"`: `Math.max(minGasPrice, tx.gasPrice)`
-   *  `"min"`: use minimum gas price needed to replace existing txs
+   *    `"as_is"`: use gas price specified in the `tx` arg
+   *    `"clip"`: `Math.max(minGasPrice, tx.gasPrice)`
+   *    `"min"`: use minimum gas price needed to replace existing txs
    *
    * @example
    * // Replace the proximal tx with the following

@@ -7,7 +7,15 @@ const winston = require("winston");
 const Candidate = require("../../messaging/candidate")
 const TxQueue = require("./txqueue");
 
+// src.network.webthree
+const FlashLiquidator = require("./network/webthree/goldenage/flashliquidator");
+const Tokens = require("./network/webthree/compound/ctoken");
+
 class TxManager {
+  /*
+   * @param {number} gasPriceMultiplier When sending transactions, use
+   *    market-recommended gas price multiplied by this amount
+   */
   constructor(envKeyAddress, envKeySecret) {
     this._queue = new TxQueue(envKeyAddress, envKeySecret);
     this._initialized = false;
@@ -26,6 +34,37 @@ class TxManager {
       }
     }
   }
+
+  async getGasPrice_Gwei() {
+    const market_Gwei = Number(await web3.eth.getGasPrice()) / 1e9;
+    return market_Gwei * this._gasPriceMultiplier;
+  }
+
+  async getTxFee_Eth(gas = 2000000, gasPrice = null) {
+    if (gasPrice === null) gasPrice = await this.getGasPrice_Gwei();
+    return (gasPrice * gas) / 1e9;
+  }
+
+  // const gasPrice_Gwei = await this.getGasPrice_Gwei();
+  // const estTxFee_Eth = await this.getTxFee_Eth(undefined, gasPrice_Gwei);
+  // const ethPrice_USD =
+  //     1.0 / (await Tokens.mainnet.cUSDC.priceInEth()).toFixed(8);
+  // const profit = ethPrice_USD * (c.profitability - estTxFee_Eth);
+  // if (profit < 0) continue;
+
+  // winston.log(
+  //   "info",
+  //   `🐳 *Proposal ${i.label}* | Liquidating for $${profit.toFixed(
+  //     2
+  //   )} profit at block ${blockNumber}`
+  // );
+
+  // winston.log(
+  //   "info",
+  //   `🌊 *Price Wave* | ${i.label} now listed for $${profit.toFixed(
+  //     2
+  //   )} profit if prices get posted`
+  // );
 
   /**
    * If an item in the queue has the given key, update it's gas price.

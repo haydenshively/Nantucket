@@ -70,6 +70,7 @@ class Wallet {
 
   /**
    * Signs a transaction with the wallet's private key
+   * @private
    *
    * @param {Object} tx an object describing the transaction to sign
    * @returns {String} the serialized signed transaction
@@ -96,6 +97,7 @@ class Wallet {
 
   /**
    * Sends a signed transaction
+   * @private
    *
    * @param {String} signedTx a transaction that's been signed by this wallet
    * @returns {PromiEvent} See [here](https://web3js.readthedocs.io/en/v1.2.0/callbacks-promises-events.html#promievent)
