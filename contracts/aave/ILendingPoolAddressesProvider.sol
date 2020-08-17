@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GNU
-pragma solidity ^0.6.6;
+pragma solidity ^0.6.10;
 
 /**
     @title ILendingPoolAddressesProvider interface
