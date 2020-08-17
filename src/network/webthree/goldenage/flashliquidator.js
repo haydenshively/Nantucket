@@ -25,8 +25,39 @@ class FlashLiquidator extends Contract {
   }
 
   liquidateMany(borrowers, repayCTokens, seizeCTokens, gasPrice) {
+    let cTokens = [];
+    for (let i = 0; i < repayCTokens.length; i++)
+      cTokens.push(repayCTokens[i], seizeCTokens[i]);
+
     const encodedMethod = this.contract.methods
-      .liquidateMany(borrowers, repayCTokens, seizeCTokens)
+      .liquidateMany(borrowers, cTokens)
+      .encodeABI();
+
+    const gas = String(30 * borrowers.length) + "00000";
+    return this.txFor(encodedMethod, gas, gasPrice);
+  }
+
+  liquidateManyWithPriceUpdate(
+    messages,
+    signatures,
+    symbols,
+    borrowers,
+    repayCTokens,
+    seizeCTokens,
+    gasPrice
+  ) {
+    let cTokens = [];
+    for (let i = 0; i < repayCTokens.length; i++)
+      cTokens.push(repayCTokens[i], seizeCTokens[i]);
+
+    const encodedMethod = this.contract.methods
+      .liquidateManyWithPriceUpdate(
+        messages,
+        signatures,
+        symbols,
+        borrowers,
+        cTokens
+      )
       .encodeABI();
 
     const gas = String(30 * borrowers.length) + "00000";
@@ -38,6 +69,7 @@ exports.FlashLiquidator = FlashLiquidator;
 exports.mainnet = new FlashLiquidator(
   // "0x6bfdfCC0169C3cFd7b5DC51c8E563063Df059097", // V1 (repay & seize tokens must be different)
   // "0xFb3c1a8B2Baa50caF52093d7AF2450a143dbb212", // V2 (repay & seize tokens can be same)
-  "0x0733691100483A1107b7fC156216525ECE2E5fc1", // V3 (multi-account liquidate & return on 0 shortfall)
+  // "0x0733691100483A1107b7fC156216525ECE2E5fc1", // V3 (multi-account liquidate & return on 0 shortfall)
+  "0x3CEc62C15Ee7430f1D3EFc3F3c1B357691b01D61", // V4 (add support for open price feed)
   LIQUIDATORABI
 );
