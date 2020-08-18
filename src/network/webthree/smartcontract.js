@@ -13,7 +13,7 @@ class SmartContract {
     return {
       to: this.address,
       gasLimit: web3.utils.toHex(gasLimit),
-      gasPrice: Big(gasPrice).times(1e9).toFixed(0),
+      gasPrice: gasPrice,
       data: encodedMethod
     };
   }

@@ -28,7 +28,8 @@ class Wallet {
   }
 
   /**
-   * Gets the minimum gas price necessary to submit or replace a transaction.  
+   * Gets the minimum gas price necessary to submit or replace a transaction.
+   * 
    * CAUTION: If a transaction was submitted by means other than this Wallet
    * code, the returned number could be inaccurate.
    *
@@ -43,7 +44,7 @@ class Wallet {
 
   /**
    * Signs and sends a transaction
-   * 
+   *
    * @param {Object} tx an object describing the transaction
    * @param {Number} nonce the transaction's nonce, as an integer (base 10)
    * @returns {PromiEvent} See [here](https://web3js.readthedocs.io/en/v1.2.0/callbacks-promises-events.html#promievent)
@@ -60,8 +61,8 @@ class Wallet {
    * const sentTx = wallet.signAndSend(tx, 0);
    */
   signAndSend(tx, nonce) {
-    tx = {...tx};
-    this._gasPrices[nonce] = tx.gasPrice;
+    tx = { ...tx };
+    if ("gasPrice" in tx) this._gasPrices[nonce] = tx.gasPrice;
 
     tx.nonce = web3.utils.toHex(nonce);
     tx.gasPrice = web3.utils.toHex(tx.gasPrice.toFixed(0));
