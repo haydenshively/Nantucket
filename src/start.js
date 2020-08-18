@@ -153,6 +153,15 @@ process.on("SIGINT", () => {
 
   for (key in txManagers) txManagers[key].kill("SIGINT");
   workers.forEach(w => w.process.kill("SIGINT"));
+
+  database.stop();
+  web3.eth.clearSubscriptions();
+  try {
+    web3.currentProvider.connection.close();
+  } catch {
+    web3.currentProvider.connection.destroy();
+  }
+
   process.exit();
 });
 

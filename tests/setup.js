@@ -38,6 +38,7 @@ winston.configure({
 });
 
 after(() => {
+  web3.eth.clearSubscriptions();
   try {
     web3.currentProvider.connection.close();
   } catch {
