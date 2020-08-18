@@ -46,7 +46,7 @@ for (let key in config.txManagers) {
 // MARK: SETUP CANDIDATE WORKERS ------------------------------------
 function passthrough(channel, action, from, to) {
   channel = Channel(channel);
-  channel.on(action, msg => channel.broadcast(action, msg, to), from);
+  channel.on(action, msg => channel.broadcast(action, msg.msg(), to), from);
 }
 
 let workers = [];
