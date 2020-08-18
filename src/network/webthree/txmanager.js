@@ -142,7 +142,7 @@ class TxManager {
 
     this._queue.replace(0, tx, "clip", /*dryRun*/ true);
     // After dry run, tx.gasPrice will be updated...
-    const fee = this._estimateFee(tx);
+    const fee = TxManager._estimateFee(tx);
     if (fee.gt(this.maxFee_Eth) || fee.gt(this._profitability)) return;
     this._queue.replace(0, tx, "clip");
   }

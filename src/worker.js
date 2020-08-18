@@ -70,19 +70,20 @@ class Worker extends Database {
   }
 
   async checkCandidatesLiquidity() {
-    for (let c of this._candidates) {
+    for (let i = 0; i < this._candidates.length; i++) {
+      const c = this._candidates[i];
       // this is pairID DAI and SAI. There's no AAVE pool for it.
       if (c.ctokenidpay == 2 || (c.ctokenidpay == 6 && c.ctokenidseize == 2))
         continue;
 
-      if (Number.isInteger(c.ctokenidpay)) {
+      if (!String(c.ctokenidpay).startsWith("0x")) {
         // retrieve addresses for pre-computed best repay and seize tokens
         const repay = `0x${await this._tCTokens.getAddress(c.ctokenidpay)}`;
         const seize = `0x${await this._tCTokens.getAddress(c.ctokenidseize)}`;
         // TODO TxManager isn't hooked into the Database logic, so we have
         //  to pass along the repay and seize addresses here
-        c.ctokenidpay = repay;
-        c.ctokenidseize = seize;
+        this._candidates[i].ctokenidpay = repay;
+        this._candidates[i].ctokenidseize = seize;
       }
 
       if (
