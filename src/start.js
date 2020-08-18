@@ -97,17 +97,17 @@ const handle1 = setInterval(
   database.pullFromCTokenService.bind(database),
   6 * 60 * 1000
 );
-const handle2 = setInterval(() => {
-  database.pullFromAccountService.bind(database)();
+const handle2 = setInterval(async () => {
+  await database.pullFromAccountService.bind(database)();
   updateCandidates();
 }, 9 * 60 * 1000);
 
 // pull from Coinbase reporter
 const reporter = Reporter.mainnet;
-const handle3 = setInterval(() => {
+const handle3 = setInterval(async () => {
   const addrToCheck = "0x4ddc2d193948926d02f9b1fe9e1daa0718270ed5";
   const before = reporter.getPrice(addrToCheck);
-  reporter.fetch.bind(reporter)();
+  await reporter.fetch.bind(reporter)();
   if (reporter.getPrice(addrToCheck) === before) return;
 
   setOracles();

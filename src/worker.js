@@ -12,7 +12,7 @@ const Oracle = require("./messaging/oracle");
  * results back over IPC.
  *
  * __IPC Messaging:__
- * 
+ *
  * _Subscriptions:_
  * - Oracles>Set | Sets the worker's oracle to the one in the message ✅
  * - Messages>UpdateCandidates | Retrieves updated candidates list from ✅
@@ -85,7 +85,10 @@ class Worker extends Database {
         c.ctokenidseize = seize;
       }
 
-      if (await c.isLiquidatableWithPriceFrom(this._oracle)) {
+      if (
+        this._oracle !== null &&
+        (await c.isLiquidatableWithPriceFrom(this._oracle))
+      ) {
         c.msg().broadcast("LiquidateWithPriceUpdate");
         return;
       }

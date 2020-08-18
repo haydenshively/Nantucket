@@ -9,8 +9,8 @@ console.log(`Worker ${process.pid} is running`);
 const Worker = require("./worker");
 const worker = new Worker(
   Number(process.argv[2]),
-  Number(process.argv[3]),
-  Number(process.argv[4]),
+  process.argv[3] == "null" ? null : Number(process.argv[3]),
+  process.argv[4] == "null" ? null : Number(process.argv[4]),
   Number(process.argv[5])
 );
 
