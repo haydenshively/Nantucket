@@ -23,8 +23,8 @@ class CToken extends Contract {
     this.isCETH = isCETH;
   }
 
-  priceInEth() {
-    return PriceOracle.mainnet.getUnderlyingPrice(this);
+  priceInUSD() {
+    return PriceOracle.mainnet.getUnderlyingPriceUSD(this);
   }
 
   // Converts ordinary asset to the cToken equivalent (SEND -- uses gas)

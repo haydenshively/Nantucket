@@ -17,24 +17,25 @@ class FlashLiquidator extends Contract {
      * @return {Object} the transaction object
      */
     const hexAmount = web3.utils.toHex(amount.toFixed(0));
-    const encodedMethod = this.contract.methods
-      .liquidate(borrower, repayCToken, seizeCToken, hexAmount)
-      .encodeABI();
+    const method = this.contract.methods.liquidate(
+      borrower,
+      repayCToken,
+      seizeCToken,
+      hexAmount
+    );
+    const gasLimit = method.estimateGas({ gas: "3000000" });
 
-    return this.txFor(encodedMethod, "2300000", gasPrice);
+    return this.txFor(method.encodeABI(), gasLimit, gasPrice);
   }
 
   liquidateMany(borrowers, repayCTokens, seizeCTokens, gasPrice) {
-    let cTokens = [];
-    for (let i = 0; i < repayCTokens.length; i++)
-      cTokens.push(repayCTokens[i], seizeCTokens[i]);
+    const cTokens = this._combineTokens(repayCTokens, seizeCTokens);
+    const method = this.contract.methods.liquidateMany(borrowers, cTokens);
+    const gasLimit = method.estimateGas({
+      gas: String(3 * borrowers.length) + "000000"
+    });
 
-    const encodedMethod = this.contract.methods
-      .liquidateMany(borrowers, cTokens)
-      .encodeABI();
-
-    const gas = String(30 * borrowers.length) + "00000";
-    return this.txFor(encodedMethod, gas, gasPrice);
+    return this.txFor(method.encodeABI(), gasLimit, gasPrice);
   }
 
   liquidateManyWithPriceUpdate(
@@ -46,22 +47,26 @@ class FlashLiquidator extends Contract {
     seizeCTokens,
     gasPrice
   ) {
+    const cTokens = this._combineTokens(repayCTokens, seizeCTokens);
+    const method = this.contract.methods.liquidateManyWithPriceUpdate(
+      messages,
+      signatures,
+      symbols,
+      borrowers,
+      cTokens
+    );
+    const gasLimit = method.estimateGas({
+      gas: String(3 * borrowers.length) + "000000"
+    });
+
+    return this.txFor(method.encodeABI(), gasLimit, gasPrice);
+  }
+
+  _combineTokens(repayList, seizeList) {
     let cTokens = [];
-    for (let i = 0; i < repayCTokens.length; i++)
-      cTokens.push(repayCTokens[i], seizeCTokens[i]);
-
-    const encodedMethod = this.contract.methods
-      .liquidateManyWithPriceUpdate(
-        messages,
-        signatures,
-        symbols,
-        borrowers,
-        cTokens
-      )
-      .encodeABI();
-
-    const gas = String(30 * borrowers.length) + "00000";
-    return this.txFor(encodedMethod, gas, gasPrice);
+    for (let i = 0; i < repayList.length; i++)
+      cTokens.push(repayList[i], seizeList[i]);
+    return cTokens;
   }
 }
 

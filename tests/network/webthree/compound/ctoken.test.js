@@ -39,14 +39,3 @@ describe("network/webthree/compound || cToken Test", () => {
     });
   });
 });
-
-// // Tokens.mainnet.cDAI.uUnitsLoanedOutTo(accountToLiquidate).then((uUnitsLoaned) => {
-// //   Comptroller.mainnet.closeFactor().then((closeFactor) => {
-// //     maxLiquidation = uUnitsLoaned*(closeFactor - 0.1);
-// //     console.log('Max Liquidation: ' + maxLiquidation.toString());
-// //     Tokens.mainnet.cDAI.liquidate_uUnits(accountToLiquidate, maxLiquidation, Tokens.mainnet.cETH.address, process.env.PUBLIC_KEY);
-// //   });
-// // });
-// // Tokens.mainnet.cDAI.withdraw_uUnits(1, process.env.PUBLIC_KEY);
-// // Tokens.mainnet.cDAI.supply_uUnits(1, process.env.PUBLIC_KEY);
-// // Tokens.mainne

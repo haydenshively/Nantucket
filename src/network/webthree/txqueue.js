@@ -96,6 +96,8 @@ class TxQueue {
    *    `"as_is"`: use gas price specified in the `tx` arg
    *    `"clip"`: `Math.max(minGasPrice, tx.gasPrice)`
    *    `"min"`: use minimum gas price needed to replace existing txs
+   * @param {Boolean} dryRun default false; if true, update tx gas price
+   *    without actually adding to the queue or sending
    *
    * @example
    * // Replace the proximal tx with the following
@@ -107,7 +109,7 @@ class TxQueue {
    * };
    * txQueue.replace(0, tx, "min");
    */
-  replace(idx, tx, gasPriceMode) {
+  replace(idx, tx, gasPriceMode, dryRun = false) {
     switch (gasPriceMode) {
       case "as_is":
         break;
@@ -118,6 +120,7 @@ class TxQueue {
         tx.gasPrice = minGasPrice;
     }
 
+    if (dryRun) return;
     this._queue[idx] = tx;
     this._broadcast(idx);
   }

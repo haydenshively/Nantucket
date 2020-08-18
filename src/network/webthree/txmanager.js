@@ -2,139 +2,165 @@ const Big = require("big.js");
 Big.DP = 40;
 Big.RM = 0;
 
-const winston = require("winston");
-
 // src.messaging
 const Candidate = require("./messaging/candidate");
 const Channel = require("./messaging/channel");
+const Message = require("./messaging/message");
 const Oracle = require("./messaging/oracle");
 // src.network.webthree
 const TxQueue = require("./txqueue");
-
 const FlashLiquidator = require("./network/webthree/goldenage/flashliquidator");
-const Tokens = require("./network/webthree/compound/ctoken");
 
+/**
+ * Given a list of liquidatable candidates, TxManager will participate
+ * in blind-auction bidding wars and update Open Price Feed prices if
+ * necessary for the liquidation.
+ * 
+ * __IPC Messaging:__
+ * 
+ * _Subscriptions:_
+ * - Messages>NewBlock | Calls `reset()` (clears candidates and dumps txs)
+ * - Oracles>Set | Sets the txManager's oracle to the one in the message
+ * - Candidates>Liquidate | Appends the candidate from the message and
+ *    caches an updated transaction to be sent on next bid
+ * - Candidates>LiquidateWithPriceUpdate | Same idea, but will make sure
+ *    to update Open Price Feed prices
+ * 
+ * Please call `init()` as soon as possible. Bidding can't happen beforehand.
+ */
 class TxManager {
-  /*
-   * @param {number} gasPriceMultiplier When sending transactions, use
-   *    market-recommended gas price multiplied by this amount
+  /**
+   * @param {String} envKeyAddress Name of the environment variable containing
+   *    the wallet's address
+   * @param {String} envKeySecret Name of the environment variable containing
+   *    the wallet's private key
+   * @param {Number} interval Time between bids (milliseconds)
    */
-  constructor(envKeyAddress, envKeySecret) {
+  constructor(envKeyAddress, envKeySecret, interval) {
     this._queue = new TxQueue(envKeyAddress, envKeySecret);
     this._oracle = null;
 
+    // These variables get updated any time a new candidate is received
+    this._borrowers = [];
+    this._repayCTokens = [];
+    this._seizeCTokens = [];
+    this._idxsNeedingPriceUpdate = [];
+    this._profitability = 0.0; // in Eth
+    this._tx = null;
+
+    this.interval = interval;
+
+    Channel(Message).on("NewBlock", _ => this.reset());
     Channel(Oracle).on("Set", oracle => (this._oracle = oracle));
   }
 
   async init() {
     await this._queue.rebase();
 
-    Channel(Candidate).on("LiquidateWithPriceUpdate", c => {});
-    Channel(Candidate).on("Liquidate", c => {});
-  }
-
-  async getGasPrice() {
-    return Big(await web3.eth.getGasPrice());
-  }
-
-  async getTxFee_Eth(gas = 2000000, gasPrice = null) {
-    if (gasPrice === null) gasPrice = await this.getGasPrice_Gwei();
-    return (gasPrice * gas) / 1e18;
-  }
-
-  // BLIND RAISE EVERY 0.2 seconds
-
-  // const gasPrice_Gwei = await this.getGasPrice_Gwei();
-  // const estTxFee_Eth = await this.getTxFee_Eth(undefined, gasPrice_Gwei);
-  // const ethPrice_USD =
-  //     1.0 / (await Tokens.mainnet.cUSDC.priceInEth()).toFixed(8);
-  // const profit = ethPrice_USD * (c.profitability - estTxFee_Eth);
-  // if (profit < 0) continue;
-
-  // winston.log(
-  //   "info",
-  //   `🐳 *Proposal ${i.label}* | Liquidating for $${profit.toFixed(
-  //     2
-  //   )} profit at block ${blockNumber}`
-  // );
-
-  // winston.log(
-  //   "info",
-  //   `🌊 *Price Wave* | ${i.label} now listed for $${profit.toFixed(
-  //     2
-  //   )} profit if prices get posted`
-  // );
-
-  /**
-   * If an item in the queue has the given key, update it's gas price.
-   * If that item is already in progress (it's a pending tx), and the
-   * new gas price is at least 12% higher than the old one, rebroadcast
-   * the tx.
-   *
-   * @param {String} key identifier to match items against
-   * @param {Big} newPrice the new gas price in wei (gwei * 10^9)
-   *
-   * @returns {Boolean} whether any item in the queue matched the given key
-   */
-  increaseGasPriceFor(key, newPrice) {
-    newPrice = Big(newPrice);
-    let didFindTx = false;
-
-    for (let i = 0; i < this._queue.length; i++) {
-      if (this._queue[i].key === key) {
-        didFindTx = true;
-        if (newPrice.times(1.12).lte(this._queue[i].tx.gasPrice)) continue;
-
-        this._queue[i].tx.gasPrice = newPrice;
-        if (this._queue[i].inProgress) this._doItem(i);
-      }
-    }
-
-    return didFindTx;
-  }
-
-  /**
-   * Adds a new transaction to the wallet's queue (even if it's a duplicate)
-   *
-   * @param {Object} tx The transaction object {to, gasLimit, gasPrice, data, value}
-   * @param {Number} priority Sorting criteria. Higher priority txs go first
-   * @param {Number} timeout Time (in milliseconds) after which tx slot will be freed;
-   *    if queue contains other txs, they will override this one
-   * @param {Boolean} rejectIfDuplicate Ignores the input tx if its "to" and "key" fields
-   *    are the same as a transaction in the current queue
-   * @param {String} key If two txs have the same key, they will be considered duplicates
-   *
-   */
-  insert(
-    tx,
-    priority = 0,
-    timeout = 60 * 1000,
-    rejectIfDuplicate = false,
-    key = null
-  ) {
-    if (rejectIfDuplicate) {
-      if (
-        this._queue.filter(item => item.tx.to === tx.to && item.key === key)
-          .length > 0
-      ) {
-        winston.log("warn", "💸 *Transaction* | Skipped duplicate");
-        return;
-      }
-    }
-
-    // add tx to queue
-    this._queue.push({
-      id: null,
-      tx: tx,
-      priority: priority,
-      inProgress: false,
-      timeout: timeout,
-      key: key
+    Channel(Candidate).on("Liquidate", c => {
+      this._appendCandidate(c);
+      this._cacheTransaction();
     });
-    // if the priority is nonzero, sort queue
-    if (priority) this._queue.sort((a, b) => b.priority - a.priority);
+    Channel(Candidate).on("LiquidateWithPriceUpdate", c => {
+      this._appendCandidate(c, true);
+      this._cacheTransaction();
+    });
 
-    this._maximizeNumInProgressTxs();
+    this._intervalHandle = setInterval(
+      this._periodic.bind(this),
+      this.interval
+    );
+  }
+
+  _appendCandidate(c, needsPriceUpdate = false) {
+    const idx = this._borrowers.push(c.address);
+    this._repayCTokens.push(c.ctokenidpay);
+    this._seizeCTokens.push(c.ctokenidseize);
+
+    if (needsPriceUpdate) this._idxsNeedingPriceUpdate.push(idx);
+
+    // TODO for now profitability is still in ETH since Compound's API
+    // is in ETH, but that may change now that the oracle is in USD
+    this._profitability += c.profitability;
+  }
+
+  async _cacheTransaction() {
+    if (this._profitability === 0.0) return;
+    const initialGasPrice = await this._getInitialGasPrice();
+
+    if (this._idxsNeedingPriceUpdate.length === 0) {
+      this._tx = FlashLiquidator.mainnet.liquidateMany(
+        this._borrowers,
+        this._repayCTokens,
+        this._seizeCTokens,
+        initialGasPrice
+      );
+      return;
+    }
+
+    // TODO if oracle is null and some (but not all) candidates
+    // need price updates, we should do the above code with filtered
+    // versions of the lists, rather than just returning like the code below
+    if (this._oracle === null) return;
+
+    const postable = this._oracle.postableData();
+    this._tx = FlashLiquidator.mainnet.liquidateManyWithPriceUpdate(
+      postable[0],
+      postable[1],
+      postable[2],
+      this._borrowers,
+      this._repayCTokens,
+      this._seizeCTokens,
+      initialGasPrice
+    );
+  }
+
+  /**
+   * To be called every `this.interval` milliseconds.  
+   * Sends `this._tx` if profitable and non-null
+   * @private
+   */
+  _periodic() {
+    if (this._tx === null) return;
+    this._sendIfProfitable(this._tx);
+  }
+
+  /**
+   * Sends `tx` to queue as long as its gas price isn't so high that it
+   * would make the transaction unprofitable
+   * @private
+   * 
+   * @param {Object} tx an object describing the transaction
+   */
+  _sendIfProfitable(tx) {
+    if (this._queue.length === 0) {
+      this._queue.append(tx);
+      return;
+    }
+
+    this._queue.replace(0, tx, "clip", /*dryRun*/ true);
+    if (tx.gasPrice.gt(this._breakEvenGasPrice())) return;
+    this._queue.replace(0, tx, "clip");
+  }
+
+  /**
+   * Given `this._profitability` and `this._tx.gasLimit`,
+   * computes the maximum gas price that would still be
+   * profitable if liquidation is successful.
+   * @private
+   */
+  _breakEvenGasPrice() {
+    return Big(this._profitability).div(
+      web3.utils.hexToNumberString(this._tx.gasLimit)
+    );
+  }
+
+  /**
+   * Gets the current market-rate gas price from the Web3 provider
+   * @private
+   */
+  async _getInitialGasPrice() {
+    return Big(await web3.eth.getGasPrice());
   }
 
   /**
@@ -143,6 +169,30 @@ class TxManager {
    */
   dumpAll() {
     for (let i = 0; i < this._queue.length; i++) this._queue.dump(i);
+  }
+
+  /**
+   * Clears candidates and dumps existing transactions
+   */
+  reset() {
+    this._borrowers = [];
+    this._repayCTokens = [];
+    this._seizeCTokens = [];
+    this._idxsNeedingPriceUpdate = [];
+    this._profitability = 0.0; // in Eth
+    this._tx = null;
+
+    this.dumpAll();
+  }
+
+  /**
+   * Calls `reset()` to clear candidates and dump transactions,
+   * then cancels the periodic bidding function.
+   * Should be called before exiting the program
+   */
+  stop() {
+    this.reset();
+    clearInterval(this._intervalHandle);
   }
 }
 

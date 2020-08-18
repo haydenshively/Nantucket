@@ -165,6 +165,27 @@ if (cluster.isWorker) {
     }
   });
 
+  // const gasPrice_Gwei = await this.getGasPrice_Gwei();
+  // const estTxFee_Eth = await this.getTxFee_Eth(undefined, gasPrice_Gwei);
+  // const ethPrice_USD =
+  //     1.0 / (await Tokens.mainnet.cUSDC.priceInEth()).toFixed(8);
+  // const profit = ethPrice_USD * (c.profitability - estTxFee_Eth);
+  // if (profit < 0) continue;
+
+  // winston.log(
+  //   "info",
+  //   `🐳 *Proposal ${i.label}* | Liquidating for $${profit.toFixed(
+  //     2
+  //   )} profit at block ${blockNumber}`
+  // );
+
+  // winston.log(
+  //   "info",
+  //   `🌊 *Price Wave* | ${i.label} now listed for $${profit.toFixed(
+  //     2
+  //   )} profit if prices get posted`
+  // );
+
   // before exiting, clean up any connections in main
   process.on("SIGINT", code => {
     web3.eth.clearSubscriptions();

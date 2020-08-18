@@ -56,13 +56,16 @@ class Candidate extends Message {
     let supply = 0;
 
     for (let market of this._markets) {
-      const costInEth = await oracle.getPrice(market.address);
-      if (costInEth === null) return 0;
+      const costInUSD = await oracle.getPrice(market.address);
+      if (costInUSD === null) return 0;
 
-      borrow += market.borrow_uUnits * costInEth;
-      supply += market.supply_uUnits * costInEth * market.collat;
+      borrow += market.borrow_uUnits * costInUSD;
+      supply += market.supply_uUnits * costInUSD * market.collat;
     }
 
+    // TODO: Note that this is in USD from the Coinbase reporter oracle,
+    // but values from Compound's CToken endpoint are still in ETH. Just
+    // be careful until this is documented
     return {
       liquidity: supply - borrow,
       health: supply / borrow
@@ -74,6 +77,8 @@ class Candidate extends Message {
   }
 
   liquidityOnChain() {
+    // TODO: Note that this will probably be in USD now that the
+    // oracle has been updated
     return Comptroller.mainnet.accountLiquidityOf(this.address);
   }
 
