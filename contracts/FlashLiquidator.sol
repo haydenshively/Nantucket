@@ -64,8 +64,6 @@ contract FlashLiquidator is FlashLoanReceiverBase {
     }
 
     function liquidateMany(address[] calldata _borrowers, address[] calldata _cTokens) public {
-        require(_borrowers.length == _cTokens.length, "Input array lengths don't match.");
-
         uint256 closeFact = comptroller.closeFactorMantissa();
         uint256 liqIncent = comptroller.liquidationIncentiveMantissa();
 
