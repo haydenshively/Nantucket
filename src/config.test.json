@@ -3,18 +3,16 @@
     "TEST": {
       "envKeyAddress": "ACCOUNT_ADDRESS_TEST",
       "envKeySecret": "ACCOUNT_SECRET_TEST",
-      "maxInProgressTxs": 5
+      "interval": 500,
+      "maxFee_Eth": 0.25
     }
   },
-  "txTimeoutMS": 60000,
   "liquidators": [
     {
-      "gasPriceMultiplier": 1.0,
       "minRevenue": 0.05,
       "maxRevenue": 9,
       "maxHealth": null,
       "numCandidates": 40,
-      "priceWaveHealthThresh": 1.0,
       "txManager": "TEST"
     }
   ]

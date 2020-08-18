@@ -10,8 +10,8 @@ class Message {
     return this;
   }
 
-  broadcast(withAction) {
-    this.__channel.broadcast(withAction, this);
+  broadcast(withAction, target = null) {
+    this.__channel.broadcast(withAction, this, target);
   }
 }
 

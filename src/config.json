@@ -3,41 +3,36 @@
     "A": {
       "envKeyAddress": "ACCOUNT_ADDRESS_A",
       "envKeySecret": "ACCOUNT_SECRET_A",
-      "maxInProgressTxs": 5
+      "interval": 200,
+      "maxFee_Eth": 5
     },
     "B": {
       "envKeyAddress": "ACCOUNT_ADDRESS_B",
       "envKeySecret": "ACCOUNT_SECRET_B",
-      "maxInProgressTxs": 5
+      "interval": 200,
+      "maxFee_Eth": 1
     }
   },
-  "txTimeoutMS": 60000,
   "liquidators": [
     {
-      "gasPriceMultiplier": 3.0,
       "minRevenue": 9,
       "maxRevenue": 20,
       "maxHealth": null,
       "numCandidates": 50,
-      "priceWaveHealthThresh": 1.0003,
       "txManager": "B"
     },
     {
-      "gasPriceMultiplier": 8.0,
       "minRevenue": 20,
       "maxRevenue": 50,
       "maxHealth": null,
       "numCandidates": 60,
-      "priceWaveHealthThresh": 1.0005,
       "txManager": "B"
     },
     {
-      "gasPriceMultiplier": 10.0,
       "minRevenue": 50,
       "maxRevenue": null,
       "maxHealth": null,
       "numCandidates": 100,
-      "priceWaveHealthThresh": 1.001,
       "txManager": "A"
     }
   ]

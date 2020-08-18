@@ -3,13 +3,13 @@ Big.DP = 40;
 Big.RM = 0;
 
 // src.messaging
-const Candidate = require("./messaging/candidate");
-const Channel = require("./messaging/channel");
-const Message = require("./messaging/message");
-const Oracle = require("./messaging/oracle");
+const Candidate = require("../../messaging/candidate");
+const Channel = require("../../messaging/channel");
+const Message = require("../../messaging/message");
+const Oracle = require("../../messaging/oracle");
 // src.network.webthree
 const TxQueue = require("./txqueue");
-const FlashLiquidator = require("./network/webthree/goldenage/flashliquidator");
+const FlashLiquidator = require("./goldenage/flashliquidator");
 
 /**
  * Given a list of liquidatable candidates, TxManager will participate
@@ -19,12 +19,12 @@ const FlashLiquidator = require("./network/webthree/goldenage/flashliquidator");
  * __IPC Messaging:__
  *
  * _Subscriptions:_
- * - Messages>NewBlock | Calls `reset()` (clears candidates and dumps txs)
- * - Oracles>Set | Sets the txManager's oracle to the one in the message
+ * - Messages>NewBlock | Calls `reset()` (clears candidates and dumps txs) ✅
+ * - Oracles>Set | Sets the txManager's oracle to the one in the message ✅
  * - Candidates>Liquidate | Appends the candidate from the message and
- *    caches an updated transaction to be sent on next bid
+ *    caches an updated transaction to be sent on next bid ✅
  * - Candidates>LiquidateWithPriceUpdate | Same idea, but will make sure
- *    to update Open Price Feed prices
+ *    to update Open Price Feed prices ✅
  *
  * Please call `init()` as soon as possible. Bidding can't happen beforehand.
  */
@@ -141,6 +141,7 @@ class TxManager {
     }
 
     this._queue.replace(0, tx, "clip", /*dryRun*/ true);
+    // After dry run, tx.gasPrice will be updated...
     const fee = this._estimateFee(tx);
     if (fee.gt(this.maxFee_Eth) || fee.gt(this._profitability)) return;
     this._queue.replace(0, tx, "clip");
@@ -162,7 +163,7 @@ class TxManager {
    * Computes `gasPrice * gasLimit` and returns the result in Eth,
    * assuming that `gasPrice` was given in Wei
    * @static
-   * 
+   *
    * @param {Object} tx an object describing the transaction
    * @returns {Big} estimates transaction fee
    */
@@ -174,7 +175,7 @@ class TxManager {
   /**
    * Gets the current market-rate gas price from the Web3 provider
    * @private
-   * 
+   *
    * @returns {Big} the gas price in Wei
    */
   async _getInitialGasPrice() {

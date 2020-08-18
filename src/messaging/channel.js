@@ -4,8 +4,9 @@ class _Channel {
     this.name = this.Message.name + "s";
   }
 
-  on(action, callback) {
-    process.on("message", msg => {
+  on(action, callback, target = null) {
+    if (target === null) target = process;
+    target.on("message", msg => {
       if (msg.channel === this.name && msg.action === action) {
         const instance = new this.Message(msg.data);
         callback(instance);
@@ -22,8 +23,9 @@ class _Channel {
     });
   }
 
-  broadcast(withAction, messageInstance) {
-    process.send({
+  broadcast(withAction, messageInstance, target = null) {
+    if (target === null) target = process;
+    target.send({
       channel: this.name,
       data: messageInstance.__data,
       action: withAction

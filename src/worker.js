@@ -14,17 +14,17 @@ const Oracle = require("./messaging/oracle");
  * __IPC Messaging:__
  * 
  * _Subscriptions:_
- * - Oracles>Set | Sets the worker's oracle to the one in the message
- * - Messages>UpdateCandidates | Retrieves updated candidates list from
+ * - Oracles>Set | Sets the worker's oracle to the one in the message ✅
+ * - Messages>UpdateCandidates | Retrieves updated candidates list from ✅
  *    the datbase
  * - Messages>CheckCandidatesLiquidity | Iterates through candidates list
- *    and broadcasts those that are liquidatable
+ *    and broadcasts those that are liquidatable ✅
  *
  * _Broadcasts_:
  * - Candidates>Liquidate | The candidate can be liquidated without
- *    price updates
+ *    price updates ✅
  * - Candidates>LiquidateWithPriceUpdate | Same idea, but price updates
- *    are required
+ *    are required ✅
  */
 class Worker extends Database {
   /**
