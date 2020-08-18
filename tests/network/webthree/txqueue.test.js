@@ -39,5 +39,5 @@ describe("network/webthree || TxQueue Test", () => {
     txQueue.dump(0);
     assert(txQueue.length === 1);
     assert(txQueue.tx(0).gasLimit === web3.utils.toHex("21000"));
-  }).timeout(60000);
+  }).timeout(120000);
 });
