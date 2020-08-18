@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.6.6;
+pragma solidity ^0.6.10;
 
 interface Comptroller {
     function enterMarkets(address[] calldata cTokens) external returns (uint[] memory);

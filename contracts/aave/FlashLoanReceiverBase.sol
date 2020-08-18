@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GNU
-pragma solidity ^0.6.6;
+pragma solidity ^0.6.10;
 
 // Import the ERC20 interface and and SafeMath library
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";

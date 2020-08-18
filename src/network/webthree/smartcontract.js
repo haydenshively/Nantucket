@@ -12,7 +12,7 @@ class SmartContract {
   txFor(encodedMethod, gasLimit, gasPrice) {
     return {
       to: this.address,
-      gas: web3.utils.toHex(gasLimit),
+      gasLimit: web3.utils.toHex(gasLimit),
       gasPrice: Big(gasPrice).times(1e9).toFixed(0),
       data: encodedMethod
     };

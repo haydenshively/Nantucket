@@ -4,9 +4,9 @@ const PriceOracle = require("../../../../src/network/webthree/compound/priceorac
 const Tokens = require("../../../../src/network/webthree/compound/ctoken");
 
 describe("network/webthree/compound || PriceOracle Test", () => {
-  it("should retrieve ETH price", () => {
-    return PriceOracle.mainnet.getUnderlyingPrice(Tokens.mainnet.cUSDT).then(result => {
-      assert(result.gt(0.0));
+  it("should retrieve USDC price", () => {
+    return PriceOracle.mainnet.getUnderlyingPriceUSD(Tokens.mainnet.cUSDC).then(result => {
+      assert(result.eq(1.0));
     })
   });
 });

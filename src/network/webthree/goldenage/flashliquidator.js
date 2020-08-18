@@ -8,7 +8,7 @@ const LIQUIDATORABI = require("../abis/goldenage/flashliquidator.json");
 class FlashLiquidator extends Contract {
   /**
    * Performs liquidation (SEND -- uses gas)
-   * 
+   *
    * @param {string} borrower address of any user with negative liquidity
    * @param {string} repayCToken address of token to repay
    * @param {string} seizeCToken address of token to seize
@@ -16,31 +16,71 @@ class FlashLiquidator extends Contract {
    * @param {number} gasPrice the gas price to use, in gwei
    * @return {Object} the transaction object
    */
-  liquidate(borrower, repayCToken, seizeCToken, amount, gasPrice) {
+  async liquidate(borrower, repayCToken, seizeCToken, amount, gasPrice) {
     const hexAmount = web3.utils.toHex(amount.toFixed(0));
-    const encodedMethod = this.contract.methods
-      .liquidate(borrower, repayCToken, seizeCToken, hexAmount)
-      .encodeABI();
+    const method = this.contract.methods.liquidate(
+      borrower,
+      repayCToken,
+      seizeCToken,
+      hexAmount
+    );
+    const gasLimit = 1.07 * (await method.estimateGas({ gas: "3000000" }));
 
-    return this.txFor(encodedMethod, "2300000", gasPrice);
+    return this.txFor(method.encodeABI(), gasLimit.toFixed(0), gasPrice);
   }
 
   /**
    * Performs liquidation on multiple accounts (SEND -- uses gas)
-   * 
+   *
    * @param {Array.<String>} borrowers addresses of users with negative liquidity
    * @param {Array.<String>} repayCTokens address of token to repay
    * @param {Array.<String>} seizeCTokens address of token to seize
    * @param {number} gasPrice the gas price to use, in gwei
    * @return {Object} the transaction object
    */
-  liquidateMany(borrowers, repayCTokens, seizeCTokens, gasPrice) {
-    const encodedMethod = this.contract.methods
-      .liquidateMany(borrowers, repayCTokens, seizeCTokens)
-      .encodeABI();
+  async liquidateMany(borrowers, repayCTokens, seizeCTokens, gasPrice) {
+    const cTokens = this._combineTokens(repayCTokens, seizeCTokens);
+    const method = this.contract.methods.liquidateMany(borrowers, cTokens);
+    const gasLimit =
+      1.07 *
+      (await method.estimateGas({
+        gas: String(3 * borrowers.length) + "000000"
+      }));
 
-    const gas = String(25 * borrowers.length) + "00000";
-    return this.txFor(encodedMethod, gas, gasPrice);
+    return this.txFor(method.encodeABI(), gasLimit.toFixed(0), gasPrice);
+  }
+
+  async liquidateManyWithPriceUpdate(
+    messages,
+    signatures,
+    symbols,
+    borrowers,
+    repayCTokens,
+    seizeCTokens,
+    gasPrice
+  ) {
+    const cTokens = this._combineTokens(repayCTokens, seizeCTokens);
+    const method = this.contract.methods.liquidateManyWithPriceUpdate(
+      messages,
+      signatures,
+      symbols,
+      borrowers,
+      cTokens
+    );
+    const gasLimit =
+      1.07 *
+      (await method.estimateGas({
+        gas: String(3 * borrowers.length) + "000000"
+      }));
+
+    return this.txFor(method.encodeABI(), gasLimit.toFixed(0), gasPrice);
+  }
+
+  _combineTokens(repayList, seizeList) {
+    let cTokens = [];
+    for (let i = 0; i < repayList.length; i++)
+      cTokens.push(repayList[i], seizeList[i]);
+    return cTokens;
   }
 }
 
@@ -48,6 +88,7 @@ exports.FlashLiquidator = FlashLiquidator;
 exports.mainnet = new FlashLiquidator(
   // "0x6bfdfCC0169C3cFd7b5DC51c8E563063Df059097", // V1 (repay & seize tokens must be different)
   // "0xFb3c1a8B2Baa50caF52093d7AF2450a143dbb212", // V2 (repay & seize tokens can be same)
-  "0x0733691100483A1107b7fC156216525ECE2E5fc1", // V3 (multi-account liquidate & return on 0 shortfall)
+  // "0x0733691100483A1107b7fC156216525ECE2E5fc1", // V3 (multi-account liquidate & return on 0 shortfall)
+  "0x3CEc62C15Ee7430f1D3EFc3F3c1B357691b01D61", // V4 (add support for open price feed)
   LIQUIDATORABI
 );

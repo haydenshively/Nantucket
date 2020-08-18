@@ -26,12 +26,12 @@ class CToken extends Contract {
   /**
    * Convenience function that calls `getUnderlyingPrice` for this cToken
    *
-   * @return {Big} the token's price in Eth
+   * @return {Big} the token's price in USD
    */
-  priceInEth() {
-    return PriceOracle.mainnet.getUnderlyingPrice(this);
+  priceInUSD() {
+    return PriceOracle.mainnet.getUnderlyingPriceUSD(this);
   }
-
+  
   /**
    * Converts ordinary asset to the cToken equivalent (SEND -- uses gas)
    * Sends `amount` uTokens and receives `amount / exchangeRate` cTokens

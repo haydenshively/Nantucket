@@ -7,7 +7,7 @@
   "compiler": {
     "compilerSettings": {
       "optimizer": {
-        "enabled": false,
+        "enabled": true,
         "runs": "200"
       }
     },

@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.6.6;
+pragma solidity ^0.6.10;
+// For PriceOracle postPrices()
+pragma experimental ABIEncoderV2;
 
 // Import AAVE components
 import "./aave/FlashLoanReceiverBase.sol";
@@ -30,12 +32,6 @@ contract FlashLiquidator is FlashLoanReceiverBase {
     Comptroller public comptroller;
     PriceOracle public priceOracle;
 
-    // struct RepaySeizePair {
-    //     address repayCToken;
-    //     address seizeCToken;
-    // }
-    // mapping (address => mapping (uint16 => RepaySeizePair)) public usersRepaySeizePairs;
-
     event LogWithdraw(
         address indexed _assetAddress,
         uint amount
@@ -45,7 +41,7 @@ contract FlashLiquidator is FlashLoanReceiverBase {
         wallet = _wallet;
         router = IUniswapV2Router02(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
         comptroller = Comptroller(0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B);
-        priceOracle = PriceOracle(0xDDc46a3B076aec7ab3Fc37420A8eDd2959764Ec4);
+        priceOracle = PriceOracle(0x9B8Eb8b3d6e2e0Db36F41455185FEF7049a35CaE);
     }
 
     function aaveReserveFor(address _cToken) internal view returns (address) {
@@ -56,13 +52,19 @@ contract FlashLiquidator is FlashLoanReceiverBase {
         IERC20(_sender).safeApprove(_receiver, _amount);
     }
 
-    // function setRepaySeizePair(uint16 _id, address _repayCToken, address _seizeCToken) public {
-    //     usersRepaySeizePairs[msg.sender][_id] = RepaySeizePair(_repayCToken, _seizeCToken);
-    // }
+    function liquidateManyWithPriceUpdate(
+        bytes[] calldata _messages,
+        bytes[] calldata _signatures,
+        string[] calldata _symbols,
+        address[] calldata _borrowers,
+        address[] calldata _cTokens
+    ) public {
+        priceOracle.postPrices(_messages, _signatures, _symbols);
+        liquidateMany(_borrowers, _cTokens);
+    }
 
-    function liquidateMany(address[] calldata _borrowers, address[] calldata _repayCTokens, address[] calldata _seizeCTokens) public {
-        require(_borrowers.length == _repayCTokens.length, "Input array lengths don't match.");
-        require(_borrowers.length == _seizeCTokens.length, "Input array lengths don't match.");
+    function liquidateMany(address[] calldata _borrowers, address[] calldata _cTokens) public {
+        require(_borrowers.length == _cTokens.length, "Input array lengths don't match.");
 
         uint256 closeFact = comptroller.closeFactorMantissa();
         uint256 liqIncent = comptroller.liquidationIncentiveMantissa();
@@ -71,8 +73,8 @@ contract FlashLiquidator is FlashLoanReceiverBase {
             address borrower = _borrowers[i];
             ( , uint256 liquidity, ) = comptroller.getAccountLiquidity(borrower);
             if (liquidity > 0) continue;
-            address repayCToken = _repayCTokens[i];
-            address seizeCToken = _seizeCTokens[i];
+            address repayCToken = _cTokens[i * 2];
+            address seizeCToken = _cTokens[i * 2 + 1];
 
             uint256 uPriceRepay = priceOracle.getUnderlyingPrice(repayCToken);
             uint256 uPriceSeize = priceOracle.getUnderlyingPrice(seizeCToken);
@@ -128,7 +130,6 @@ contract FlashLiquidator is FlashLoanReceiverBase {
 
         // Unpack parameters sent from the `liquidate` function
         // NOTE: these are being passed in from some other contract, and cannot necessarily be trusted
-        // TODO: find a way to trust them, use private instance vars instead, or make sure they can't do harm
         (address repayCToken, address borrower, address seizeCToken) = abi.decode(_params, (address, address, address));
         
         if (repayCToken == CETH) {

@@ -1,12 +1,17 @@
 require("./setup");
 
-const cluster = require("cluster");
+const child_process = require("child_process");
 const winston = require("winston");
 
-const Main = require("./main");
-const Oracle = require("./network/webthree/compound/oraclev1");
-const Tokens = require("./network/webthree/compound/ctoken");
-const TxManager = require("./network/webthree/txmanager");
+// src
+const Database = require("./database");
+// src.messaging
+const Candidate = require("./messaging/candidate");
+const Channel = require("./messaging/channel");
+const Message = require("./messaging/message");
+const Oracle = require("./messaging/oracle");
+// src.network.web
+const Reporter = require("./network/web/coinbase/reporter");
 
 if (process.argv.length < 3) {
   console.log("Please pass path to config.json");
@@ -14,163 +19,146 @@ if (process.argv.length < 3) {
 }
 const config = require(process.argv[2]);
 
-async function sleep(millis) {
-  return new Promise(resolve => setTimeout(resolve, millis));
+console.log(`Master ${process.pid} is running`);
+
+const numCPUs = require("os").cpus().length;
+if (numCPUs < config.txManagers.length + config.liquidators.length) {
+  console.error("Nantucket requires more CPU cores for this config");
+  process.exit();
 }
 
-if (cluster.isMaster) {
-  console.log(`Master ${process.pid} is running`);
+// MARK: SETUP TRANSACTION MANAGERS ---------------------------------
+let txManagers = {};
+for (let key in config.txManagers) {
+  const txManager = config.txManagers[key];
+  txManagers[key] = child_process.fork(
+    "start_txmanager.js",
+    [
+      txManager.envKeyAddress,
+      txManager.envKeySecret,
+      txManager.interval,
+      txManager.maxFee_Eth
+    ],
+    { cwd: "src" }
+  );
+}
 
-  // configure TxManagers
-  let txManagers = config.txManagers;
-  for (key in txManagers) {
-    txManagers[key] = new TxManager(
-      txManagers[key].envKeyAddress,
-      txManagers[key].envKeySecret,
-      txManagers[key].maxInProgressTxs
+// MARK: SETUP CANDIDATE WORKERS ------------------------------------
+function passthrough(channel, action, from, to) {
+  channel = Channel(channel);
+  channel.on(action, msg => channel.broadcast(action, msg, to), from);
+}
+
+let workers = [];
+for (let liquidator of config.liquidators) {
+  const worker = child_process.fork(
+    "start_worker.js",
+    [
+      liquidator.minRevenue,
+      liquidator.maxRevenue,
+      liquidator.maxHealth,
+      liquidator.numCandidates
+    ],
+    { cwd: "src" }
+  );
+  const txManager = txManagers[liquidator.txManager];
+  passthrough(Candidate, "Liquidate", worker, txManager);
+  passthrough(Candidate, "LiquidateWithPriceUpdate", worker, txManager);
+
+  workers.push({
+    process: worker,
+    txManager: txManager
+  });
+}
+
+// MARK: SETUP MASTER DATABASE AND BLOCKCHAIN WORKER ----------------
+function setOracles() {
+  workers.forEach(w => Channel(Oracle).broadcast("Set", reporter.msg(), w.process));
+  for (let key in txManagers)
+    Channel(Oracle).broadcast("Set", reporter.msg(), txManagers[key]);
+}
+
+function checkLiquidities() {
+  workers.forEach(w => new Message().broadcast("CheckCandidatesLiquidity", w.process));
+}
+
+function updateCandidates() {
+  workers.forEach(w => new Message().broadcast("UpdateCandidates", w.process));
+}
+
+function notifyNewBlock() {
+  for (let key in txManagers)
+    new Message().broadcast("NewBlock", txManagers[key]);
+}
+
+// pull from cTokenService and AccountService
+const database = new Database();
+const handle1 = setInterval(
+  database.pullFromCTokenService.bind(database),
+  6 * 60 * 1000
+);
+const handle2 = setInterval(async () => {
+  await database.pullFromAccountService.bind(database)();
+  updateCandidates();
+}, 9 * 60 * 1000);
+
+// pull from Coinbase reporter
+const reporter = Reporter.mainnet;
+const handle3 = setInterval(async () => {
+  const addrToCheck = "0x4ddc2d193948926d02f9b1fe9e1daa0718270ed5";
+  const before = reporter.getPrice(addrToCheck);
+  await reporter.fetch.bind(reporter)();
+  if (reporter.getPrice(addrToCheck) === before) return;
+
+  setOracles();
+  checkLiquidities();
+
+  winston.info("🏷 *Prices* | Updated from Coinbase");
+}, 500);
+
+// watch for new blocks
+web3.eth.subscribe("newBlockHeaders", (err, block) => {
+  if (err) {
+    winston.error("🚨 *Block Headers* | " + String(err));
+    return;
+  }
+  notifyNewBlock();
+  checkLiquidities();
+  if (!(block.number % 240))
+    winston.info(`☑️ *Block Headers* | ${block.number}`);
+});
+
+// log losses for debugging purposes
+const Tokens = require("./network/webthree/compound/ctoken");
+for (let symbol in Tokens.mainnet) {
+  const token = Tokens.mainnet[symbol];
+  token.subscribeToLogEvent("LiquidateBorrow", (err, event) => {
+    if (err) return;
+    const addr = event.borrower;
+    winston.warn(
+      `🚨 *Liquidate Event* | Didn't liquidate ${addr.slice(
+        0,
+        6
+      )} due to bad logic (or gas war).`
     );
-    // this property isn't there by default
-    txManagers[key].liquidators = [];
-  }
-
-  const numCPUs = require("os").cpus().length;
-  if (numCPUs < config.liquidators.length + 1) {
-    console.error("Nantucket requires more CPU cores for this config");
-    process.exit();
-  }
-
-  let workers = [];
-  // worker 0 just pulls data from AccountService and cTokenService
-  workers.push(cluster.fork());
-  workers[0].send({
-    desiredType: "web",
-    args: [0, 0, 0, 0, 0, 0, 0]
-  });
-  // other workers watch accounts and liquidate
-  let i = 1;
-  for (let liquidator of config.liquidators) {
-    workers.push(cluster.fork());
-    workers[i].on("message", msg => {
-      const replaced = txManagers[liquidator.txManager].increaseGasPriceFor(
-        msg.key,
-        msg.tx.gasPrice
-      );
-      if (replaced) return;
-      txManagers[liquidator.txManager].insert(
-        msg.tx,
-        msg.priority,
-        config.txTimeoutMS,
-        true,
-        msg.key
-      );
-    });
-    txManagers[liquidator.txManager].liquidators.push(i - 1);
-    i++;
-  }
-
-  const onTxManagerInits = config.liquidators.map((liquidator, i) => {
-    return () => {
-      workers[i + 1].send({
-        desiredType: "webthree",
-        args: [
-          liquidator.gasPriceMultiplier,
-          liquidator.minRevenue,
-          liquidator.maxRevenue,
-          liquidator.maxHealth,
-          liquidator.numCandidates,
-          liquidator.priceWaveHealthThresh,
-          i * 15
-        ]
-      });
-    };
-  });
-
-  for (key in txManagers) {
-    const txManager = txManagers[key];
-    txManager.init().then(() => {
-      for (let i of txManager.liquidators) onTxManagerInits[i]();
-    });
-  }
-
-  web3.eth.subscribe("newBlockHeaders", (err, block) => {
-    if (err) {
-      winston.log("error", "🚨 *Block Headers* | " + String(err));
-      return;
-    }
-    if (block.number % 240 === 0)
-      winston.log("info", `☑️ *Block Headers* | ${block.number}`);
-  });
-
-  process.on("SIGINT", () => {
-    console.log("\nCaught interrupt signal");
-    workers.forEach(worker => worker.kill("SIGINT"));
-    process.exit();
   });
 }
 
-if (cluster.isWorker) {
-  console.log(`Worker ${process.pid} is running`);
+process.on("SIGINT", () => {
+  console.log("\nCaught interrupt signal");
 
-  let main = null;
+  clearInterval(handle1);
+  clearInterval(handle2);
+  clearInterval(handle3);
 
-  // allow messages from master to configure behavior
-  process.on("message", async msg => {
-    if (main !== null) {
-      console.warn(`Worker ${process.pid} is already configured`);
-      return;
-    }
+  for (key in txManagers) txManagers[key].kill("SIGINT");
+  workers.forEach(w => w.process.kill("SIGINT"));
+  process.exit();
+});
 
-    const args = msg.args;
-    main = new Main(args[0], args[1], args[2], args[3], args[4], args[5]);
-    if (args[6] > 0) await sleep(args[6] * 1000);
-
-    switch (msg.desiredType) {
-      case "web":
-        // update database using cTokenService and AccountService
-        setInterval(main.pullFromCTokenService.bind(main), 6 * 60 * 1000);
-        setInterval(main.pullFromAccountService.bind(main), 9 * 60 * 1000);
-        break;
-
-      case "webthree":
-        // populate liquidation candidate list immediately
-        main.updateCandidates.bind(main)();
-        // also schedule it to run repeatedly
-        setInterval(main.updateCandidates.bind(main), 5 * 60 * 1000);
-        // check on candidates every block
-        web3.eth.subscribe("newBlockHeaders", (err, block) => {
-          if (err) return;
-
-          main.onNewBlock.bind(main)(block.number);
-        });
-        // log losses for debugging purposes
-        for (let symbol in Tokens.mainnet) {
-          const token = Tokens.mainnet[symbol];
-          token.subscribeToLogEvent("LiquidateBorrow", (err, event) => {
-            if (err) {
-              winston.log("error", "🚨 *Liquidate Event* | " + String(err));
-              return;
-            }
-
-            main.onNewLiquidation.bind(main)(event);
-          });
-        }
-
-        Oracle.mainnet
-          .onNewPendingEvent("PricePosted")
-          .on("data", async event => {
-            tx = await web3.eth.getTransaction(event.transactionHash);
-            main.onNewPricesOnChain.bind(main)(tx, event.transactionHash);
-          });
-        break;
-    }
-  });
-
-  // before exiting, clean up any connections in main
-  process.on("SIGINT", code => {
-    web3.eth.clearSubscriptions();
-    if (main !== null) main.stop();
-
-    console.log(`Worker ${process.pid} has exited cleanly`);
-    process.exit();
-  });
-}
+// winston.log(
+//   "info",
+//   `🐳 *Proposal ${i.label}* | Liquidating for $${profit.toFixed(
+//     2
+//   )} profit at block ${blockNumber}`
+// );

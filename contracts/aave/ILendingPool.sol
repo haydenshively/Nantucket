@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GNU
-pragma solidity ^0.6.6;
+pragma solidity ^0.6.10;
 
 interface ILendingPool {
   function addressesProvider() external view returns (address);
