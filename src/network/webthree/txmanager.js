@@ -15,9 +15,9 @@ const FlashLiquidator = require("./network/webthree/goldenage/flashliquidator");
  * Given a list of liquidatable candidates, TxManager will participate
  * in blind-auction bidding wars and update Open Price Feed prices if
  * necessary for the liquidation.
- * 
+ *
  * __IPC Messaging:__
- * 
+ *
  * _Subscriptions:_
  * - Messages>NewBlock | Calls `reset()` (clears candidates and dumps txs)
  * - Oracles>Set | Sets the txManager's oracle to the one in the message
@@ -25,7 +25,7 @@ const FlashLiquidator = require("./network/webthree/goldenage/flashliquidator");
  *    caches an updated transaction to be sent on next bid
  * - Candidates>LiquidateWithPriceUpdate | Same idea, but will make sure
  *    to update Open Price Feed prices
- * 
+ *
  * Please call `init()` as soon as possible. Bidding can't happen beforehand.
  */
 class TxManager {
@@ -35,8 +35,9 @@ class TxManager {
    * @param {String} envKeySecret Name of the environment variable containing
    *    the wallet's private key
    * @param {Number} interval Time between bids (milliseconds)
+   * @param {Number} maxFee_Eth The maximum possible tx fee in Eth
    */
-  constructor(envKeyAddress, envKeySecret, interval) {
+  constructor(envKeyAddress, envKeySecret, interval, maxFee_Eth) {
     this._queue = new TxQueue(envKeyAddress, envKeySecret);
     this._oracle = null;
 
@@ -49,6 +50,7 @@ class TxManager {
     this._tx = null;
 
     this.interval = interval;
+    this.maxFee_Eth = maxFee_Eth;
 
     Channel(Message).on("NewBlock", _ => this.reset());
     Channel(Oracle).on("Set", oracle => (this._oracle = oracle));
@@ -89,7 +91,7 @@ class TxManager {
     const initialGasPrice = await this._getInitialGasPrice();
 
     if (this._idxsNeedingPriceUpdate.length === 0) {
-      this._tx = FlashLiquidator.mainnet.liquidateMany(
+      this._tx = await FlashLiquidator.mainnet.liquidateMany(
         this._borrowers,
         this._repayCTokens,
         this._seizeCTokens,
@@ -104,7 +106,7 @@ class TxManager {
     if (this._oracle === null) return;
 
     const postable = this._oracle.postableData();
-    this._tx = FlashLiquidator.mainnet.liquidateManyWithPriceUpdate(
+    this._tx = await FlashLiquidator.mainnet.liquidateManyWithPriceUpdate(
       postable[0],
       postable[1],
       postable[2],
@@ -116,7 +118,7 @@ class TxManager {
   }
 
   /**
-   * To be called every `this.interval` milliseconds.  
+   * To be called every `this.interval` milliseconds.
    * Sends `this._tx` if profitable and non-null
    * @private
    */
@@ -129,7 +131,7 @@ class TxManager {
    * Sends `tx` to queue as long as its gas price isn't so high that it
    * would make the transaction unprofitable
    * @private
-   * 
+   *
    * @param {Object} tx an object describing the transaction
    */
   _sendIfProfitable(tx) {
@@ -139,25 +141,41 @@ class TxManager {
     }
 
     this._queue.replace(0, tx, "clip", /*dryRun*/ true);
-    if (tx.gasPrice.gt(this._breakEvenGasPrice())) return;
+    const fee = this._estimateFee(tx);
+    if (fee.gt(this.maxFee_Eth) || fee.gt(this._profitability)) return;
     this._queue.replace(0, tx, "clip");
   }
 
+  // /**
+  //  * Given `this._profitability` and `this._tx.gasLimit`,
+  //  * computes the maximum gas price that would still be
+  //  * profitable if liquidation is successful.
+  //  * @private
+  //  */
+  // _breakEvenGasPrice() {
+  //   return Big(this._profitability).div(
+  //     web3.utils.hexToNumberString(this._tx.gasLimit)
+  //   );
+  // }
+
   /**
-   * Given `this._profitability` and `this._tx.gasLimit`,
-   * computes the maximum gas price that would still be
-   * profitable if liquidation is successful.
-   * @private
+   * Computes `gasPrice * gasLimit` and returns the result in Eth,
+   * assuming that `gasPrice` was given in Wei
+   * @static
+   * 
+   * @param {Object} tx an object describing the transaction
+   * @returns {Big} estimates transaction fee
    */
-  _breakEvenGasPrice() {
-    return Big(this._profitability).div(
-      web3.utils.hexToNumberString(this._tx.gasLimit)
-    );
+  static _estimateFee(tx) {
+    const gasLimit = Big(web3.utils.hexToNumberString(tx.gasLimit));
+    return tx.gasPrice.times(gasLimit).div(1e18);
   }
 
   /**
    * Gets the current market-rate gas price from the Web3 provider
    * @private
+   * 
+   * @returns {Big} the gas price in Wei
    */
   async _getInitialGasPrice() {
     return Big(await web3.eth.getGasPrice());

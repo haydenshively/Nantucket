@@ -6,7 +6,7 @@ const Contract = require("../smartcontract");
 const LIQUIDATORABI = require("../abis/goldenage/flashliquidator.json");
 
 class FlashLiquidator extends Contract {
-  liquidate(borrower, repayCToken, seizeCToken, amount, gasPrice) {
+  async liquidate(borrower, repayCToken, seizeCToken, amount, gasPrice) {
     /**
      * Performs liquidation (SEND -- uses gas)
      * @param {string} borrower address of any user with negative liquidity
@@ -23,22 +23,24 @@ class FlashLiquidator extends Contract {
       seizeCToken,
       hexAmount
     );
-    const gasLimit = method.estimateGas({ gas: "3000000" });
+    const gasLimit = 1.07 * (await method.estimateGas({ gas: "3000000" }));
 
-    return this.txFor(method.encodeABI(), gasLimit, gasPrice);
+    return this.txFor(method.encodeABI(), gasLimit.toFixed(0), gasPrice);
   }
 
-  liquidateMany(borrowers, repayCTokens, seizeCTokens, gasPrice) {
+  async liquidateMany(borrowers, repayCTokens, seizeCTokens, gasPrice) {
     const cTokens = this._combineTokens(repayCTokens, seizeCTokens);
     const method = this.contract.methods.liquidateMany(borrowers, cTokens);
-    const gasLimit = method.estimateGas({
-      gas: String(3 * borrowers.length) + "000000"
-    });
+    const gasLimit =
+      1.07 *
+      (await method.estimateGas({
+        gas: String(3 * borrowers.length) + "000000"
+      }));
 
-    return this.txFor(method.encodeABI(), gasLimit, gasPrice);
+    return this.txFor(method.encodeABI(), gasLimit.toFixed(0), gasPrice);
   }
 
-  liquidateManyWithPriceUpdate(
+  async liquidateManyWithPriceUpdate(
     messages,
     signatures,
     symbols,
@@ -55,11 +57,13 @@ class FlashLiquidator extends Contract {
       borrowers,
       cTokens
     );
-    const gasLimit = method.estimateGas({
-      gas: String(3 * borrowers.length) + "000000"
-    });
+    const gasLimit =
+      1.07 *
+      (await method.estimateGas({
+        gas: String(3 * borrowers.length) + "000000"
+      }));
 
-    return this.txFor(method.encodeABI(), gasLimit, gasPrice);
+    return this.txFor(method.encodeABI(), gasLimit.toFixed(0), gasPrice);
   }
 
   _combineTokens(repayList, seizeList) {
