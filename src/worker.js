@@ -70,30 +70,36 @@ class Worker extends Database {
   }
 
   async checkCandidatesLiquidity() {
-    for (let c of this._candidates) {
+    for (let i = 0; i < this._candidates.length; i++) {
+      const c = this._candidates[i];
       // this is pairID DAI and SAI. There's no AAVE pool for it.
       if (c.ctokenidpay == 2 || (c.ctokenidpay == 6 && c.ctokenidseize == 2))
         continue;
 
-      if (Number.isInteger(c.ctokenidpay)) {
-        // retrieve addresses for pre-computed best repay and seize tokens
+      // TODO TxManager isn't hooked into the Database logic, so we have
+      // to pass along the repay and seize addresses here
+      if (!String(c.ctokenidpay).startsWith("0x")) {
         const repay = `0x${await this._tCTokens.getAddress(c.ctokenidpay)}`;
+        this._candidates[i].ctokenidpay = repay;
+      }
+      if (!String(c.ctokenidseize).startsWith("0x")) {
         const seize = `0x${await this._tCTokens.getAddress(c.ctokenidseize)}`;
-        // TODO TxManager isn't hooked into the Database logic, so we have
-        //  to pass along the repay and seize addresses here
-        c.ctokenidpay = repay;
-        c.ctokenidseize = seize;
+        this._candidates[i].ctokenidseize = seize;
       }
 
+      // In the code below, if .splice(i, 1) isn't called, the code
+      // will try to liquidate people over and over
       if (
         this._oracle !== null &&
         (await c.isLiquidatableWithPriceFrom(this._oracle))
       ) {
-        c.msg().broadcast("LiquidateWithPriceUpdate");
+        this._candidates[i].msg().broadcast("LiquidateWithPriceUpdate");
+        this._candidates.splice(i, 1);
         return;
       }
       if (await c.isLiquidatable()) {
-        c.msg().broadcast("Liquidate");
+        this._candidates[i].msg().broadcast("Liquidate");
+        this._candidates.splice(i, 1);
       }
     }
   }
