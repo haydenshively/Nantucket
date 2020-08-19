@@ -19,14 +19,14 @@
       "maxRevenue": 20,
       "maxHealth": null,
       "numCandidates": 50,
-      "txManager": "B"
+      "txManager": "A"
     },
     {
       "minRevenue": 20,
       "maxRevenue": 50,
       "maxHealth": null,
       "numCandidates": 60,
-      "txManager": "B"
+      "txManager": "A"
     },
     {
       "minRevenue": 50,
