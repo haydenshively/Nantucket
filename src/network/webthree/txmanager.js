@@ -83,7 +83,8 @@ class TxManager {
 
     // TODO for now profitability is still in ETH since Compound's API
     // is in ETH, but that may change now that the oracle is in USD
-    this._profitability += c.profitability;
+    this._profitability += Number(c.profitability);
+    console.log(`Candidate ${c.label} was added for a new profit of ${this._profitability}`);
   }
 
   async _cacheTransaction() {
@@ -144,6 +145,7 @@ class TxManager {
     // After dry run, tx.gasPrice will be updated...
     const fee = TxManager._estimateFee(tx);
     if (fee.gt(this.maxFee_Eth) || fee.gt(this._profitability)) return;
+    console.log("Increasing bid");
     this._queue.replace(0, tx, "clip");
   }
 
@@ -188,6 +190,7 @@ class TxManager {
    */
   dumpAll() {
     for (let i = 0; i < this._queue.length; i++) this._queue.dump(i);
+    console.log("Dumping");
   }
 
   /**

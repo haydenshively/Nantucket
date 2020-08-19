@@ -116,6 +116,11 @@ const handle3 = setInterval(async () => {
   winston.info("🏷 *Prices* | Updated from Coinbase");
 }, 500);
 
+// immediately set oracles and update candidates, rather than waiting
+// for the first 6-9 minute interval
+setOracles();
+updateCandidates();
+
 // watch for new blocks
 web3.eth.subscribe("newBlockHeaders", (err, block) => {
   if (err) {

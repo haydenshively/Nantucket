@@ -76,25 +76,30 @@ class Worker extends Database {
       if (c.ctokenidpay == 2 || (c.ctokenidpay == 6 && c.ctokenidseize == 2))
         continue;
 
+      // TODO TxManager isn't hooked into the Database logic, so we have
+      // to pass along the repay and seize addresses here
       if (!String(c.ctokenidpay).startsWith("0x")) {
-        // retrieve addresses for pre-computed best repay and seize tokens
         const repay = `0x${await this._tCTokens.getAddress(c.ctokenidpay)}`;
-        const seize = `0x${await this._tCTokens.getAddress(c.ctokenidseize)}`;
-        // TODO TxManager isn't hooked into the Database logic, so we have
-        //  to pass along the repay and seize addresses here
         this._candidates[i].ctokenidpay = repay;
+      }
+      if (!String(c.ctokenidseize).startsWith("0x")) {
+        const seize = `0x${await this._tCTokens.getAddress(c.ctokenidseize)}`;
         this._candidates[i].ctokenidseize = seize;
       }
 
+      // In the code below, if .splice(i, 1) isn't called, the code
+      // will try to liquidate people over and over
       if (
         this._oracle !== null &&
         (await c.isLiquidatableWithPriceFrom(this._oracle))
       ) {
-        c.msg().broadcast("LiquidateWithPriceUpdate");
+        this._candidates[i].msg().broadcast("LiquidateWithPriceUpdate");
+        this._candidates.splice(i, 1);
         return;
       }
       if (await c.isLiquidatable()) {
-        c.msg().broadcast("Liquidate");
+        this._candidates[i].msg().broadcast("Liquidate");
+        this._candidates.splice(i, 1);
       }
     }
   }
