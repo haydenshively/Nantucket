@@ -33,6 +33,7 @@
   "scripts": {
     "nantucket": "node './src/start' './config.json'",
     "nantucket-test": "node './src/start' './config.test.json'",
+    "nantucket-safe": "node './src/start' './config.safe.json'",
     "db-create": "createdb FlashLoanLiquidation",
     "db-initialize": "psql --echo-errors -f './scripts/database/initialize.sql' FlashLoanLiquidation",
     "db-create-views": "psql --echo-errors -f './scripts/database/views.sql' FlashLoanLiquidation",

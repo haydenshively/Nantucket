@@ -12,6 +12,8 @@ const Message = require("./messaging/message");
 const Oracle = require("./messaging/oracle");
 // src.network.web
 const Reporter = require("./network/web/coinbase/reporter");
+// src.network.webthree
+const Tokens = require("./network/webthree/compound/ctoken");
 
 if (process.argv.length < 3) {
   console.log("Please pass path to config.json");
@@ -91,6 +93,13 @@ function notifyNewBlock() {
     new Message().broadcast("NewBlock", txManagers[key]);
 }
 
+function notifyMissedOpportunity(event) {
+  for (let key in txManagers)
+    new Message({
+      address: event.borrower
+    }).broadcast("MissedOpportunity", txManagers[key]);
+}
+
 // pull from cTokenService and AccountService
 const database = new Database();
 const handle1 = setInterval(
@@ -133,18 +142,18 @@ web3.eth.subscribe("newBlockHeaders", (err, block) => {
     winston.info(`☑️ *Block Headers* | ${block.number}`);
 });
 
-// log losses for debugging purposes
-const Tokens = require("./network/webthree/compound/ctoken");
+// watch for new liquidations
 for (let symbol in Tokens.mainnet) {
   const token = Tokens.mainnet[symbol];
   token.subscribeToLogEvent("LiquidateBorrow", (err, event) => {
     if (err) return;
+    notifyMissedOpportunity(event);
     const addr = event.borrower;
     winston.warn(
       `🚨 *Liquidate Event* | Didn't liquidate ${addr.slice(
         0,
         6
-      )} due to bad logic (or gas war).`
+      )} due to bad logic or gas war.`
     );
   });
 }
