@@ -32,17 +32,21 @@ class Candidate extends Message {
     return this;
   }
 
-  async init() {
+  async refresh(web3Idx = 0) {
+    // TODO this method currently only supports miannet, but could be
+    // easily extended to include testnets
     let markets = [];
 
-    const addrs = await Comptroller.mainnet.marketsEnteredBy(this.address);
+    const comptroller = Comptroller.mainnet[web3Idx];
+
+    const addrs = await comptroller.marketsEnteredBy(this.address);
     for (let addr of addrs) {
-      const token = Tokens.mainnetByAddr[addr.toLowerCase()];
+      const token = Tokens.mainnet[web3Idx][addr.toLowerCase()];
       markets.push({
         address: addr,
         borrow_uUnits: Number(await token.uUnitsBorrowedBy(this.address)),
         supply_uUnits: Number(await token.uUnitsSuppliedBy(this.address)),
-        collat: Number(await Comptroller.mainnet.collateralFactorFor(token))
+        collat: Number(await comptroller.collateralFactorFor(token))
       });
     }
 
@@ -50,7 +54,7 @@ class Candidate extends Message {
   }
 
   async liquidityOffChain(oracle) {
-    if (this._markets === null) await this.init();
+    if (this._markets === null) await this.refresh();
 
     let borrow = 0;
     let supply = 0;
@@ -76,10 +80,10 @@ class Candidate extends Message {
     return (await this.liquidityOffChain(oracle)).liquidity < 0.0;
   }
 
-  liquidityOnChain() {
+  liquidityOnChain(web3Idx = 0) {
     // TODO: Note that this will probably be in USD now that the
     // oracle has been updated
-    return Comptroller.mainnet.accountLiquidityOf(this.address);
+    return Comptroller.mainnet[web3Idx].accountLiquidityOf(this.address);
   }
 
   async isLiquidatable() {

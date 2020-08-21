@@ -2,32 +2,27 @@ const Big = require("big.js");
 Big.DP = 40;
 Big.RM = 0;
 
+const Web3Utils = require("web3-utils");
+const ABIUtils = require("web3-utils-abi");
+
 class SmartContract {
-  constructor(address, abi) {
+  constructor(address, abi, provider) {
     this.address = address;
-    this.abi = abi;
-    this.contract = new web3.eth.Contract(this.abi, this.address);
+    this._inner = new provider.eth.Contract(abi, this.address);
   }
 
-  txFor(encodedMethod, gasLimit, gasPrice) {
+  _txFor(encodedMethod, gasLimit, gasPrice) {
     return {
       to: this.address,
-      gasLimit: web3.utils.toHex(gasLimit),
+      gasLimit: gasLimit,
       gasPrice: gasPrice,
       data: encodedMethod
     };
   }
 
-  txWithValueFor(encodedMethod, gasLimit, gasPrice, value) {
-    return {
-      ...this.txFor(encodedMethod, gasLimit, gasPrice),
-      value: value
-    };
-  }
-
   subscribeToLogEvent(eventName, callback) {
-    const eventJsonInterface = web3.utils._.find(
-      this.contract._jsonInterface,
+    const eventJsonInterface = Web3Utils._.find(
+      this._inner._jsonInterface,
       o => o.name === eventName && o.type === "event"
     );
     return web3.eth.subscribe(
@@ -41,7 +36,7 @@ class SmartContract {
           callback(error, null);
           return;
         }
-        const eventObj = web3.eth.abi.decodeLog(
+        const eventObj = ABIUtils.decodeLog(
           eventJsonInterface.inputs,
           result.data,
           result.topics.slice(1)
@@ -58,7 +53,7 @@ class SmartContract {
     .on("error", (error, receipt) => {}) // receipt only present if failed on-chain
     .on("data", (event) => {}) // event.removed = undefined
     */
-    return this.contract.events[eventName]({
+    return this._inner.events[eventName]({
       fromBlock: "pending"
     });
   }

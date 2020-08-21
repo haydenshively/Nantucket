@@ -143,7 +143,7 @@ class TxManager {
     const initialGasPrice = await this._getInitialGasPrice();
 
     if (this._idxsNeedingPriceUpdate.length === 0) {
-      this._tx = await FlashLiquidator.mainnet.liquidateMany(
+      this._tx = await FlashLiquidator.mainnet[0].liquidateMany(
         this._borrowers,
         this._repayCTokens,
         this._seizeCTokens,
@@ -158,7 +158,7 @@ class TxManager {
     if (this._oracle === null) return;
 
     const postable = this._oracle.postableData();
-    this._tx = await FlashLiquidator.mainnet.liquidateManyWithPriceUpdate(
+    this._tx = await FlashLiquidator.mainnet[0].liquidateManyWithPriceUpdate(
       postable[0],
       postable[1],
       postable[2],

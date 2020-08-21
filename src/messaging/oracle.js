@@ -1,3 +1,5 @@
+const ABIUtils = require("web3-eth-abi");
+
 const Message = require("./message");
 
 class Oracle extends Message {
@@ -26,7 +28,7 @@ class Oracle extends Message {
       1: timestamp,
       2: key,
       3: value
-    } = web3.eth.abi.decodeParameters(
+    } = ABIUtils.decodeParameters(
       ["string", "uint64", "string", "uint64"],
       oracleEncodedMessage
     );

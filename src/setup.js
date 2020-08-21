@@ -2,11 +2,31 @@ require("dotenv").config();
 
 // configure web3
 const Web3 = require("web3");
-if (process.env.WEB3_PROVIDER.endsWith(".ipc")) {
-  net = require("net");
-  global.web3 = new Web3(process.env.WEB3_PROVIDER, net);
-} else {
-  global.web3 = new Web3(process.env.WEB3_PROVIDER);
+const net = require("net");
+
+global.web3s = {};
+for (let key in config.networks) {
+  web3s[key] = [];
+  for (let spec of config.networks[key].providers) {
+    switch (spec.type) {
+      case "IPC":
+        const path = process.env[spec.envKeyPath];
+        web3s[key].push(new Web3(path, net));
+        break;
+      case "WS_Infura":
+        const path =
+          `wss://${key}.infura.io/ws/v3/` + process.env[spec.envKeyID];
+        web3s[key].push(new Web3(path));
+        break;
+      case "WS_Alchemy":
+        const path =
+          `wss://eth-${key}.ws.alchemyapi.io/v2/` + process.env[spec.envKeyKey];
+        web3s[key].push(new Web3(path));
+        break;
+      default:
+        continue;
+    }
+  }
 }
 
 // configure winston

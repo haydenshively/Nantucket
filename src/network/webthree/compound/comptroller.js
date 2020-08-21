@@ -2,10 +2,9 @@ const Big = require("big.js");
 Big.DP = 40;
 Big.RM = 0;
 
-const Contract = require("../smartcontract");
-const COMPTROLLERABI = require("../abis/mainnet/compound/comptroller.json");
+const SmartContract = require("../smartcontract");
 
-class Comptroller extends Contract {
+class Comptroller extends SmartContract {
   /**
    * Enters the markets corresponding to cTokens (SEND -- uses gas)
    * Markets must be entered before a user can supply/borrow
@@ -39,17 +38,17 @@ class Comptroller extends Contract {
    * Figures out which markets the wallet is participating in
    *
    * @param {string} wallet account address of any user
-   * @return {Array.<String>} the addresses of the cToken contracts
+   * @return {Array<String>} the addresses of the cToken contracts
    */
   async marketsEnteredBy(wallet) {
-    return await this.contract.methods.getAssetsIn(wallet).call();
+    return this.contract.methods.getAssetsIn(wallet).call();
   }
 
   /**
    * Gets the percentage of supplied value that can be borrowed
    *
    * @param {CToken} cToken specifies the market to query
-   * @return {Number} the collateral factor
+   * @return {Big} the collateral factor
    */
   async collateralFactorFor(cToken) {
     const result = await this.contract.methods.markets(cToken.address).call();
@@ -62,7 +61,7 @@ class Comptroller extends Contract {
    * `liquidity = (supply_balances .* collateral_factors) .- borrow_balances`
    *
    * @param {String} borrower account address of any user
-   * @return {Array} tuple (liquidity, shortfall) or null on error
+   * @return {Array<Big>} tuple (liquidity, shortfall) or null on error
    */
   async accountLiquidityOf(borrower) {
     const result = await this.contract.methods
@@ -81,7 +80,7 @@ class Comptroller extends Contract {
    * If a user has multiple borrowed assets, the closeFactor applies to any single asset
    * (not the aggregate borrow balance)
    *
-   * @return {Number} the close factor
+   * @return {Big} the close factor
    */
   async closeFactor() {
     return Big(await this.contract.methods.closeFactorMantissa().call()).div(
@@ -94,7 +93,7 @@ class Comptroller extends Contract {
    * For example, if incentive is 1.1, liquidators receive an extra 10% of the borrower's collateral
    * for every unit they close
    *
-   * @return {Number} the liquidation incentive
+   * @return {Big} the liquidation incentive
    */
   async liquidationIncentive() {
     return Big(
@@ -103,12 +102,15 @@ class Comptroller extends Contract {
   }
 }
 
-exports.Comptroller = Comptroller;
-exports.mainnet = new Comptroller(
-  "0x3d9819210a31b4961b30ef54be2aed79b9c9cd3b",
-  COMPTROLLERABI
-);
-exports.ropsten = new Comptroller(
-  "0x54188bBeDD7b68228fa89CbDDa5e3e930459C6c6",
-  COMPTROLLERABI
-);
+const addresses = {
+  mainnet: "0x3d9819210a31b4961b30ef54be2aed79b9c9cd3b",
+  ropsten: "0x54188bBeDD7b68228fa89CbDDa5e3e930459C6c6"
+};
+
+for (let net in web3s) {
+  const abi = require(`../abis/${net}/compound/comptroller.json`);
+
+  exports[net] = web3s[net].map(provider => {
+    return new Comptroller(addresses[net], abi, provider);
+  });
+}

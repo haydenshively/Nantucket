@@ -29,5 +29,15 @@
       "numCandidates": 100,
       "txManager": "TEST"
     }
-  ]
+  ],
+  "networks": {
+    "mainnet": {
+      "providers": [
+        {
+          "type": "IPC",
+          "envKeyPath": "PROVIDER_IPC_PATH"
+        }
+      ]
+    }
+  }
 }

@@ -1,3 +1,8 @@
+if (process.argv.length < 3) {
+  console.log("Please pass path to config*.json");
+  process.exit();
+}
+const config = require(process.argv[2]);
 require("./setup");
 
 const child_process = require("child_process");
@@ -14,12 +19,6 @@ const Oracle = require("./messaging/oracle");
 const Reporter = require("./network/web/coinbase/reporter");
 // src.network.webthree
 const Tokens = require("./network/webthree/compound/ctoken");
-
-if (process.argv.length < 3) {
-  console.log("Please pass path to config.json");
-  process.exit();
-}
-const config = require(process.argv[2]);
 
 console.log(`Master ${process.pid} is running`);
 
@@ -143,8 +142,8 @@ web3.eth.subscribe("newBlockHeaders", (err, block) => {
 });
 
 // watch for new liquidations
-for (let symbol in Tokens.mainnet) {
-  const token = Tokens.mainnet[symbol];
+for (let symbol in Tokens.mainnet[0]) {
+  const token = Tokens.mainnet[0][symbol];
   token.subscribeToLogEvent("LiquidateBorrow", (err, event) => {
     if (err) return;
     notifyMissedOpportunity(event);

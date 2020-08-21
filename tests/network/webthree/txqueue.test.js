@@ -3,6 +3,7 @@ Big.DP = 40;
 Big.RM = 0;
 
 const assert = require("assert");
+const Web3Utils = require("web3-utils");
 
 const TxQueue = require("../../../src/network/webthree/txqueue");
 
@@ -22,9 +23,9 @@ describe("network/webthree || TxQueue Test", () => {
     await txQueue.rebase();
     const tx = {
       gasPrice: Big(await web3.eth.getGasPrice()).times(0.8),
-      gasLimit: web3.utils.toHex("36000"),
+      gasLimit: Web3Utils.toHex("36000"),
       to: "0x0000000000000000000000000000000000000000",
-      value: web3.utils.toHex("0")
+      value: Web3Utils.toHex("0")
     };
     // test append
     txQueue.append({...tx});
@@ -38,6 +39,6 @@ describe("network/webthree || TxQueue Test", () => {
     // test dump
     txQueue.dump(0);
     assert(txQueue.length === 1);
-    assert(txQueue.tx(0).gasLimit === web3.utils.toHex("21000"));
+    assert(txQueue.tx(0).gasLimit === Web3Utils.toHex("21000"));
   }).timeout(120000);
 });

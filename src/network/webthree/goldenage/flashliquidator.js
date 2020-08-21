@@ -2,10 +2,11 @@ const Big = require("big.js");
 Big.DP = 40;
 Big.RM = 0;
 
-const Contract = require("../smartcontract");
-const LIQUIDATORABI = require("../abis/mainnet/goldenage/flashliquidator.json");
+const Web3Utils = require("web3-utils");
 
-class FlashLiquidator extends Contract {
+const SmartContract = require("../smartcontract");
+
+class FlashLiquidator extends SmartContract {
   /**
    * Performs liquidation (SEND -- uses gas)
    *
@@ -17,8 +18,8 @@ class FlashLiquidator extends Contract {
    * @return {Object} the transaction object
    */
   async liquidate(borrower, repayCToken, seizeCToken, amount, gasPrice) {
-    const hexAmount = web3.utils.toHex(amount.toFixed(0));
-    const method = this.contract.methods.liquidate(
+    const hexAmount = Web3Utils.toHex(amount.toFixed(0));
+    const method = this._inner.methods.liquidate(
       borrower,
       repayCToken,
       seizeCToken,
@@ -40,7 +41,7 @@ class FlashLiquidator extends Contract {
    */
   async liquidateMany(borrowers, repayCTokens, seizeCTokens, gasPrice) {
     const cTokens = this._combineTokens(repayCTokens, seizeCTokens);
-    const method = this.contract.methods.liquidateMany(borrowers, cTokens);
+    const method = this._inner.methods.liquidateMany(borrowers, cTokens);
     const gasLimit =
       1.07 *
       (await method.estimateGas({
@@ -60,7 +61,7 @@ class FlashLiquidator extends Contract {
     gasPrice
   ) {
     const cTokens = this._combineTokens(repayCTokens, seizeCTokens);
-    const method = this.contract.methods.liquidateManyWithPriceUpdate(
+    const method = this._inner.methods.liquidateManyWithPriceUpdate(
       messages,
       signatures,
       symbols,
@@ -84,15 +85,15 @@ class FlashLiquidator extends Contract {
   }
 }
 
-exports.FlashLiquidator = FlashLiquidator;
-exports.mainnet = new FlashLiquidator(
-  // "0x6bfdfCC0169C3cFd7b5DC51c8E563063Df059097", // V1 (repay & seize tokens must be different)
-  // "0xFb3c1a8B2Baa50caF52093d7AF2450a143dbb212", // V2 (repay & seize tokens can be same)
-  // "0x0733691100483A1107b7fC156216525ECE2E5fc1", // V3 (multi-account liquidate & return on 0 shortfall)
-  "0x82c539c060E28B667B43ecBE0B12011e9b617b5e", // V4 (add support for open price feed)
-  LIQUIDATORABI
-);
-exports.ropsten = new FlashLiquidator(
-  "0x2ab4C66757a9934b3a0dBD91f94bE830855839cd",
-  LIQUIDATORABI
-);
+const addresses = {
+  mainnet: "0x82c539c060E28B667B43ecBE0B12011e9b617b5e",
+  ropsten: "0x2ab4C66757a9934b3a0dBD91f94bE830855839cd"
+};
+
+for (let net in web3s) {
+  const abi = require(`../abis/${net}/goldenage/flashliquidator.json`);
+
+  exports[net] = web3s[net].map(provider => {
+    return new FlashLiquidator(addresses[net], abi, provider);
+  });
+}
