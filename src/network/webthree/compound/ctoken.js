@@ -3,15 +3,15 @@ Big.DP = 40;
 Big.RM = 0;
 
 const Contract = require("../smartcontract");
-const CBATABI = require("../abis/compound/cbat.json");
-const CDAIABI = require("../abis/compound/cdai.json");
-const CETHABI = require("../abis/compound/ceth.json");
-const CREPABI = require("../abis/compound/crep.json");
-const CSAIABI = require("../abis/compound/csai.json");
-const CUSDCABI = require("../abis/compound/cusdc.json");
-const CUSDTABI = require("../abis/compound/cusdt.json");
-const CWBTCABI = require("../abis/compound/cwbtc.json");
-const CZRXABI = require("../abis/compound/czrx.json");
+const CBATABI = require("../abis/mainnet/compound/cbat.json");
+const CDAIABI = require("../abis/mainnet/compound/cdai.json");
+const CETHABI = require("../abis/mainnet/compound/ceth.json");
+const CREPABI = require("../abis/mainnet/compound/crep.json");
+const CSAIABI = require("../abis/mainnet/compound/csai.json");
+const CUSDCABI = require("../abis/mainnet/compound/cusdc.json");
+const CUSDTABI = require("../abis/mainnet/compound/cusdt.json");
+const CWBTCABI = require("../abis/mainnet/compound/cwbtc.json");
+const CZRXABI = require("../abis/mainnet/compound/czrx.json");
 
 const FlashLiquidator = require("../goldenage/flashliquidator");
 const PriceOracle = require("./priceoracle");
@@ -249,4 +249,31 @@ exports.mainnetByAddr = {
   "0xf650c3d88d12db855b8bf7d11be6c55a4e07dcc9": exports.mainnet.cUSDT,
   "0xc11b1268c1a384e55c48c2391d8d480264a3a7f4": exports.mainnet.cWBTC,
   "0xb3319f5d18bc0d84dd1b4825dcde5d5f7266d407": exports.mainnet.cZRX
+};
+exports.ropsten = {
+  cBAT: new CToken("0x9e95c0b2412ce50c37a121622308e7a6177f819d", CBATABI),
+  cDAI: new CToken("0xdb5ed4605c11822811a39f94314fdb8f0fb59a2c", CDAIABI),
+  cETH: new CToken(
+    "0xbe839b6d93e3ea47effcca1f27841c917a8794f3",
+    CETHABI,
+    18,
+    true
+  ),
+  cREP: new CToken("0x8f2c8b147a3d316d2b98f32f3864746f034a55a2", CREPABI),
+  cSAI: new CToken("0xc4d2a5872e16bc9e6557be8b24683d96eb6adca9", CSAIABI),
+  cUSDC: new CToken("0x8af93cae804cc220d1a608d4fa54d1b6ca5eb361", CUSDCABI, 6),
+  cUSDT: new CToken("0x135669c2dcbd63f639582b313883f101a4497f76", CUSDTABI, 6),
+  cWBTC: new CToken("0x58145bc5407d63daf226e4870beeb744c588f149", CWBTCABI, 8),
+  cZRX: new CToken("0x00e02a5200ce3d5b5743f5369deb897946c88121", CZRXABI)
+};
+exports.ropstenByAddr = {
+  "0x9e95c0b2412ce50c37a121622308e7a6177f819d": exports.mainnet.cBAT,
+  "0xdb5ed4605c11822811a39f94314fdb8f0fb59a2c": exports.mainnet.cDAI,
+  "0xbe839b6d93e3ea47effcca1f27841c917a8794f3": exports.mainnet.cETH,
+  "0x8f2c8b147a3d316d2b98f32f3864746f034a55a2": exports.mainnet.cREP,
+  "0xc4d2a5872e16bc9e6557be8b24683d96eb6adca9": exports.mainnet.cSAI,
+  "0x8af93cae804cc220d1a608d4fa54d1b6ca5eb361": exports.mainnet.cUSDC,
+  "0x135669c2dcbd63f639582b313883f101a4497f76": exports.mainnet.cUSDT,
+  "0x58145bc5407d63daf226e4870beeb744c588f149": exports.mainnet.cWBTC,
+  "0x00e02a5200ce3d5b5743f5369deb897946c88121": exports.mainnet.cZRX
 };

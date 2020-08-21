@@ -3,7 +3,7 @@ Big.DP = 40;
 Big.RM = 0;
 
 const Contract = require("../smartcontract");
-const COMPTROLLERABI = require("../abis/compound/comptroller.json");
+const COMPTROLLERABI = require("../abis/mainnet/compound/comptroller.json");
 
 class Comptroller extends Contract {
   /**
@@ -58,7 +58,7 @@ class Comptroller extends Contract {
   }
 
   /**
-   * Gets the total value (in Eth) that an account could borrow  
+   * Gets the total value (in Eth) that an account could borrow
    * `liquidity = (supply_balances .* collateral_factors) .- borrow_balances`
    *
    * @param {String} borrower account address of any user
@@ -106,5 +106,9 @@ class Comptroller extends Contract {
 exports.Comptroller = Comptroller;
 exports.mainnet = new Comptroller(
   "0x3d9819210a31b4961b30ef54be2aed79b9c9cd3b",
+  COMPTROLLERABI
+);
+exports.ropsten = new Comptroller(
+  "0x54188bBeDD7b68228fa89CbDDa5e3e930459C6c6",
   COMPTROLLERABI
 );

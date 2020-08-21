@@ -11,11 +11,12 @@ global.pool = new Pool({
 
 // configure web3
 const Web3 = require("web3");
-if (process.env.WEB3_PROVIDER.endsWith(".ipc")) {
+if (process.env.WEB3_PROVIDER_ROPSTEN.endsWith(".ipc")) {
   net = require("net");
-  global.web3 = new Web3(process.env.WEB3_PROVIDER, net);
+  global.web3 = new Web3(process.env.WEB3_PROVIDER_ROPSTEN, net);
 } else {
-  global.web3 = new Web3(process.env.WEB3_PROVIDER);
+  console.log(process.env.WEB3_PROVIDER_ROPSTEN);
+  global.web3 = new Web3(process.env.WEB3_PROVIDER_ROPSTEN);
 }
 
 // configure winston

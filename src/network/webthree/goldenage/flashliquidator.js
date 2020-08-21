@@ -3,7 +3,7 @@ Big.DP = 40;
 Big.RM = 0;
 
 const Contract = require("../smartcontract");
-const LIQUIDATORABI = require("../abis/goldenage/flashliquidator.json");
+const LIQUIDATORABI = require("../abis/mainnet/goldenage/flashliquidator.json");
 
 class FlashLiquidator extends Contract {
   /**
@@ -90,5 +90,9 @@ exports.mainnet = new FlashLiquidator(
   // "0xFb3c1a8B2Baa50caF52093d7AF2450a143dbb212", // V2 (repay & seize tokens can be same)
   // "0x0733691100483A1107b7fC156216525ECE2E5fc1", // V3 (multi-account liquidate & return on 0 shortfall)
   "0x82c539c060E28B667B43ecBE0B12011e9b617b5e", // V4 (add support for open price feed)
+  LIQUIDATORABI
+);
+exports.ropsten = new FlashLiquidator(
+  "0x2ab4C66757a9934b3a0dBD91f94bE830855839cd",
   LIQUIDATORABI
 );
