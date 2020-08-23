@@ -17,7 +17,16 @@ const txManager = new TxManager(
 txManager.init();
 
 process.on("SIGINT", code => {
-  web3.eth.clearSubscriptions();
+  for (let net in web3s) {
+    for (let provider of web3s[net]) {
+      provider.eth.clearSubscriptions();
+      try {
+        provider.currentProvider.connection.close();
+      } catch {
+        provider.currentProvider.connection.destroy();
+      }
+    }
+  }
   txManager.stop();
 
   console.log(`TxManager ${process.pid} has exited cleanly`);

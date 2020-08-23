@@ -2,6 +2,8 @@ const Big = require("big.js");
 Big.DP = 40;
 Big.RM = 0;
 
+const Web3Utils = require("web3-utils");
+
 // src.messaging
 const Candidate = require("../../messaging/candidate");
 const Channel = require("../../messaging/channel");
@@ -143,7 +145,7 @@ class TxManager {
     const initialGasPrice = await this._getInitialGasPrice();
 
     if (this._idxsNeedingPriceUpdate.length === 0) {
-      this._tx = await FlashLiquidator.mainnet[0].liquidateMany(
+      this._tx = await FlashLiquidator.mainnet.liquidateMany(
         this._borrowers,
         this._repayCTokens,
         this._seizeCTokens,
@@ -158,7 +160,7 @@ class TxManager {
     if (this._oracle === null) return;
 
     const postable = this._oracle.postableData();
-    this._tx = await FlashLiquidator.mainnet[0].liquidateManyWithPriceUpdate(
+    this._tx = await FlashLiquidator.mainnet.liquidateManyWithPriceUpdate(
       postable[0],
       postable[1],
       postable[2],
@@ -181,7 +183,7 @@ class TxManager {
     }
     // TODO hot fix for massive losses
     if (
-      Big(web3.utils.hexToNumberString(this._tx.gasLimit)).lte(
+      Big(Web3Utils.hexToNumberString(this._tx.gasLimit)).lte(
         500000 * this._borrowers.length
       )
     ) {
@@ -228,7 +230,7 @@ class TxManager {
    * @returns {Big} estimates transaction fee
    */
   static _estimateFee(tx) {
-    const gasLimit = Big(web3.utils.hexToNumberString(tx.gasLimit));
+    const gasLimit = Big(Web3Utils.hexToNumberString(tx.gasLimit));
     return tx.gasPrice.times(gasLimit).div(1e18);
   }
 
@@ -239,7 +241,7 @@ class TxManager {
    * @returns {Big} the gas price in Wei
    */
   async _getInitialGasPrice() {
-    return Big(await web3.eth.getGasPrice());
+    return Big(await Web3Utils.mainnet[0].eth.getGasPrice());
   }
 
   /**

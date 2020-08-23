@@ -2,30 +2,42 @@ const Big = require("big.js");
 Big.DP = 40;
 Big.RM = 0;
 
+const ABIUtils = require("web3-eth-abi");
+const Web3Contract = require("web3-eth-contract");
 const Web3Utils = require("web3-utils");
-const ABIUtils = require("web3-utils-abi");
 
 class SmartContract {
-  constructor(address, abi, provider) {
+  constructor(address, abi) {
     this.address = address;
-    this._inner = new provider.eth.Contract(abi, this.address);
+    this._inner = new Web3Contract(abi, address);
   }
 
-  _txFor(encodedMethod, gasLimit, gasPrice) {
-    return {
-      to: this.address,
-      gasLimit: gasLimit,
-      gasPrice: gasPrice,
-      data: encodedMethod
+  _callerForUint256(method, modifier = x => x) {
+    return this._callerFor(method, ["uint256"], x => Big(x["0"]));
+  }
+
+  _callerFor(method, outputTypes, modifier = x => x) {
+    return async (provider, block = "latest") => {
+      const x = await provider.eth.call(this._txFor(method), block);
+      return modifier(ABIUtils.decodeParameters(outputTypes, x));
     };
   }
 
-  subscribeToLogEvent(eventName, callback) {
+  _txFor(method, gasLimit = undefined, gasPrice = undefined) {
+    return {
+      to: this.address,
+      data: method.encodeABI(),
+      gasLimit: gasLimit,
+      gasPrice: gasPrice
+    };
+  }
+
+  subscribeToLogEvent(provider, eventName, callback) {
     const eventJsonInterface = Web3Utils._.find(
       this._inner._jsonInterface,
       o => o.name === eventName && o.type === "event"
     );
-    return web3.eth.subscribe(
+    return provider.eth.subscribe(
       "logs",
       {
         address: this.address,

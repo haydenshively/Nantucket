@@ -1,50 +1,60 @@
 const assert = require("assert");
 
+const { forAllProviders } = require("../utils");
+
 const Comptroller = require("../../../../src/network/webthree/compound/comptroller");
 const Tokens = require("../../../../src/network/webthree/compound/ctoken");
 
 describe("network/webthree/compound || Comptroller Test", () => {
   it("should retrieve liquidation incentive", () => {
-    return Comptroller.mainnet.liquidationIncentive().then(result => {
-      assert(result.gt(1.0));
-    });
+    return forAllProviders(
+      Comptroller,
+      "liquidationIncentive",
+      undefined,
+      res => assert(res.gte(1.0))
+    );
   });
 
   it("should retrieve close factor", () => {
-    return Comptroller.mainnet.closeFactor().then(result => {
-      assert(result.gt(0.0));
-    });
+    return forAllProviders(Comptroller, "closeFactor", undefined, res =>
+      assert(res.gt(0.0))
+    );
   });
 
-  it("should retrieve cDAI collateral factor", () => {
-    return Comptroller.mainnet
-      .collateralFactorFor(Tokens.mainnet.cDAI)
-      .then(result => {
-        assert(result.gt(0.0));
-      });
-  });
+  it("should retrieve collateral factors", async () => {
+    for (let net in web3s) {
+      for (let symbol in Tokens[net]) {
+        if (!symbol.startsWith("c")) continue;
 
-  let TEST_ACCOUNT_ADDRESS;
-  for (let key in process.env) {
-    if (key.startsWith("ACCOUNT_ADDRESS")) {
-      TEST_ACCOUNT_ADDRESS = process.env[key];
+        const token = Tokens[net][symbol];
+        const caller = Comptroller[net].collateralFactorFor(token);
+
+        for (let provider of web3s[net]) {
+          const res = await caller(provider);
+          assert(res.lt(1.0));
+        }
+      }
     }
-  }
+  }).timeout(10000);
 
   it("should retrieve active markets", () => {
-    return Comptroller.mainnet
-      .marketsEnteredBy(TEST_ACCOUNT_ADDRESS.toLowerCase())
-      .then(result => {
-        assert(result.length === 0);
-      });
+    return forAllProviders(
+      Comptroller,
+      "marketsEnteredBy",
+      process.env.ACCOUNT_ADDRESS_TEST,
+      markets => assert(markets.length === 0)
+    );
   });
 
   it("should retrieve account liquidity", () => {
-    return Comptroller.mainnet
-      .accountLiquidityOf(TEST_ACCOUNT_ADDRESS.toLowerCase())
-      .then(result => {
+    return forAllProviders(
+      Comptroller,
+      "accountLiquidityOf",
+      process.env.ACCOUNT_ADDRESS_TEST,
+      result => {
         assert(result[0].eq(0.0));
         assert(result[1].eq(0.0));
-      });
+      }
+    );
   });
 });

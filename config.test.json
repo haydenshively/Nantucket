@@ -34,12 +34,10 @@
       ]
     },
     "ropsten": {
-      "quorum": 1,
       "providers": [
         {
-          "type": "WS Infura",
-          "envKeyID": "PROVIDER_INFURA_ID",
-          "envKeySecret": "PROVIDER_INFURA_SECRET"
+          "type": "WS_Infura",
+          "envKeyID": "PROVIDER_INFURA_ID"
         }
       ]
     }

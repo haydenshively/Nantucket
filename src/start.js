@@ -130,7 +130,7 @@ setOracles();
 updateCandidates();
 
 // watch for new blocks
-web3.eth.subscribe("newBlockHeaders", (err, block) => {
+web3s.mainnet[0].eth.subscribe("newBlockHeaders", (err, block) => {
   if (err) {
     winston.error("🚨 *Block Headers* | " + String(err));
     return;
@@ -142,9 +142,9 @@ web3.eth.subscribe("newBlockHeaders", (err, block) => {
 });
 
 // watch for new liquidations
-for (let symbol in Tokens.mainnet[0]) {
-  const token = Tokens.mainnet[0][symbol];
-  token.subscribeToLogEvent("LiquidateBorrow", (err, event) => {
+for (let symbol in Tokens.mainnet) {
+  const token = Tokens.mainnet[symbol];
+  token.subscribeToLogEvent(web3s.mainnet[0], "LiquidateBorrow", (err, event) => {
     if (err) return;
     notifyMissedOpportunity(event);
     const addr = event.borrower;
@@ -167,13 +167,17 @@ process.on("SIGINT", () => {
   for (key in txManagers) txManagers[key].kill("SIGINT");
   workers.forEach(w => w.process.kill("SIGINT"));
 
-  database.stop();
-  web3.eth.clearSubscriptions();
-  try {
-    web3.currentProvider.connection.close();
-  } catch {
-    web3.currentProvider.connection.destroy();
+  for (let net in web3s) {
+    for (let provider of web3s[net]) {
+      provider.eth.clearSubscriptions();
+      try {
+        provider.currentProvider.connection.close();
+      } catch {
+        provider.currentProvider.connection.destroy();
+      }
+    }
   }
+  database.stop();
 
   process.exit();
 });

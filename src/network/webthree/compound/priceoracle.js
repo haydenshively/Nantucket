@@ -5,12 +5,11 @@ Big.RM = 0;
 const SmartContract = require("../smartcontract");
 
 class PriceOracle extends SmartContract {
-  async getUnderlyingPriceUSD(cToken) {
-    return Big(
-      await this.contract.methods.getUnderlyingPrice(cToken.address).call()
-    )
-      .div(1e18)
-      .div(1e18 / cToken.decimals);
+  getUnderlyingPriceUSD(cToken) {
+    const method = this._inner.methods.getUnderlyingPrice(cToken.address);
+    return this._callerForUint256(method, x =>
+      x.div(1e18).div(1e18 / cToken.decimals)
+    );
   }
 }
 
@@ -21,8 +20,5 @@ const addresses = {
 
 for (let net in web3s) {
   const abi = require(`../abis/${net}/compound/priceoracle.json`);
-
-  exports[net] = web3s[net].map(provider => {
-    return new PriceOracle(addresses[net], abi, provider);
-  });
+  exports[net] = new PriceOracle(addresses[net], abi);
 }

@@ -5,8 +5,8 @@ Big.RM = 0;
 const SmartContract = require("../smartcontract");
 
 class CToken extends SmartContract {
-  constructor(address, abi, provider, decimalsOfUnderlying = 18) {
-    super(address, abi, provider);
+  constructor(address, abi, decimalsOfUnderlying = 18) {
+    super(address, abi);
     this.decimals = "1e" + decimalsOfUnderlying.toString();
   }
 
@@ -14,79 +14,83 @@ class CToken extends SmartContract {
    * Gets the current exchange rate
    * (uUnitsSupplied() + uUnitsBorrowed() - totalReserves()) / cUnitsInCirculation()
    *
-   * @return {Big} the exchange rate
+   * @return {function(provider, Number?): Promise<Big>} the exchange rate
    */
-  async exchangeRate() {
-    return Big(await this.contract.methods.exchangeRateCurrent().call());
+  exchangeRate() {
+    const method = this._inner.methods.exchangeRateCurrent();
+    return this._callerForUint256(method, x => x.div(1e18));
   }
 
   /**
    * Gets the current borrow rate per block
    *
-   * @return {Big} the borrow rate
+   * @return {function(provider, Number?): Promise<Big>} the borrow rate
    */
-  async borrowRate() {
-    return Big(await this.contract.methods.borrowRatePerBlock().call());
+  borrowRate() {
+    const method = this._inner.methods.borrowRatePerBlock();
+    return this._callerForUint256(method, x => x.div(1e18));
   }
 
   /**
    * Gets the current supply rate per block
    *
-   * @return {Big} the supply rate
+   * @return {function(provider, Number?): Promise<Big>} the supply rate
    */
-  async supplyRate() {
-    return Big(await this.contract.methods.supplyRatePerBlock().call());
+  supplyRate() {
+    const method = this._inner.methods.supplyRatePerBlock();
+    return this._callerForUint256(method);
   }
 
   /**
    * Gets the total number of cTokens in circulation
    *
-   * @return {Big} cTokens in circulation
+   * @return {function(provider, Number?): Promise<Big>} cTokens in circulation
    */
-  async cUnitsInCirculation() {
-    return Big(await this.contract.methods.totalSupply().call());
+  cUnitsInCirculation() {
+    const method = this._inner.methods.totalSupply();
+    return this._callerForUint256(method);
   }
 
   /**
    * Gets the total number of uTokens supplied to Compound
    *
-   * @return {Big} uTokens supplied
+   * @return {function(provider, Number?): Promise<Big>} uTokens supplied
    */
-  async uUnitsSupplied() {
-    return Big(await this.contract.methods.getCash().call()).div(this.decimals);
+  uUnitsSupplied() {
+    const method = this._inner.methods.getCash();
+    return this._callerForUint256(method, x => x.div(this.decimals));
   }
 
   /**
    * Gets the number of uTokens supplied by a given user
    *
    * @param {String} supplier address of any user
+   * @return {function(provider, Number?): Promise<Big>} uTokens supplied
    */
-  async uUnitsSuppliedBy(supplier) {
-    return Big(
-      await this.contract.methods.balanceOfUnderlying(supplier).call()
-    ).div(this.decimals);
+  uUnitsSuppliedBy(supplier) {
+    const method = this._inner.methods.balanceOfUnderlying(supplier);
+    return this._callerForUint256(method, x => x.div(this.decimals));
   }
 
   /**
    * Gets the total number of uTokens borrowed from Compound
    *
-   * @return {Big} uTokens borrowed
+   * @return {function(provider, Number?): Promise<Big>} uTokens borrowed
    */
-  async uUnitsBorrowed() {
-    return Big(await this.contract.methods.totalBorrowsCurrent().call()).div(
-      this.decimals
-    );
+  uUnitsBorrowed() {
+    const method = this._inner.methods.totalBorrowsCurrent();
+    return this._callerForUint256(method, x => x.div(this.decimals));
   }
 
   /**
    * Gets the number of uTokens borrowed by a given user (includes interest)
    *
    * @param {String} borrower address of any user
+   * @return {function(provider, Number?): Promise<Big>} uTokens borrowed
    */
-  async uUnitsBorrowedBy(borrower) {
-    return Big(
-      await this.contract.methods.borrowBalanceCurrent(borrower).call()
-    ).div(this.decimals);
+  uUnitsBorrowedBy(borrower) {
+    const method = this._inner.methods.borrowBalanceCurrent(borrower);
+    return this._callerForUint256(method, x => x.div(this.decimals));
   }
 }
 
@@ -128,19 +132,16 @@ const addresses = {
 };
 
 for (let net in web3s) {
-  exports[net] = web3s[net].map(provider => {
-    let cTokens = {};
-    for (let symbol in addresses[net]) {
-      const address = addresses[net][symbol];
+  let cTokens = {};
+  for (let symbol in addresses[net]) {
+    const address = addresses[net][symbol];
 
-      cTokens[symbol] = new CToken(
-        address,
-        require(`../abis/${net}/compound/${symbol.toLowerCase()}.json`),
-        provider,
-        decimals[symbol]
-      );
-      cTokens[address] = cTokens[symbol];
-    }
-    return cTokens;
-  });
+    cTokens[symbol] = new CToken(
+      address,
+      require(`../abis/${net}/compound/${symbol.toLowerCase()}.json`),
+      decimals[symbol]
+    );
+    cTokens[address] = cTokens[symbol];
+  }
+  exports[net] = cTokens;
 }

@@ -18,23 +18,21 @@ global.web3s = {};
 for (let key in config.networks) {
   web3s[key] = [];
   for (let spec of config.networks[key].providers) {
+    let path;
     switch (spec.type) {
       case "IPC":
-        const path = process.env[spec.envKeyPath];
+        path = process.env[spec.envKeyPath];
         web3s[key].push(new Web3(path, net));
         break;
       case "WS_Infura":
-        const path =
-          `wss://${key}.infura.io/ws/v3/` + process.env[spec.envKeyID];
+        path = `wss://${key}.infura.io/ws/v3/` + process.env[spec.envKeyID];
         web3s[key].push(new Web3(path));
         break;
       case "WS_Alchemy":
-        const path =
+        path =
           `wss://eth-${key}.ws.alchemyapi.io/v2/` + process.env[spec.envKeyKey];
         web3s[key].push(new Web3(path));
         break;
-      default:
-        continue;
     }
   }
 }
@@ -59,12 +57,14 @@ winston.configure({
 });
 
 after(() => {
-  for (let key in providers) {
-    providers[key].eth.clearSubscriptions();
-    try {
-      providers[key].currentProvider.connection.close();
-    } catch {
-      providers[key].currentProvider.connection.destroy();
+  for (let net in web3s) {
+    for (let provider of web3s[net]) {
+      provider.eth.clearSubscriptions();
+      try {
+        provider.currentProvider.connection.close();
+      } catch {
+        provider.currentProvider.connection.destroy();
+      }
     }
   }
   pool.end();

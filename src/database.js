@@ -47,9 +47,12 @@ class Database {
   async pullFromAccountService(web3Idx = 0) {
     // TODO currently this function is only compatible with mainnet, but
     // could be easily extended to work with testnets
-    const blockLabel = (await web3s.mainnet[web3Idx].eth.getBlockNumber()) - 20;
-    const closeFact = await Comptroller.mainnet[web3Idx].closeFactor();
-    const liqIncent = await Comptroller.mainnet[web3Idx].liquidationIncentive();
+    const provider = web3s.mainnet[web3Idx];
+    const blockLabel = (await provider.eth.getBlockNumber()) - 20;
+    const closeFact = await Comptroller.mainnet.closeFactor()(provider);
+    const liqIncent = await Comptroller.mainnet.liquidationIncentive()(
+      provider
+    );
 
     // 0 means pull most recent block
     // We label it with an older block number to avoid overwriting fresher

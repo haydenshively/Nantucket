@@ -14,8 +14,8 @@ class FlashLiquidator extends SmartContract {
    * @param {string} repayCToken address of token to repay
    * @param {string} seizeCToken address of token to seize
    * @param {Big} amount debt to repay, in units of the ordinary asset
-   * @param {number} gasPrice the gas price to use, in gwei
-   * @return {Object} the transaction object
+   * @param {Number} gasPrice the gas price to use, in gwei
+   * @return {Promise<Object>} the transaction object
    */
   async liquidate(borrower, repayCToken, seizeCToken, amount, gasPrice) {
     const hexAmount = Web3Utils.toHex(amount.toFixed(0));
@@ -27,16 +27,16 @@ class FlashLiquidator extends SmartContract {
     );
     const gasLimit = 1.07 * (await method.estimateGas({ gas: "3000000" }));
 
-    return this.txFor(method.encodeABI(), gasLimit.toFixed(0), gasPrice);
+    return this.txFor(method, Big(gasLimit), gasPrice);
   }
 
   /**
    * Performs liquidation on multiple accounts (SEND -- uses gas)
    *
-   * @param {Array.<String>} borrowers addresses of users with negative liquidity
-   * @param {Array.<String>} repayCTokens address of token to repay
-   * @param {Array.<String>} seizeCTokens address of token to seize
-   * @param {number} gasPrice the gas price to use, in gwei
+   * @param {Array<String>} borrowers addresses of users with negative liquidity
+   * @param {Array<String>} repayCTokens address of token to repay
+   * @param {Array<String>} seizeCTokens address of token to seize
+   * @param {Number} gasPrice the gas price to use, in gwei
    * @return {Object} the transaction object
    */
   async liquidateMany(borrowers, repayCTokens, seizeCTokens, gasPrice) {
@@ -48,7 +48,7 @@ class FlashLiquidator extends SmartContract {
         gas: String(3 * borrowers.length) + "000000"
       }));
 
-    return this.txFor(method.encodeABI(), gasLimit.toFixed(0), gasPrice);
+    return this.txFor(method, Big(gasLimit), gasPrice);
   }
 
   async liquidateManyWithPriceUpdate(
@@ -74,7 +74,7 @@ class FlashLiquidator extends SmartContract {
         gas: String(3 * borrowers.length) + "000000"
       }));
 
-    return this.txFor(method.encodeABI(), gasLimit.toFixed(0), gasPrice);
+    return this.txFor(method, Big(gasLimit), gasPrice);
   }
 
   _combineTokens(repayList, seizeList) {
@@ -92,8 +92,5 @@ const addresses = {
 
 for (let net in web3s) {
   const abi = require(`../abis/${net}/goldenage/flashliquidator.json`);
-
-  exports[net] = web3s[net].map(provider => {
-    return new FlashLiquidator(addresses[net], abi, provider);
-  });
+  exports[net] = new FlashLiquidator(addresses[net], abi);
 }

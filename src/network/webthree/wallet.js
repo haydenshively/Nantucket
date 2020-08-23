@@ -3,6 +3,7 @@ Big.DP = 40;
 Big.RM = 0;
 
 const Tx = require("ethereumjs-tx").Transaction;
+const Web3Utils = require("web3-utils");
 
 class Wallet {
   /**
@@ -21,9 +22,9 @@ class Wallet {
 
     this.label = String(process.env[envKeyAddress]).slice(0, 6);
     this.emptyTx = {
-      gasLimit: web3.utils.toHex("21000"),
+      gasLimit: Big("21000"),
       to: process.env[envKeyAddress],
-      value: web3.utils.toHex("0")
+      value: Web3Utils.toHex("0")
     };
   }
 
@@ -64,8 +65,9 @@ class Wallet {
     tx = { ...tx };
     if ("gasPrice" in tx) this._gasPrices[nonce] = tx.gasPrice;
 
-    tx.nonce = web3.utils.toHex(nonce);
-    tx.gasPrice = web3.utils.toHex(tx.gasPrice.toFixed(0));
+    tx.nonce = Web3Utils.toHex(nonce);
+    tx.gasLimit = Web3Utils.toHex(tx.gasLimit.toFixed(0));
+    tx.gasPrice = Web3Utils.toHex(tx.gasPrice.toFixed(0));
     return Wallet._send(this._sign(tx));
   }
 
@@ -104,16 +106,16 @@ class Wallet {
    * @returns {PromiEvent} See [here](https://web3js.readthedocs.io/en/v1.2.0/callbacks-promises-events.html#promievent)
    */
   static _send(signedTx) {
-    return web3.eth.sendSignedTransaction(signedTx);
+    return Web3Utils.mainnet[0].eth.sendSignedTransaction(signedTx);
   }
 
   /**
-   * Convenience function that calls `web3.eth.getTransactionCount`
+   * Convenience function that calls `provider.eth.getTransactionCount`
    *
    * @returns {Promise} the next unconfirmed (possibly pending) nonce (base 10)
    */
   async getLowestLiquidNonce() {
-    return web3.eth.getTransactionCount(process.env[this._envKeyAddress]);
+    return Web3Utils.mainnet[0].eth.getTransactionCount(process.env[this._envKeyAddress]);
   }
 }
 

@@ -37,15 +37,17 @@ class Candidate extends Message {
     // easily extended to include testnets
     let markets = [];
 
-    const comptroller = Comptroller.mainnet[web3Idx];
+    const web3 = web3s.mainnet[web3Idx];
 
-    const addrs = await comptroller.marketsEnteredBy(this.address);
+    const addrs = await Comptroller.mainnet.marketsEnteredBy(this.address)(
+      web3
+    );
     for (let addr of addrs) {
-      const token = Tokens.mainnet[web3Idx][addr.toLowerCase()];
+      const token = Tokens.mainnet[addr.toLowerCase()];
       markets.push({
         address: addr,
-        borrow_uUnits: Number(await token.uUnitsBorrowedBy(this.address)),
-        supply_uUnits: Number(await token.uUnitsSuppliedBy(this.address)),
+        borrow_uUnits: Number(await token.uUnitsBorrowedBy(this.address)(web3)),
+        supply_uUnits: Number(await token.uUnitsSuppliedBy(this.address)(web3)),
         collat: Number(await comptroller.collateralFactorFor(token))
       });
     }
