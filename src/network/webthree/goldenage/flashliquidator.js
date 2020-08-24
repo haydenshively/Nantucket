@@ -39,7 +39,7 @@ class FlashLiquidator extends SmartContract {
    * @param {Number} gasPrice the gas price to use, in gwei
    * @return {Object} the transaction object
    */
-  async liquidateMany(borrowers, repayCTokens, seizeCTokens, gasPrice) {
+  liquidateMany(borrowers, repayCTokens, seizeCTokens, gasPrice) {
     const cTokens = this._combineTokens(repayCTokens, seizeCTokens);
     const method = this._inner.methods.liquidateMany(borrowers, cTokens);
     const gasLimit = String(3 * borrowers.length) + "000000";
@@ -47,7 +47,7 @@ class FlashLiquidator extends SmartContract {
     return this._txFor(method, Big(gasLimit), gasPrice);
   }
 
-  async liquidateManyWithPriceUpdate(
+  liquidateManyWithPriceUpdate(
     messages,
     signatures,
     symbols,

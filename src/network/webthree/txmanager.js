@@ -183,15 +183,6 @@ class TxManager {
       this.dumpAll();
       return;
     }
-    // TODO hot fix for massive losses
-    if (
-      Big(Web3Utils.hexToNumberString(this._tx.gasLimit)).lte(
-        500000 * this._borrowers.length
-      )
-    ) {
-      this.dumpAll();
-      return;
-    }
     // TODO edge case: it's possible that the tx could be non-null,
     // but due to a recent candidate removal, the current gasPrice&gasLimit
     // create a no-longer-profitable situation. In this case, any pending
@@ -232,8 +223,7 @@ class TxManager {
    * @returns {Big} estimates transaction fee
    */
   static _estimateFee(tx) {
-    const gasLimit = Big(Web3Utils.hexToNumberString(tx.gasLimit));
-    return tx.gasPrice.times(gasLimit).div(1e18);
+    return tx.gasPrice.times(tx.gasLimit).div(1e18);
   }
 
   /**

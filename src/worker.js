@@ -79,8 +79,6 @@ class Worker extends Database {
       if (c.ctokenidpay == 2 || (c.ctokenidpay == 6 && c.ctokenidseize == 2))
         continue;
 
-      // TODO does this really need to happen every single block?
-      // TODO these web3 provider things should come from constructor
       await c.refreshBalances(
         web3,
         Comptroller.mainnet,
@@ -108,7 +106,6 @@ class Worker extends Database {
         this._candidates.splice(i, 1);
         return;
       }
-      // TODO these web3 provider things should come from constructor
       if (await c.isLiquidatable(web3, Comptroller.mainnet)) {
         this._candidates[i].msg().broadcast("Liquidate");
         this._candidates.splice(i, 1);
