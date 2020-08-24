@@ -8,8 +8,9 @@ const Web3Utils = require("web3-utils");
 const TxQueue = require("../../../src/network/webthree/txqueue");
 
 describe("network/webthree || TxQueue Test", () => {
+  const web3 = web3s.ropsten[0];
   const txQueue = new TxQueue(
-    web3s.ropsten[0],
+    web3,
     "ACCOUNT_ADDRESS_TEST",
     "ACCOUNT_SECRET_TEST"
   );
@@ -27,7 +28,7 @@ describe("network/webthree || TxQueue Test", () => {
     await txQueue.rebase();
     const tx = {
       gasPrice: Big(await web3.eth.getGasPrice()).times(0.8),
-      gasLimit: Web3Utils.toHex("36000"),
+      gasLimit: Big("36000"),
       to: "0x0000000000000000000000000000000000000000",
       value: Web3Utils.toHex("0")
     };

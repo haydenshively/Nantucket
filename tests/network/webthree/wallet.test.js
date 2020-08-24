@@ -7,8 +7,9 @@ const assert = require("assert");
 const Wallet = require("../../../src/network/webthree/wallet");
 
 describe("network/webthree || Wallet Test", () => {
+  const web3 = web3s.ropsten[0];
   const wallet = new Wallet(
-    web3s.ropsten[0],
+    web3,
     "ACCOUNT_ADDRESS_TEST",
     "ACCOUNT_SECRET_TEST"
   );

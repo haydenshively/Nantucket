@@ -42,8 +42,7 @@
     "test-database": "mocha --file './tests/setup.js' 'tests/database/**/*.test.js' --recursive",
     "test-logging": "mocha --file './tests/setup.js' 'tests/logging/**/*.test.js' --recursive",
     "test-messaging": "mocha --file './tests/setup.js' 'tests/messaging/**/*.test.js' --recursive",
-    "test-network": "mocha --file './tests/setup.js' 'tests/network/**/*.test.js' --recursive",
-    "test-prediction": "mocha 'tests/prediction/**/*.test.js' --recursive"
+    "test-network": "mocha --file './tests/setup.js' 'tests/network/**/*.test.js' --recursive"
   },
   "repository": {
     "type": "git",
