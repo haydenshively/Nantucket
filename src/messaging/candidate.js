@@ -1,7 +1,4 @@
 const Message = require("./message");
-// src.network.webthree
-const Comptroller = require("../network/webthree/compound/comptroller");
-const Tokens = require("../network/webthree/compound/ctoken");
 
 class Candidate extends Message {
   constructor(data) {
@@ -32,31 +29,31 @@ class Candidate extends Message {
     return this;
   }
 
-  async init() {
+  async refreshBalances(web3, comptroller, tokens) {
     let markets = [];
 
-    const addrs = await Comptroller.mainnet.marketsEnteredBy(this.address);
+    const addrs = await comptroller.marketsEnteredBy(this.address)(web3);
     for (let addr of addrs) {
-      const token = Tokens.mainnetByAddr[addr.toLowerCase()];
+      const token = tokens[addr.toLowerCase()];
       markets.push({
         address: addr,
-        borrow_uUnits: Number(await token.uUnitsBorrowedBy(this.address)),
-        supply_uUnits: Number(await token.uUnitsSuppliedBy(this.address)),
-        collat: Number(await Comptroller.mainnet.collateralFactorFor(token))
+        borrow_uUnits: Number(await token.uUnitsBorrowedBy(this.address)(web3)),
+        supply_uUnits: Number(await token.uUnitsSuppliedBy(this.address)(web3)),
+        collat: Number(await comptroller.collateralFactorFor(token))
       });
     }
 
     this._markets = markets;
   }
 
-  async liquidityOffChain(oracle) {
-    if (this._markets === null) await this.init();
+  liquidityOffChain(oracle) {
+    if (this._markets === null) return {};
 
     let borrow = 0;
     let supply = 0;
 
     for (let market of this._markets) {
-      const costInUSD = await oracle.getPrice(market.address);
+      const costInUSD = oracle.getPrice(market.address);
       if (costInUSD === null) return 0;
 
       borrow += market.borrow_uUnits * costInUSD;
@@ -72,18 +69,18 @@ class Candidate extends Message {
     };
   }
 
-  async isLiquidatableWithPriceFrom(oracle) {
-    return (await this.liquidityOffChain(oracle)).liquidity < 0.0;
+  isLiquidatableWithPriceFrom(oracle) {
+    return this.liquidityOffChain(oracle).liquidity < 0.0;
   }
 
-  liquidityOnChain() {
+  liquidityOnChain(web3, comptroller) {
     // TODO: Note that this will probably be in USD now that the
     // oracle has been updated
-    return Comptroller.mainnet.accountLiquidityOf(this.address);
+    return comptroller.accountLiquidityOf(this.address)(web3);
   }
 
-  async isLiquidatable() {
-    const liquidity = await this.liquidityOnChain();
+  async isLiquidatable(web3, comptroller) {
+    const liquidity = await this.liquidityOnChain(comptroller)(web3);
     return liquidity !== null && liquidity[1].gt(0.0);
   }
 }

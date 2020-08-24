@@ -2,35 +2,42 @@ const Big = require("big.js");
 Big.DP = 40;
 Big.RM = 0;
 
+const ABIUtils = require("web3-eth-abi");
+const Web3Contract = require("web3-eth-contract");
+const Web3Utils = require("web3-utils");
+
 class SmartContract {
   constructor(address, abi) {
     this.address = address;
-    this.abi = abi;
-    this.contract = new web3.eth.Contract(this.abi, this.address);
+    this._inner = new Web3Contract(abi, address);
   }
 
-  txFor(encodedMethod, gasLimit, gasPrice) {
+  _callerForUint256(method, modifier = x => x) {
+    return this._callerFor(method, ["uint256"], x => Big(x["0"]));
+  }
+
+  _callerFor(method, outputTypes, modifier = x => x) {
+    return async (provider, block = "latest") => {
+      const x = await provider.eth.call(this._txFor(method), block);
+      return modifier(ABIUtils.decodeParameters(outputTypes, x));
+    };
+  }
+
+  _txFor(method, gasLimit = undefined, gasPrice = undefined) {
     return {
       to: this.address,
-      gasLimit: web3.utils.toHex(gasLimit),
-      gasPrice: gasPrice,
-      data: encodedMethod
+      data: method.encodeABI(),
+      gasLimit: gasLimit,
+      gasPrice: gasPrice
     };
   }
 
-  txWithValueFor(encodedMethod, gasLimit, gasPrice, value) {
-    return {
-      ...this.txFor(encodedMethod, gasLimit, gasPrice),
-      value: value
-    };
-  }
-
-  subscribeToLogEvent(eventName, callback) {
-    const eventJsonInterface = web3.utils._.find(
-      this.contract._jsonInterface,
+  subscribeToLogEvent(provider, eventName, callback) {
+    const eventJsonInterface = Web3Utils._.find(
+      this._inner._jsonInterface,
       o => o.name === eventName && o.type === "event"
     );
-    return web3.eth.subscribe(
+    return provider.eth.subscribe(
       "logs",
       {
         address: this.address,
@@ -41,7 +48,7 @@ class SmartContract {
           callback(error, null);
           return;
         }
-        const eventObj = web3.eth.abi.decodeLog(
+        const eventObj = ABIUtils.decodeLog(
           eventJsonInterface.inputs,
           result.data,
           result.topics.slice(1)
@@ -58,7 +65,7 @@ class SmartContract {
     .on("error", (error, receipt) => {}) // receipt only present if failed on-chain
     .on("data", (event) => {}) // event.removed = undefined
     */
-    return this.contract.events[eventName]({
+    return this._inner.events[eventName]({
       fromBlock: "pending"
     });
   }

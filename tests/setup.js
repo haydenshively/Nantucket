@@ -1,4 +1,5 @@
 require("dotenv").config();
+const config = require("../config.test.json");
 
 global.inCI = process.env.CI;
 
@@ -11,11 +12,29 @@ global.pool = new Pool({
 
 // configure web3
 const Web3 = require("web3");
-if (process.env.WEB3_PROVIDER.endsWith(".ipc")) {
-  net = require("net");
-  global.web3 = new Web3(process.env.WEB3_PROVIDER, net);
-} else {
-  global.web3 = new Web3(process.env.WEB3_PROVIDER);
+const net = require("net");
+
+global.web3s = {};
+for (let key in config.networks) {
+  web3s[key] = [];
+  for (let spec of config.networks[key].providers) {
+    let path;
+    switch (spec.type) {
+      case "IPC":
+        path = process.env[spec.envKeyPath];
+        web3s[key].push(new Web3(path, net));
+        break;
+      case "WS_Infura":
+        path = `wss://${key}.infura.io/ws/v3/` + process.env[spec.envKeyID];
+        web3s[key].push(new Web3(path));
+        break;
+      case "WS_Alchemy":
+        path =
+          `wss://eth-${key}.ws.alchemyapi.io/v2/` + process.env[spec.envKeyKey];
+        web3s[key].push(new Web3(path));
+        break;
+    }
+  }
 }
 
 // configure winston
@@ -38,12 +57,15 @@ winston.configure({
 });
 
 after(() => {
-  web3.eth.clearSubscriptions();
-  try {
-    web3.currentProvider.connection.close();
-  } catch {
-    web3.currentProvider.connection.destroy();
-  } finally {
-    pool.end();
+  for (let net in web3s) {
+    for (let provider of web3s[net]) {
+      provider.eth.clearSubscriptions();
+      try {
+        provider.currentProvider.connection.close();
+      } catch {
+        provider.currentProvider.connection.destroy();
+      }
+    }
   }
+  pool.end();
 });

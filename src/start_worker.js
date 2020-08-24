@@ -15,7 +15,16 @@ const worker = new Worker(
 );
 
 process.on("SIGINT", code => {
-  web3.eth.clearSubscriptions();
+  for (let net in web3s) {
+    for (let provider of web3s[net]) {
+      provider.eth.clearSubscriptions();
+      try {
+        provider.currentProvider.connection.close();
+      } catch {
+        provider.currentProvider.connection.destroy();
+      }
+    }
+  }
   worker.stop();
 
   console.log(`Worker ${process.pid} has exited cleanly`);

@@ -1,7 +1,11 @@
 const assert = require("assert");
 
+// src.messaging
 const Candidate = require("../../src/messaging/candidate");
 const Channel = require("../../src/messaging/channel");
+// src.network.webthree
+const Comptroller = require("../../src/network/webthree/compound/comptroller");
+const CTokens = require("../../src/network/webthree/compound/ctoken");
 
 describe("messaging || Candidate Test", () => {
   // process.send only exists in child processes
@@ -33,17 +37,20 @@ describe("messaging || Candidate Test", () => {
         resolve();
       });
     });
-    
+
     candidate.msg().broadcast("Test");
     return handler;
   });
 
   it("should init properly", async () => {
-    await candidate.init();
+    await candidate.refreshBalances(web3s.mainnet[0], Comptroller.mainnet, CTokens.mainnet);
     assert(candidate._markets.length === 0);
   });
 
   it("should get liquidity", async () => {
-    assert((await candidate.liquidityOnChain()).length === 2);
+    assert(
+      (await candidate.liquidityOnChain(web3s.mainnet[0], Comptroller.mainnet))
+        .length === 2
+    );
   });
 });

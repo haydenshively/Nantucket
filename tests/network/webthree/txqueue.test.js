@@ -3,11 +3,17 @@ Big.DP = 40;
 Big.RM = 0;
 
 const assert = require("assert");
+const Web3Utils = require("web3-utils");
 
 const TxQueue = require("../../../src/network/webthree/txqueue");
 
 describe("network/webthree || TxQueue Test", () => {
-  const txQueue = new TxQueue("ACCOUNT_ADDRESS_TEST", "ACCOUNT_SECRET_TEST");
+  const web3 = web3s.ropsten[0];
+  const txQueue = new TxQueue(
+    web3,
+    "ACCOUNT_ADDRESS_TEST",
+    "ACCOUNT_SECRET_TEST"
+  );
 
   it("should map nonces to indices", async () => {
     await txQueue.rebase();
@@ -22,22 +28,22 @@ describe("network/webthree || TxQueue Test", () => {
     await txQueue.rebase();
     const tx = {
       gasPrice: Big(await web3.eth.getGasPrice()).times(0.8),
-      gasLimit: web3.utils.toHex("36000"),
+      gasLimit: Big("36000"),
       to: "0x0000000000000000000000000000000000000000",
-      value: web3.utils.toHex("0")
+      value: Web3Utils.toHex("0")
     };
     // test append
-    txQueue.append({...tx});
+    txQueue.append({ ...tx });
     assert(txQueue.length === 1);
     assert(txQueue.tx(0).gasPrice.eq(tx.gasPrice));
     // test replace
     tx.gasPrice = tx.gasPrice.minus(1000000);
-    txQueue.replace(0, {...tx}, "clip");
+    txQueue.replace(0, { ...tx }, "clip");
     assert(txQueue.length === 1);
     assert(txQueue.tx(0).gasPrice.eq(tx.gasPrice.plus(1000000).times(1.12)));
     // test dump
     txQueue.dump(0);
     assert(txQueue.length === 1);
-    assert(txQueue.tx(0).gasLimit === web3.utils.toHex("21000"));
+    assert(txQueue.tx(0).gasLimit.eq("21000"));
   }).timeout(120000);
 });

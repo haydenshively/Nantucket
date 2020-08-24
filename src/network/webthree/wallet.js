@@ -3,33 +3,49 @@ Big.DP = 40;
 Big.RM = 0;
 
 const Tx = require("ethereumjs-tx").Transaction;
+const Web3Utils = require("web3-utils");
 
 class Wallet {
   /**
    * Constructs a new Wallet instance
    *
+   * @param {Provider} provider the Web3 provider to use for transactions
    * @param {String} envKeyAddress name of env variable containing the address
    * @param {String} envKeySecret name of env variable containing private key
    */
-  constructor(envKeyAddress, envKeySecret) {
+  constructor(provider, envKeyAddress, envKeySecret) {
+    this._provider = provider;
     this._envKeyAddress = envKeyAddress;
     this._envKeySecret = envKeySecret;
 
+    this._net = undefined;
     // Nothing is ever deleted from _gasPrices. If this code were
     // to run forever, this would cause memory to grow forever (very slowly).
     this._gasPrices = {};
 
     this.label = String(process.env[envKeyAddress]).slice(0, 6);
     this.emptyTx = {
-      gasLimit: web3.utils.toHex("21000"),
+      gasLimit: Big("21000"),
       to: process.env[envKeyAddress],
-      value: web3.utils.toHex("0")
+      value: Web3Utils.toHex("0")
     };
+  }
+
+  async init() {
+    const chainID = await this._provider.eth.getChainId();
+    switch (chainID) {
+      case 1:
+        this._net = { chain: "mainnet", hardfork: "instanbul" };
+        break;
+      case 3:
+        this._net = { chain: "ropsten", hardfork: "instanbul" };
+        break;
+    }
   }
 
   /**
    * Gets the minimum gas price necessary to submit or replace a transaction.
-   * 
+   *
    * CAUTION: If a transaction was submitted by means other than this Wallet
    * code, the returned number could be inaccurate.
    *
@@ -53,7 +69,7 @@ class Wallet {
    * // Send the following tx with nonce 0
    * const tx = {
    *  gasPrice: Big("21000000000"),
-   *  gasLimit: '0x2710',
+   *  gasLimit: Big("3000000"),
    *  to: '0x0000...',
    *  value: '0x00',
    *  data: '0x7f74657374320...',
@@ -64,9 +80,10 @@ class Wallet {
     tx = { ...tx };
     if ("gasPrice" in tx) this._gasPrices[nonce] = tx.gasPrice;
 
-    tx.nonce = web3.utils.toHex(nonce);
-    tx.gasPrice = web3.utils.toHex(tx.gasPrice.toFixed(0));
-    return Wallet._send(this._sign(tx));
+    tx.nonce = Web3Utils.toHex(nonce);
+    tx.gasLimit = Web3Utils.toHex(tx.gasLimit.toFixed(0));
+    tx.gasPrice = Web3Utils.toHex(tx.gasPrice.toFixed(0));
+    return this._send(this._sign(tx));
   }
 
   /**
@@ -80,7 +97,7 @@ class Wallet {
    * const tx = {
    *  nonce: '0x00',
    *  gasPrice: '0x09184e72a000',
-   *  gasLimit: '0x2710',
+   *  gasLimit: Big("3000000"),
    *  to: '0x0000...',
    *  value: '0x00',
    *  data: '0x7f74657374320...',
@@ -91,7 +108,7 @@ class Wallet {
     // Set tx.from here since it must be signed by its sender.
     // i.e. this is the only valid value for tx.from
     tx.from = process.env[this._envKeyAddress];
-    tx = new Tx(tx); // Could add chain/hardfork specifics here
+    tx = new Tx(tx, this._net);
     tx.sign(Buffer.from(process.env[this._envKeySecret], "hex"));
     return "0x" + tx.serialize().toString("hex");
   }
@@ -103,17 +120,19 @@ class Wallet {
    * @param {String} signedTx a transaction that's been signed by this wallet
    * @returns {PromiEvent} See [here](https://web3js.readthedocs.io/en/v1.2.0/callbacks-promises-events.html#promievent)
    */
-  static _send(signedTx) {
-    return web3.eth.sendSignedTransaction(signedTx);
+  _send(signedTx) {
+    return this._provider.eth.sendSignedTransaction(signedTx);
   }
 
   /**
-   * Convenience function that calls `web3.eth.getTransactionCount`
+   * Convenience function that calls `provider.eth.getTransactionCount`
    *
    * @returns {Promise} the next unconfirmed (possibly pending) nonce (base 10)
    */
   async getLowestLiquidNonce() {
-    return web3.eth.getTransactionCount(process.env[this._envKeyAddress]);
+    return this._provider.eth.getTransactionCount(
+      process.env[this._envKeyAddress]
+    );
   }
 }
 

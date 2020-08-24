@@ -32,7 +32,7 @@ class Database {
   }
 
   async pullFromCTokenService() {
-    const res = (await this._ctokenService.fetch({}));
+    const res = await this._ctokenService.fetch({});
     if (res.error) {
       console.warn("Fetch cTokenService failed: " + res.error.toString());
       return;
@@ -44,10 +44,15 @@ class Database {
     await this._tPairs.insertCTokenService(tokens);
   }
 
-  async pullFromAccountService() {
-    const blockLabel = (await web3.eth.getBlockNumber()) - 20;
-    const closeFactor = await Comptroller.mainnet.closeFactor();
-    const liquidationIncentive = await Comptroller.mainnet.liquidationIncentive();
+  async pullFromAccountService(providerIdx = 0) {
+    // Currently this function is limited to mainnet access since the
+    // database is designed to match mainnet, not testnets
+    const provider = web3s.mainnet[providerIdx];
+    const blockLabel = (await provider.eth.getBlockNumber()) - 20;
+    const closeFact = await Comptroller.mainnet.closeFactor()(provider);
+    const liqIncent = await Comptroller.mainnet.liquidationIncentive()(
+      provider
+    );
 
     // 0 means pull most recent block
     // We label it with an older block number to avoid overwriting fresher
@@ -56,8 +61,8 @@ class Database {
       this._tUsers.upsertAccountService(
         blockLabel,
         accounts,
-        closeFactor,
-        liquidationIncentive
+        closeFact,
+        liqIncent
       );
     });
   }

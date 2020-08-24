@@ -2,10 +2,9 @@ const Big = require("big.js");
 Big.DP = 40;
 Big.RM = 0;
 
-const Contract = require("../smartcontract");
-const COMPTROLLERABI = require("../abis/compound/comptroller.json");
+const SmartContract = require("../smartcontract");
 
-class Comptroller extends Contract {
+class Comptroller extends SmartContract {
   /**
    * Enters the markets corresponding to cTokens (SEND -- uses gas)
    * Markets must be entered before a user can supply/borrow
@@ -15,10 +14,10 @@ class Comptroller extends Contract {
    * @return {Object} the transaction object
    */
   enterMarketsFor(cTokens, gasPrice) {
-    const encodedMethod = this.contract.methods
-      .enterMarkets(cTokens.map(x => x.address))
-      .encodeABI();
-    return this.txFor(encodedMethod, "300000", gasPrice);
+    const method = this._inner.methods.enterMarkets(
+      cTokens.map(x => x.address)
+    );
+    return this.txFor(method, Big("300000"), gasPrice);
   }
 
   /**
@@ -29,51 +28,49 @@ class Comptroller extends Contract {
    * @return {Object} the transaction object
    */
   exitMarketFor(cToken, gasPrice) {
-    const encodedMethod = this.contract.methods
-      .exitMarket(cToken.address)
-      .encodeABI();
-    return this.txFor(encodedMethod, "300000", gasPrice);
+    const method = this._inner.methods.exitMarket(cToken.address);
+    return this.txFor(method, Big("300000"), gasPrice);
   }
 
   /**
    * Figures out which markets the wallet is participating in
    *
    * @param {string} wallet account address of any user
-   * @return {Array.<String>} the addresses of the cToken contracts
+   * @return {function(provider, Number?): Promise<Array<String>>} the addresses of the cToken contracts
    */
-  async marketsEnteredBy(wallet) {
-    return await this.contract.methods.getAssetsIn(wallet).call();
+  marketsEnteredBy(wallet) {
+    const method = this._inner.methods.getAssetsIn(wallet);
+    return this._callerFor(method, ["address[]"], x => x["0"]);
   }
 
   /**
    * Gets the percentage of supplied value that can be borrowed
    *
    * @param {CToken} cToken specifies the market to query
-   * @return {Number} the collateral factor
+   * @return {function(provider, Number?): Promise<Big>} the collateral factor
    */
-  async collateralFactorFor(cToken) {
-    const result = await this.contract.methods.markets(cToken.address).call();
-    const { 0: isListed, 1: collateralFactorMantissa } = result;
-    return Big(collateralFactorMantissa).div(1e18);
+  collateralFactorFor(cToken) {
+    const method = this._inner.methods.markets(cToken.address);
+    return this._callerFor(method, ["bool", "uint256"], res => {
+      const { 0: isListed, 1: collateralFactorMantissa } = res;
+      return Big(collateralFactorMantissa).div(1e18);
+    });
   }
 
   /**
-   * Gets the total value (in Eth) that an account could borrow  
+   * Gets the total value (in Eth) that an account could borrow
    * `liquidity = (supply_balances .* collateral_factors) .- borrow_balances`
    *
    * @param {String} borrower account address of any user
-   * @return {Array} tuple (liquidity, shortfall) or null on error
+   * @return {function(provider, Number?): Promise<Array<Big>?>} tuple (liquidity, shortfall) or null on error
    */
-  async accountLiquidityOf(borrower) {
-    const result = await this.contract.methods
-      .getAccountLiquidity(borrower)
-      .call();
-    // error is 0 on success
-    // liquidity is nonzero if borrower can borrow more
-    // shortfall is nonzero if borrower can be liquidated
-    const { 0: error, 1: liquidity, 2: shortfall } = result;
-    if (error !== "0") return null;
-    return [Big(liquidity).div(1e18), Big(shortfall).div(1e18)]; // TODO 18 or 19?
+  accountLiquidityOf(borrower) {
+    const method = this._inner.methods.getAccountLiquidity(borrower);
+    return this._callerFor(method, ["uint256", "uint256", "uint256"], res => {
+      const { 0: error, 1: liquidity, 2: shortfall } = res;
+      if (error !== "0") return null;
+      return [Big(liquidity).div(1e18), Big(shortfall).div(1e18)];
+    });
   }
 
   /**
@@ -81,12 +78,11 @@ class Comptroller extends Contract {
    * If a user has multiple borrowed assets, the closeFactor applies to any single asset
    * (not the aggregate borrow balance)
    *
-   * @return {Number} the close factor
+   * @return {function(provider, Number?): Promise<Big>} the close factor
    */
-  async closeFactor() {
-    return Big(await this.contract.methods.closeFactorMantissa().call()).div(
-      1e18
-    );
+  closeFactor() {
+    const method = this._inner.methods.closeFactorMantissa();
+    return this._callerForUint256(method, x => x.div(1e18));
   }
 
   /**
@@ -94,17 +90,20 @@ class Comptroller extends Contract {
    * For example, if incentive is 1.1, liquidators receive an extra 10% of the borrower's collateral
    * for every unit they close
    *
-   * @return {Number} the liquidation incentive
+   * @return {function(provider, Number?): Promise<Big>} the liquidation incentive
    */
-  async liquidationIncentive() {
-    return Big(
-      await this.contract.methods.liquidationIncentiveMantissa().call()
-    ).div(1e18);
+  liquidationIncentive() {
+    const method = this._inner.methods.liquidationIncentiveMantissa();
+    return this._callerForUint256(method, x => x.div(1e18));
   }
 }
 
-exports.Comptroller = Comptroller;
-exports.mainnet = new Comptroller(
-  "0x3d9819210a31b4961b30ef54be2aed79b9c9cd3b",
-  COMPTROLLERABI
-);
+const addresses = {
+  mainnet: "0x3d9819210a31b4961b30ef54be2aed79b9c9cd3b",
+  ropsten: "0x54188bBeDD7b68228fa89CbDDa5e3e930459C6c6"
+};
+
+for (let net in addresses) {
+  const abi = require(`../abis/${net}/compound/comptroller.json`);
+  exports[net] = new Comptroller(addresses[net], abi);
+}

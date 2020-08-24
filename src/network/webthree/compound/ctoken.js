@@ -2,251 +2,146 @@ const Big = require("big.js");
 Big.DP = 40;
 Big.RM = 0;
 
-const Contract = require("../smartcontract");
-const CBATABI = require("../abis/compound/cbat.json");
-const CDAIABI = require("../abis/compound/cdai.json");
-const CETHABI = require("../abis/compound/ceth.json");
-const CREPABI = require("../abis/compound/crep.json");
-const CSAIABI = require("../abis/compound/csai.json");
-const CUSDCABI = require("../abis/compound/cusdc.json");
-const CUSDTABI = require("../abis/compound/cusdt.json");
-const CWBTCABI = require("../abis/compound/cwbtc.json");
-const CZRXABI = require("../abis/compound/czrx.json");
+const SmartContract = require("../smartcontract");
 
-const FlashLiquidator = require("../goldenage/flashliquidator");
-const PriceOracle = require("./priceoracle");
-
-class CToken extends Contract {
-  constructor(address, abi, decimalsOfUnderlying = 18, isCETH = false) {
+class CToken extends SmartContract {
+  constructor(address, abi, decimalsOfUnderlying = 18) {
     super(address, abi);
     this.decimals = "1e" + decimalsOfUnderlying.toString();
-    this.isCETH = isCETH;
-  }
-
-  /**
-   * Convenience function that calls `getUnderlyingPrice` for this cToken
-   *
-   * @return {Big} the token's price in USD
-   */
-  priceInUSD() {
-    return PriceOracle.mainnet.getUnderlyingPriceUSD(this);
-  }
-  
-  /**
-   * Converts ordinary asset to the cToken equivalent (SEND -- uses gas)
-   * Sends `amount` uTokens and receives `amount / exchangeRate` cTokens
-   *
-   * @param {Number} amount how much to supply, in units of underlying
-   * @param {Number} gasPrice the gas price to use, in gwei
-   * @return {Object} the transaction object
-   */
-  supply_uUnits(amount, gasPrice) {
-    amount = Big(amount)
-      .times(this.decimals)
-      .toFixed(0);
-    const hexAmount = web3.utils.toHex(amount);
-
-    if (this.isCETH) {
-      const encodedMethod = this.contract.methods.mint().encodeABI();
-      return this.txWithValueFor(encodedMethod, "900000", gasPrice, hexAmount);
-    } else {
-      const encodedMethod = this.contract.methods.mint(hexAmount).encodeABI();
-      return this.txFor(encodedMethod, "900000", gasPrice);
-    }
-  }
-
-  /**
-   * Converts cTokens to their underlying asset (SEND -- uses gas)
-   * Sends `amount` cTokens and receives `amount * exchangeRate` uTokens
-   * CAUTION: `amount * exchangeRate <= accountLiquidity <= marketLiquidity`
-   *
-   * @param {Number} amount how much to withdraw
-   * @param {Number} gasPrice the gas price to use, in gwei
-   * @return {Object} the transaction object
-   */
-  withdraw_cUnits(amount, gasPrice) {
-    amount = Big(amount)
-      .times(1e8)
-      .toFixed(0);
-    const hexAmount = web3.utils.toHex(amount);
-    const encodedMethod = this.contract.methods.redeem(hexAmount).encodeABI();
-
-    return this.txFor(encodedMethod, "900000", gasPrice);
-  }
-
-  /**
-   * Converts cTokens to their underlying asset (SEND -- uses gas)
-   * Sends `amount` cTokens and receives `amount * exchangeRate` uTokens
-   * CAUTION: `amount * exchangeRate <= accountLiquidity <= marketLiquidity`
-   *
-   * @param {Number} amount how much to withdraw, in units of underlying
-   * @param {Number} gasPrice the gas price to use, in gwei
-   * @return {Object} the transaction object
-   */
-  withdraw_uUnits(amount, gasPrice) {
-    amount = Big(amount)
-      .times(this.decimals)
-      .toFixed(0);
-    const hexAmount = web3.utils.toHex(amount);
-    const encodedMethod = this.contract.methods
-      .redeemUnderlying(hexAmount)
-      .encodeABI();
-
-    return this.txFor(encodedMethod, "900000", gasPrice);
-  }
-
-  /**
-   * Performs liquidation (SEND -- uses gas)
-   *
-   * @param {String} borrower address of any user with negative account liquidity
-   * @param {Number} amount the amount of debt to repay, in units of underlying
-   * @param {String} cTokenToSeize an address of a cToken that the borrower holds as collateral
-   * @param {Number} gasPrice the gas price to use, in gwei
-   * @return {Object} the transaction object
-   */
-  liquidate_uUnits(borrower, amount, cTokenToSeize, gasPrice) {
-    amount = Big(amount)
-      .times(this.decimals)
-      .toFixed(0);
-    const hexAmount = web3.utils.toHex(amount);
-
-    if (this.isCETH) {
-      const encodedMethod = this.contract.methods
-        .liquidateBorrow(borrower, cTokenToSeize)
-        .encodeABI();
-      return this.txWithValueFor(encodedMethod, "700000", gasPrice, hexAmount);
-    } else {
-      const encodedMethod = this.contract.methods
-        .liquidateBorrow(borrower, hexAmount, cTokenToSeize)
-        .encodeABI();
-      return this.txFor(encodedMethod, "700000", gasPrice);
-    }
-  }
-
-  /**
-   * Convenience function that calls the `liquidate` function of FlashLiquidator
-   *
-   * @param {String} borrower address of any user with negative account liquidity
-   * @param {Number} amount the amount of debt to repay, in units of underlying
-   * @param {String} cTokenToSeize an address of a cToken that the borrower holds as collateral
-   * @param {Number} gasPrice the gas price to use, in gwei
-   * @return {Object} the transaction object
-   */
-  flashLiquidate_uUnits(borrower, amount, cTokenToSeize, gasPrice) {
-    return FlashLiquidator.mainnet.liquidate(
-      borrower,
-      this.address,
-      cTokenToSeize,
-      Big(amount).times(this.decimals),
-      gasPrice
-    );
   }
 
   /**
    * Gets the current exchange rate
    * (uUnitsSupplied() + uUnitsBorrowed() - totalReserves()) / cUnitsInCirculation()
    *
-   * @return {Big} the exchange rate
+   * @return {function(provider, Number?): Promise<Big>} the exchange rate
    */
-  async exchangeRate() {
-    return Big(await this.contract.methods.exchangeRateCurrent().call());
+  exchangeRate() {
+    const method = this._inner.methods.exchangeRateCurrent();
+    return this._callerForUint256(method, x => x.div(1e18));
   }
 
   /**
    * Gets the current borrow rate per block
    *
-   * @return {Big} the borrow rate
+   * @return {function(provider, Number?): Promise<Big>} the borrow rate
    */
-  async borrowRate() {
-    return Big(await this.contract.methods.borrowRatePerBlock().call());
+  borrowRate() {
+    const method = this._inner.methods.borrowRatePerBlock();
+    return this._callerForUint256(method, x => x.div(1e18));
   }
 
   /**
    * Gets the current supply rate per block
    *
-   * @return {Big} the supply rate
+   * @return {function(provider, Number?): Promise<Big>} the supply rate
    */
-  async supplyRate() {
-    return Big(await this.contract.methods.supplyRatePerBlock().call());
+  supplyRate() {
+    const method = this._inner.methods.supplyRatePerBlock();
+    return this._callerForUint256(method);
   }
 
   /**
    * Gets the total number of cTokens in circulation
    *
-   * @return {Big} cTokens in circulation
+   * @return {function(provider, Number?): Promise<Big>} cTokens in circulation
    */
-  async cUnitsInCirculation() {
-    return Big(await this.contract.methods.totalSupply().call());
+  cUnitsInCirculation() {
+    const method = this._inner.methods.totalSupply();
+    return this._callerForUint256(method);
   }
 
   /**
    * Gets the total number of uTokens supplied to Compound
    *
-   * @return {Big} uTokens supplied
+   * @return {function(provider, Number?): Promise<Big>} uTokens supplied
    */
-  async uUnitsSupplied() {
-    return Big(await this.contract.methods.getCash().call()).div(this.decimals);
+  uUnitsSupplied() {
+    const method = this._inner.methods.getCash();
+    return this._callerForUint256(method, x => x.div(this.decimals));
   }
 
   /**
    * Gets the number of uTokens supplied by a given user
    *
    * @param {String} supplier address of any user
+   * @return {function(provider, Number?): Promise<Big>} uTokens supplied
    */
-  async uUnitsSuppliedBy(supplier) {
-    return Big(
-      await this.contract.methods.balanceOfUnderlying(supplier).call()
-    ).div(this.decimals);
+  uUnitsSuppliedBy(supplier) {
+    const method = this._inner.methods.balanceOfUnderlying(supplier);
+    return this._callerForUint256(method, x => x.div(this.decimals));
   }
 
   /**
    * Gets the total number of uTokens borrowed from Compound
    *
-   * @return {Big} uTokens borrowed
+   * @return {function(provider, Number?): Promise<Big>} uTokens borrowed
    */
-  async uUnitsBorrowed() {
-    return Big(await this.contract.methods.totalBorrowsCurrent().call()).div(
-      this.decimals
-    );
+  uUnitsBorrowed() {
+    const method = this._inner.methods.totalBorrowsCurrent();
+    return this._callerForUint256(method, x => x.div(this.decimals));
   }
 
   /**
    * Gets the number of uTokens borrowed by a given user (includes interest)
-   * 
+   *
    * @param {String} borrower address of any user
+   * @return {function(provider, Number?): Promise<Big>} uTokens borrowed
    */
-  async uUnitsBorrowedBy(borrower) {
-    return Big(
-      await this.contract.methods.borrowBalanceCurrent(borrower).call()
-    ).div(this.decimals);
+  uUnitsBorrowedBy(borrower) {
+    const method = this._inner.methods.borrowBalanceCurrent(borrower);
+    return this._callerForUint256(method, x => x.div(this.decimals));
   }
 }
 
-exports.CToken = CToken;
-exports.mainnet = {
-  cBAT: new CToken("0x6c8c6b02e7b2be14d4fa6022dfd6d75921d90e4e", CBATABI),
-  cDAI: new CToken("0x5d3a536e4d6dbd6114cc1ead35777bab948e3643", CDAIABI),
-  cETH: new CToken(
-    "0x4ddc2d193948926d02f9b1fe9e1daa0718270ed5",
-    CETHABI,
-    18,
-    true
-  ),
-  cREP: new CToken("0x158079ee67fce2f58472a96584a73c7ab9ac95c1", CREPABI),
-  cSAI: new CToken("0xf5dce57282a584d2746faf1593d3121fcac444dc", CSAIABI),
-  cUSDC: new CToken("0x39aa39c021dfbae8fac545936693ac917d5e7563", CUSDCABI, 6),
-  cUSDT: new CToken("0xf650c3d88d12db855b8bf7d11be6c55a4e07dcc9", CUSDTABI, 6),
-  cWBTC: new CToken("0xc11b1268c1a384e55c48c2391d8d480264a3a7f4", CWBTCABI, 8),
-  cZRX: new CToken("0xb3319f5d18bc0d84dd1b4825dcde5d5f7266d407", CZRXABI)
+const decimals = {
+  cBAT: 18,
+  cDAI: 18,
+  cETH: 18,
+  cREP: 18,
+  cSAI: 18,
+  cUSDC: 6,
+  cUSDT: 6,
+  cWBTC: 8,
+  cZRX: 18
 };
-exports.mainnetByAddr = {
-  "0x6c8c6b02e7b2be14d4fa6022dfd6d75921d90e4e": exports.mainnet.cBAT,
-  "0x5d3a536e4d6dbd6114cc1ead35777bab948e3643": exports.mainnet.cDAI,
-  "0x4ddc2d193948926d02f9b1fe9e1daa0718270ed5": exports.mainnet.cETH,
-  "0x158079ee67fce2f58472a96584a73c7ab9ac95c1": exports.mainnet.cREP,
-  "0xf5dce57282a584d2746faf1593d3121fcac444dc": exports.mainnet.cSAI,
-  "0x39aa39c021dfbae8fac545936693ac917d5e7563": exports.mainnet.cUSDC,
-  "0xf650c3d88d12db855b8bf7d11be6c55a4e07dcc9": exports.mainnet.cUSDT,
-  "0xc11b1268c1a384e55c48c2391d8d480264a3a7f4": exports.mainnet.cWBTC,
-  "0xb3319f5d18bc0d84dd1b4825dcde5d5f7266d407": exports.mainnet.cZRX
+
+const addresses = {
+  mainnet: {
+    cBAT: "0x6c8c6b02e7b2be14d4fa6022dfd6d75921d90e4e",
+    cDAI: "0x5d3a536e4d6dbd6114cc1ead35777bab948e3643",
+    cETH: "0x4ddc2d193948926d02f9b1fe9e1daa0718270ed5",
+    cREP: "0x158079ee67fce2f58472a96584a73c7ab9ac95c1",
+    cSAI: "0xf5dce57282a584d2746faf1593d3121fcac444dc",
+    cUSDC: "0x39aa39c021dfbae8fac545936693ac917d5e7563",
+    cUSDT: "0xf650c3d88d12db855b8bf7d11be6c55a4e07dcc9",
+    cWBTC: "0xc11b1268c1a384e55c48c2391d8d480264a3a7f4",
+    cZRX: "0xb3319f5d18bc0d84dd1b4825dcde5d5f7266d407"
+  },
+  ropsten: {
+    cBAT: "0x9e95c0b2412ce50c37a121622308e7a6177f819d",
+    cDAI: "0xdb5ed4605c11822811a39f94314fdb8f0fb59a2c",
+    cETH: "0xbe839b6d93e3ea47effcca1f27841c917a8794f3",
+    cREP: "0x8f2c8b147a3d316d2b98f32f3864746f034a55a2",
+    cSAI: "0xc4d2a5872e16bc9e6557be8b24683d96eb6adca9",
+    cUSDC: "0x8af93cae804cc220d1a608d4fa54d1b6ca5eb361",
+    cUSDT: "0x135669c2dcbd63f639582b313883f101a4497f76",
+    cWBTC: "0x58145bc5407d63daf226e4870beeb744c588f149",
+    cZRX: "0x00e02a5200ce3d5b5743f5369deb897946c88121"
+  }
 };
+
+for (let net in addresses) {
+  let cTokens = {};
+  for (let symbol in addresses[net]) {
+    const address = addresses[net][symbol];
+
+    cTokens[symbol] = new CToken(
+      address,
+      require(`../abis/${net}/compound/${symbol.toLowerCase()}.json`),
+      decimals[symbol]
+    );
+    cTokens[address] = cTokens[symbol];
+  }
+  exports[net] = cTokens;
+}

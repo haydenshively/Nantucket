@@ -1,3 +1,8 @@
+if (process.argv.length < 3) {
+  console.log("Please pass path to config*.json");
+  process.exit();
+}
+const config = require(process.argv[2]);
 require("./setup");
 
 const child_process = require("child_process");
@@ -14,12 +19,6 @@ const Oracle = require("./messaging/oracle");
 const Reporter = require("./network/web/coinbase/reporter");
 // src.network.webthree
 const Tokens = require("./network/webthree/compound/ctoken");
-
-if (process.argv.length < 3) {
-  console.log("Please pass path to config.json");
-  process.exit();
-}
-const config = require(process.argv[2]);
 
 console.log(`Master ${process.pid} is running`);
 
@@ -131,7 +130,7 @@ setOracles();
 updateCandidates();
 
 // watch for new blocks
-web3.eth.subscribe("newBlockHeaders", (err, block) => {
+web3s.mainnet[0].eth.subscribe("newBlockHeaders", (err, block) => {
   if (err) {
     winston.error("🚨 *Block Headers* | " + String(err));
     return;
@@ -145,7 +144,7 @@ web3.eth.subscribe("newBlockHeaders", (err, block) => {
 // watch for new liquidations
 for (let symbol in Tokens.mainnet) {
   const token = Tokens.mainnet[symbol];
-  token.subscribeToLogEvent("LiquidateBorrow", (err, event) => {
+  token.subscribeToLogEvent(web3s.mainnet[0], "LiquidateBorrow", (err, event) => {
     if (err) return;
     notifyMissedOpportunity(event);
     const addr = event.borrower;
@@ -168,13 +167,17 @@ process.on("SIGINT", () => {
   for (key in txManagers) txManagers[key].kill("SIGINT");
   workers.forEach(w => w.process.kill("SIGINT"));
 
-  database.stop();
-  web3.eth.clearSubscriptions();
-  try {
-    web3.currentProvider.connection.close();
-  } catch {
-    web3.currentProvider.connection.destroy();
+  for (let net in web3s) {
+    for (let provider of web3s[net]) {
+      provider.eth.clearSubscriptions();
+      try {
+        provider.currentProvider.connection.close();
+      } catch {
+        provider.currentProvider.connection.destroy();
+      }
+    }
   }
+  database.stop();
 
   process.exit();
 });

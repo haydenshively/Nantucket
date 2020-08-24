@@ -11,7 +11,7 @@
     "big.js": "^5.2.2",
     "dotenv": "^8.2.0",
     "ethereumjs-tx": "^2.1.2",
-    "ethers": "^5.0.5",
+    "ethers": "^5.0.8",
     "node-fetch": "^2.6.0",
     "perf_hooks": "0.0.1",
     "pg": "^8.2.2",
@@ -38,12 +38,11 @@
     "db-initialize": "psql --echo-errors -f './scripts/database/initialize.sql' FlashLoanLiquidation",
     "db-create-views": "psql --echo-errors -f './scripts/database/views.sql' FlashLoanLiquidation",
     "db-populate": "node './scripts/database/populate.js'",
-    "test": "mocha --file './tests/setup.js' 'tests/**/*.js' --recursive",
-    "test-database": "mocha --file './tests/setup.js' 'tests/database/**/*.js' --recursive",
-    "test-logging": "mocha --file './tests/setup.js' 'tests/logging/**/*.js' --recursive",
-    "test-messaging": "mocha --file './tests/setup.js' 'tests/messaging/**/*.js' --recursive",
-    "test-network": "mocha --file './tests/setup.js' 'tests/network/**/*.js' --recursive",
-    "test-prediction": "mocha 'tests/prediction/**/*.js' --recursive"
+    "test": "mocha --file './tests/setup.js' 'tests/**/*.test.js' --recursive",
+    "test-database": "mocha --file './tests/setup.js' 'tests/database/**/*.test.js' --recursive",
+    "test-logging": "mocha --file './tests/setup.js' 'tests/logging/**/*.test.js' --recursive",
+    "test-messaging": "mocha --file './tests/setup.js' 'tests/messaging/**/*.test.js' --recursive",
+    "test-network": "mocha --file './tests/setup.js' 'tests/network/**/*.test.js' --recursive"
   },
   "repository": {
     "type": "git",

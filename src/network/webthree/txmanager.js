@@ -2,6 +2,8 @@ const Big = require("big.js");
 Big.DP = 40;
 Big.RM = 0;
 
+const Web3Utils = require("web3-utils");
+
 // src.messaging
 const Candidate = require("../../messaging/candidate");
 const Channel = require("../../messaging/channel");
@@ -35,6 +37,7 @@ const FlashLiquidator = require("./goldenage/flashliquidator");
  */
 class TxManager {
   /**
+   * @param {Provider} provider the Web3 provider to use for transactions
    * @param {String} envKeyAddress Name of the environment variable containing
    *    the wallet's address
    * @param {String} envKeySecret Name of the environment variable containing
@@ -42,8 +45,8 @@ class TxManager {
    * @param {Number} interval Time between bids (milliseconds)
    * @param {Number} maxFee_Eth The maximum possible tx fee in Eth
    */
-  constructor(envKeyAddress, envKeySecret, interval, maxFee_Eth) {
-    this._queue = new TxQueue(envKeyAddress, envKeySecret);
+  constructor(provider, envKeyAddress, envKeySecret, interval, maxFee_Eth) {
+    this._queue = new TxQueue(provider, envKeyAddress, envKeySecret);
     this._oracle = null;
 
     // These variables get updated any time a new candidate is received
@@ -63,6 +66,7 @@ class TxManager {
   }
 
   async init() {
+    await this._queue.init();
     await this._queue.rebase();
 
     Channel(Candidate).on("Liquidate", c => {
@@ -181,7 +185,7 @@ class TxManager {
     }
     // TODO hot fix for massive losses
     if (
-      Big(web3.utils.hexToNumberString(this._tx.gasLimit)).lte(
+      Big(Web3Utils.hexToNumberString(this._tx.gasLimit)).lte(
         500000 * this._borrowers.length
       )
     ) {
@@ -228,7 +232,7 @@ class TxManager {
    * @returns {Big} estimates transaction fee
    */
   static _estimateFee(tx) {
-    const gasLimit = Big(web3.utils.hexToNumberString(tx.gasLimit));
+    const gasLimit = Big(Web3Utils.hexToNumberString(tx.gasLimit));
     return tx.gasPrice.times(gasLimit).div(1e18);
   }
 
@@ -239,7 +243,7 @@ class TxManager {
    * @returns {Big} the gas price in Wei
    */
   async _getInitialGasPrice() {
-    return Big(await web3.eth.getGasPrice());
+    return Big(await this._queue._wallet._provider.eth.getGasPrice());
   }
 
   /**

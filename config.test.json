@@ -1,0 +1,41 @@
+{
+  "txManagers": {
+    "TEST": {
+      "envKeyAddress": "ACCOUNT_ADDRESS_TEST",
+      "envKeySecret": "ACCOUNT_SECRET_TEST",
+      "interval": 500,
+      "maxFee_Eth": 0.1
+    }
+  },
+  "liquidators": [
+    {
+      "minRevenue": 0.05,
+      "maxRevenue": null,
+      "maxHealth": null,
+      "numCandidates": 40,
+      "txManager": "TEST"
+    }
+  ],
+  "networks": {
+    "mainnet": {
+      "providers": [
+        {
+          "type": "WS_Infura",
+          "envKeyID": "PROVIDER_INFURA_ID"
+        },
+        {
+          "type": "WS_Alchemy",
+          "envKeyKey": "PROVIDER_ALCHEMY_KEY"
+        }
+      ]
+    },
+    "ropsten": {
+      "providers": [
+        {
+          "type": "WS_Infura",
+          "envKeyID": "PROVIDER_INFURA_ID"
+        }
+      ]
+    }
+  }
+}
