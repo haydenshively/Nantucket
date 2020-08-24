@@ -20,6 +20,11 @@ const FlashLiquidator = require("./goldenage/flashliquidator");
  *
  * _Subscriptions:_
  * - Messages>NewBlock | Calls `reset()` (clears candidates and dumps txs) ✅
+ *    _currently disabled_
+ * - Messages>MissedOpportunity | Removes the borrower given by
+ *    `msg.__data.address` and caches an updated transaction. If the
+ *    borrower was the only one, the next transaction will be an empty
+ *    replacement ✅
  * - Oracles>Set | Sets the txManager's oracle to the one in the message ✅
  * - Candidates>Liquidate | Appends the candidate from the message and
  *    caches an updated transaction to be sent on next bid ✅
@@ -46,13 +51,14 @@ class TxManager {
     this._repayCTokens = [];
     this._seizeCTokens = [];
     this._idxsNeedingPriceUpdate = [];
-    this._profitability = 0.0; // in Eth
+    this._profitabilities = {};
+    this._profitability = 0.0; // in Eth, modify in tandem with _profitabilities
     this._tx = null;
 
     this.interval = interval;
     this.maxFee_Eth = maxFee_Eth;
 
-    Channel(Message).on("NewBlock", _ => this.reset());
+    // Channel(Message).on("NewBlock", _ => this.reset());
     Channel(Oracle).on("Set", oracle => (this._oracle = oracle));
   }
 
@@ -60,11 +66,24 @@ class TxManager {
     await this._queue.rebase();
 
     Channel(Candidate).on("Liquidate", c => {
+      // prevent duplicates
+      if (c.address in this._profitabilities) return;
       this._appendCandidate(c);
       this._cacheTransaction();
     });
     Channel(Candidate).on("LiquidateWithPriceUpdate", c => {
+      // prevent duplicates
+      if (c.address in this._profitabilities) return;
       this._appendCandidate(c, true);
+      this._cacheTransaction();
+    });
+    // TODO the following Message is currently the only way that
+    // candidates get removed & empty transactions get sent to
+    // replace failed liquidations. In theory it's good enough,
+    // but it may be good to have some other safe guard.
+    Channel(Message).on("MissedOpportunity", msg => {
+      console.log("Received missed op msg for " + msg.__data.address);
+      this._removeCandidate(msg.__data.address);
       this._cacheTransaction();
     });
 
@@ -83,12 +102,44 @@ class TxManager {
 
     // TODO for now profitability is still in ETH since Compound's API
     // is in ETH, but that may change now that the oracle is in USD
-    this._profitability += Number(c.profitability);
-    console.log(`Candidate ${c.label} was added for a new profit of ${this._profitability}`);
+    this._profitabilities[c.address] = Number(c.profitability);
+    this._profitability += this._profitabilities[c.address];
+    console.log(
+      `Candidate ${c.label} was added for a new profit of ${this._profitability}`
+    );
+  }
+
+  _removeCandidate(address) {
+    for (let i = 0; i < this._borrowers.length; i++) {
+      if (this._borrowers[i] !== address) continue;
+
+      this._borrowers.splice(i, 1);
+      this._repayCTokens.splice(i, 1);
+      this._seizeCTokens.splice(i, 1);
+
+      this._idxsNeedingPriceUpdate = this._idxsNeedingPriceUpdate.filter(
+        idx => idx !== i
+      );
+
+      // The only time this should be false is if _removeCandidate gets
+      // called twice for some reason. This could happen if a block
+      // containing a liquidation got re-ordered, for example.
+      if (address in this._profitabilities) {
+        this._profitability -= this._profitabilities[address];
+        delete this._profitabilities[c.address];
+      }
+      return;
+    }
   }
 
   async _cacheTransaction() {
-    if (this._profitability === 0.0) return;
+    // Profitability should never be less than 0, but just in case...
+    // TODO (this is probably something we should test. if it's ever
+    // negative then there's a bug somewhere)
+    if (this._profitability <= 0.0 || this._borrowers.length === 0) {
+      this._tx = null;
+      return;
+    }
     const initialGasPrice = await this._getInitialGasPrice();
 
     if (this._idxsNeedingPriceUpdate.length === 0) {
@@ -124,7 +175,25 @@ class TxManager {
    * @private
    */
   _periodic() {
-    if (this._tx === null) return;
+    if (this._tx === null) {
+      this.dumpAll();
+      return;
+    }
+    // TODO hot fix for massive losses
+    if (
+      Big(web3.utils.hexToNumberString(this._tx.gasLimit)).lte(
+        500000 * this._borrowers.length
+      )
+    ) {
+      this.dumpAll();
+      return;
+    }
+    // TODO edge case: it's possible that the tx could be non-null,
+    // but due to a recent candidate removal, the current gasPrice&gasLimit
+    // create a no-longer-profitable situation. In this case, any pending
+    // tx should be replaced with an empty tx, but `_sendIfProfitable` doesn't
+    // do that. It will only see that a gasPrice raise isn't possible, and
+    // give up
     this._sendIfProfitable(this._tx);
   }
 
@@ -144,22 +213,11 @@ class TxManager {
     this._queue.replace(0, tx, "clip", /*dryRun*/ true);
     // After dry run, tx.gasPrice will be updated...
     const fee = TxManager._estimateFee(tx);
+    console.log([fee.toFixed(5), this._profitability]);
     if (fee.gt(this.maxFee_Eth) || fee.gt(this._profitability)) return;
     console.log("Increasing bid");
     this._queue.replace(0, tx, "clip");
   }
-
-  // /**
-  //  * Given `this._profitability` and `this._tx.gasLimit`,
-  //  * computes the maximum gas price that would still be
-  //  * profitable if liquidation is successful.
-  //  * @private
-  //  */
-  // _breakEvenGasPrice() {
-  //   return Big(this._profitability).div(
-  //     web3.utils.hexToNumberString(this._tx.gasLimit)
-  //   );
-  // }
 
   /**
    * Computes `gasPrice * gasLimit` and returns the result in Eth,
@@ -190,7 +248,6 @@ class TxManager {
    */
   dumpAll() {
     for (let i = 0; i < this._queue.length; i++) this._queue.dump(i);
-    console.log("Dumping");
   }
 
   /**
@@ -201,6 +258,7 @@ class TxManager {
     this._repayCTokens = [];
     this._seizeCTokens = [];
     this._idxsNeedingPriceUpdate = [];
+    this._profitabilities = {};
     this._profitability = 0.0; // in Eth
     this._tx = null;
 
