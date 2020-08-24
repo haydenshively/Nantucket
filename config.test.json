@@ -9,33 +9,24 @@
   },
   "liquidators": [
     {
-      "minRevenue": 0.05,
-      "maxRevenue": null,
+      "minRevenue": 9,
+      "maxRevenue": 20,
       "maxHealth": null,
-      "numCandidates": 40,
+      "numCandidates": 50,
       "txManager": "TEST"
     }
   ],
-  "networks": {
-    "mainnet": {
-      "providers": [
-        {
-          "type": "WS_Infura",
-          "envKeyID": "PROVIDER_INFURA_ID"
-        },
-        {
-          "type": "WS_Alchemy",
-          "envKeyKey": "PROVIDER_ALCHEMY_KEY"
-        }
-      ]
-    },
-    "ropsten": {
-      "providers": [
-        {
-          "type": "WS_Infura",
-          "envKeyID": "PROVIDER_INFURA_ID"
-        }
-      ]
-    }
+  "network": {
+    "name": "mainnet",
+    "providers": [
+      {
+        "type": "WS_Infura",
+        "envKeyID": "PROVIDER_INFURA_ID"
+      },
+      {
+        "type": "WS_Alchemy",
+        "envKeyKey": "PROVIDER_ALCHEMY_KEY"
+      }
+    ]
   }
 }

@@ -22,17 +22,13 @@ describe("network/webthree/compound || Comptroller Test", () => {
   });
 
   it("should retrieve collateral factors", async () => {
-    for (let net in web3s) {
-      for (let symbol in Tokens[net]) {
+    for (let chain in web3) {
+      for (let symbol in Tokens[chain]) {
         if (!symbol.startsWith("c")) continue;
 
-        const token = Tokens[net][symbol];
-        const caller = Comptroller[net].collateralFactorFor(token);
-
-        for (let provider of web3s[net]) {
-          const res = await caller(provider);
-          assert(res.lt(1.0));
-        }
+        const token = Tokens[chain][symbol];
+        const caller = Comptroller[chain].collateralFactorFor(token);
+        assert((await caller(web3[chain])).lt(1.0));
       }
     }
   }).timeout(10000);

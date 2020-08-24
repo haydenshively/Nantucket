@@ -15,15 +15,11 @@ const worker = new Worker(
 );
 
 process.on("SIGINT", code => {
-  for (let net in web3s) {
-    for (let provider of web3s[net]) {
-      provider.eth.clearSubscriptions();
-      try {
-        provider.currentProvider.connection.close();
-      } catch {
-        provider.currentProvider.connection.destroy();
-      }
-    }
+  web3.eth.clearSubscriptions();
+  try {
+    web3.currentProvider.connection.close();
+  } catch {
+    web3.currentProvider.connection.destroy();
   }
   worker.stop();
 

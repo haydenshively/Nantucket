@@ -43,13 +43,13 @@ describe("messaging || Candidate Test", () => {
   });
 
   it("should init properly", async () => {
-    await candidate.refreshBalances(web3s.mainnet[0], Comptroller.mainnet, CTokens.mainnet);
+    await candidate.refreshBalances(web3.mainnet, Comptroller.mainnet, CTokens.mainnet);
     assert(candidate._markets.length === 0);
   });
 
   it("should get liquidity", async () => {
     assert(
-      (await candidate.liquidityOnChain(web3s.mainnet[0], Comptroller.mainnet))
+      (await candidate.liquidityOnChain(web3.mainnet, Comptroller.mainnet))
         .length === 2
     );
   });

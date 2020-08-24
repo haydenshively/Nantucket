@@ -8,9 +8,8 @@ const Web3Utils = require("web3-utils");
 const Wallet = require("../../../src/network/webthree/wallet");
 
 describe("network/webthree || Wallet Test", () => {
-  const web3 = web3s.ropsten[0];
   const wallet = new Wallet(
-    web3,
+    web3.ropsten,
     "ACCOUNT_ADDRESS_TEST",
     "ACCOUNT_SECRET_TEST"
   );
@@ -21,17 +20,21 @@ describe("network/webthree || Wallet Test", () => {
     assert(Number.isInteger(nonce));
   });
 
+  it("should initialize with correct chain", () => {
+    return wallet.init().then(() => assert(wallet._net.chain === "ropsten"));
+  });
+
   it("should sign transactions", () => {
     const tx = {
       nonce: Web3Utils.toHex("0"),
       gasPrice: Web3Utils.toHex("35000000000"),
       gasLimit: Web3Utils.toHex("21000"),
       to: "0x0123456789012345678901234567890123456789",
-      value: web3.utils.toHex("0")
+      value: Web3Utils.toHex("0")
     };
 
     assert(typeof wallet._sign(tx) === "string");
-    tx.data = web3.utils.toHex("Hello World");
+    tx.data = Web3Utils.toHex("Hello World");
     assert(typeof wallet._sign(tx) === "string");
     delete tx.value;
     assert(typeof wallet._sign(tx) === "string");

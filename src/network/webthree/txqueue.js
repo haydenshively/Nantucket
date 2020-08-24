@@ -15,7 +15,7 @@ class TxQueue {
   }
 
   async init() {
-    this._wallet.init()
+    return this._wallet.init()
   }
 
   /**
