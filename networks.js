@@ -7,8 +7,8 @@ module.exports = {
     development: {
       provider: () =>
         new HDWalletProvider(
-          process.env.MNEMONIC,
-          "https://ropsten.infura.io/v3/" + process.env.INFURA_ID
+          process.env.ACCOUNT_SECRET_TEST,
+          "https://ropsten.infura.io/v3/" + process.env.PROVIDER_INFURA_ID
         ),
       gas: 4000000,
       gasPrice: 30e9,
@@ -18,7 +18,7 @@ module.exports = {
       provider: () =>
         new HDWalletProvider(
           process.env.MNEMONIC,
-          "https://mainnet.infura.io/v3/" + process.env.INFURA_ID
+          "https://mainnet.infura.io/v3/" + process.env.PROVIDER_INFURA_ID
         ),
       gas: 4000000,
       gasPrice: 78e9,

@@ -44,10 +44,10 @@ class Database {
     await this._tPairs.insertCTokenService(tokens);
   }
 
-  async pullFromAccountService(web3Idx = 0) {
-    // TODO currently this function is only compatible with mainnet, but
-    // could be easily extended to work with testnets
-    const provider = web3s.mainnet[web3Idx];
+  async pullFromAccountService(providerIdx = 0) {
+    // Currently this function is limited to mainnet access since the
+    // database is designed to match mainnet, not testnets
+    const provider = web3s.mainnet[providerIdx];
     const blockLabel = (await provider.eth.getBlockNumber()) - 20;
     const closeFact = await Comptroller.mainnet.closeFactor()(provider);
     const liqIncent = await Comptroller.mainnet.liquidationIncentive()(

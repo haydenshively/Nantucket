@@ -103,7 +103,7 @@ const addresses = {
   ropsten: "0x54188bBeDD7b68228fa89CbDDa5e3e930459C6c6"
 };
 
-for (let net in web3s) {
+for (let net in addresses) {
   const abi = require(`../abis/${net}/compound/comptroller.json`);
   exports[net] = new Comptroller(addresses[net], abi);
 }

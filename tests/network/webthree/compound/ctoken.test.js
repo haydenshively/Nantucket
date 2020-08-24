@@ -37,7 +37,7 @@ describe("network/webthree/compound || cToken Test", () => {
 
   it("should retrieve units loaned out", () => {
     return forAllTokens(Tokens, "uUnitsBorrowed", undefined, x =>
-      assert(!x.eq(0.0))
+      assert(x.s === 1)
     );
   }).timeout(10000);
 });

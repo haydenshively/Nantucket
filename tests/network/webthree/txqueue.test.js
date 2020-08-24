@@ -8,7 +8,11 @@ const Web3Utils = require("web3-utils");
 const TxQueue = require("../../../src/network/webthree/txqueue");
 
 describe("network/webthree || TxQueue Test", () => {
-  const txQueue = new TxQueue("ACCOUNT_ADDRESS_TEST", "ACCOUNT_SECRET_TEST");
+  const txQueue = new TxQueue(
+    web3s.ropsten[0],
+    "ACCOUNT_ADDRESS_TEST",
+    "ACCOUNT_SECRET_TEST"
+  );
 
   it("should map nonces to indices", async () => {
     await txQueue.rebase();
@@ -28,12 +32,12 @@ describe("network/webthree || TxQueue Test", () => {
       value: Web3Utils.toHex("0")
     };
     // test append
-    txQueue.append({...tx});
+    txQueue.append({ ...tx });
     assert(txQueue.length === 1);
     assert(txQueue.tx(0).gasPrice.eq(tx.gasPrice));
     // test replace
     tx.gasPrice = tx.gasPrice.minus(1000000);
-    txQueue.replace(0, {...tx}, "clip");
+    txQueue.replace(0, { ...tx }, "clip");
     assert(txQueue.length === 1);
     assert(txQueue.tx(0).gasPrice.eq(tx.gasPrice.plus(1000000).times(1.12)));
     // test dump

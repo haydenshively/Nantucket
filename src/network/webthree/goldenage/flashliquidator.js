@@ -42,13 +42,9 @@ class FlashLiquidator extends SmartContract {
   async liquidateMany(borrowers, repayCTokens, seizeCTokens, gasPrice) {
     const cTokens = this._combineTokens(repayCTokens, seizeCTokens);
     const method = this._inner.methods.liquidateMany(borrowers, cTokens);
-    const gasLimit =
-      1.07 *
-      (await method.estimateGas({
-        gas: String(3 * borrowers.length) + "000000"
-      }));
+    const gasLimit = String(3 * borrowers.length) + "000000";
 
-    return this.txFor(method, Big(gasLimit), gasPrice);
+    return this._txFor(method, Big(gasLimit), gasPrice);
   }
 
   async liquidateManyWithPriceUpdate(
@@ -68,13 +64,9 @@ class FlashLiquidator extends SmartContract {
       borrowers,
       cTokens
     );
-    const gasLimit =
-      1.07 *
-      (await method.estimateGas({
-        gas: String(3 * borrowers.length) + "000000"
-      }));
+    const gasLimit = String(3 * borrowers.length) + "000000";
 
-    return this.txFor(method, Big(gasLimit), gasPrice);
+    return this._txFor(method, Big(gasLimit), gasPrice);
   }
 
   _combineTokens(repayList, seizeList) {
@@ -90,7 +82,7 @@ const addresses = {
   ropsten: "0x2ab4C66757a9934b3a0dBD91f94bE830855839cd"
 };
 
-for (let net in web3s) {
+for (let net in addresses) {
   const abi = require(`../abis/${net}/goldenage/flashliquidator.json`);
   exports[net] = new FlashLiquidator(addresses[net], abi);
 }

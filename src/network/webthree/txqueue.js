@@ -7,11 +7,15 @@ const winston = require("winston");
 const Wallet = require("./wallet");
 
 class TxQueue {
-  constructor(envKeyAddress, envKeySecret) {
-    this._wallet = new Wallet(envKeyAddress, envKeySecret);
+  constructor(provider, envKeyAddress, envKeySecret) {
+    this._wallet = new Wallet(provider, envKeyAddress, envKeySecret);
 
     this._lowestLiquidNonce = 0;
     this._queue = [];
+  }
+
+  async init() {
+    this._wallet.init()
   }
 
   /**

@@ -18,7 +18,7 @@ const addresses = {
   ropsten: "0xe23874df0276AdA49D58751E8d6E088581121f1B"
 };
 
-for (let net in web3s) {
+for (let net in addresses) {
   const abi = require(`../abis/${net}/compound/priceoracle.json`);
   exports[net] = new PriceOracle(addresses[net], abi);
 }

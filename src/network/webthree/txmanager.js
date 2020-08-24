@@ -37,6 +37,7 @@ const FlashLiquidator = require("./goldenage/flashliquidator");
  */
 class TxManager {
   /**
+   * @param {Provider} provider the Web3 provider to use for transactions
    * @param {String} envKeyAddress Name of the environment variable containing
    *    the wallet's address
    * @param {String} envKeySecret Name of the environment variable containing
@@ -44,8 +45,8 @@ class TxManager {
    * @param {Number} interval Time between bids (milliseconds)
    * @param {Number} maxFee_Eth The maximum possible tx fee in Eth
    */
-  constructor(envKeyAddress, envKeySecret, interval, maxFee_Eth) {
-    this._queue = new TxQueue(envKeyAddress, envKeySecret);
+  constructor(provider, envKeyAddress, envKeySecret, interval, maxFee_Eth) {
+    this._queue = new TxQueue(provider, envKeyAddress, envKeySecret);
     this._oracle = null;
 
     // These variables get updated any time a new candidate is received
@@ -65,6 +66,7 @@ class TxManager {
   }
 
   async init() {
+    await this._queue.init();
     await this._queue.rebase();
 
     Channel(Candidate).on("Liquidate", c => {
@@ -241,7 +243,7 @@ class TxManager {
    * @returns {Big} the gas price in Wei
    */
   async _getInitialGasPrice() {
-    return Big(await Web3Utils.mainnet[0].eth.getGasPrice());
+    return Big(await this._queue._wallet._provider.eth.getGasPrice());
   }
 
   /**

@@ -131,7 +131,7 @@ const addresses = {
   }
 };
 
-for (let net in web3s) {
+for (let net in addresses) {
   let cTokens = {};
   for (let symbol in addresses[net]) {
     const address = addresses[net][symbol];

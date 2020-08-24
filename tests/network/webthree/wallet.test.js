@@ -7,7 +7,11 @@ const assert = require("assert");
 const Wallet = require("../../../src/network/webthree/wallet");
 
 describe("network/webthree || Wallet Test", () => {
-  const wallet = new Wallet("ACCOUNT_ADDRESS_TEST", "ACCOUNT_SECRET_TEST");
+  const wallet = new Wallet(
+    web3s.ropsten[0],
+    "ACCOUNT_ADDRESS_TEST",
+    "ACCOUNT_SECRET_TEST"
+  );
 
   it("should retrieve lowest unconfirmed nonce", async () => {
     const nonce = await wallet.getLowestLiquidNonce();

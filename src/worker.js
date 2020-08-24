@@ -5,6 +5,9 @@ const Candidate = require("./messaging/candidate");
 const Channel = require("./messaging/channel");
 const Message = require("./messaging/message");
 const Oracle = require("./messaging/oracle");
+// src.network.webthree
+const Comptroller = require("./network/webthree/compound/comptroller");
+const CTokens = require("./network/webthree/compound/ctoken");
 
 /**
  * Given a list of candidates, this worker will determine which
@@ -76,6 +79,14 @@ class Worker extends Database {
       if (c.ctokenidpay == 2 || (c.ctokenidpay == 6 && c.ctokenidseize == 2))
         continue;
 
+      // TODO does this really need to happen every single block?
+      // TODO these web3 provider things should come from constructor
+      await c.refreshBalances(
+        web3s.mainnet[0],
+        Comptroller.mainnet,
+        CTokens.mainnet
+      );
+
       // TODO TxManager isn't hooked into the Database logic, so we have
       // to pass along the repay and seize addresses here
       if (!String(c.ctokenidpay).startsWith("0x")) {
@@ -97,7 +108,8 @@ class Worker extends Database {
         this._candidates.splice(i, 1);
         return;
       }
-      if (await c.isLiquidatable()) {
+      // TODO these web3 provider things should come from constructor
+      if (await c.isLiquidatable(web3s.mainnet[0], Comptroller.mainnet)) {
         this._candidates[i].msg().broadcast("Liquidate");
         this._candidates.splice(i, 1);
       }
