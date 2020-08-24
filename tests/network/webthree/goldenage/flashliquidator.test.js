@@ -18,33 +18,28 @@ describe("network/webthree/goldenage || FlashLiquidator Test", () => {
         .then(nonce => {
           return Reporter.mainnet.fetch().then(() => {
             const postableData = Reporter.mainnet.postableData();
-            return FlashLiquidator.ropsten
-              .liquidateManyWithPriceUpdate(
-                postableData[0],
-                postableData[1],
-                postableData[2],
-                [],
-                [],
-                [],
-                gasPrice
-              )
-              .then(tx => {
-                tx.from = process.env.ACCOUNT_ADDRESS_TEST;
-                tx.nonce = Web3Utils.toHex(nonce);
-                tx.gasLimit = Web3Utils.toHex("1000000");
-                tx.gasPrice = Web3Utils.toHex(tx.gasPrice.toFixed(0));
+            const tx = FlashLiquidator.ropsten.liquidateManyWithPriceUpdate(
+              postableData[0],
+              postableData[1],
+              postableData[2],
+              [],
+              [],
+              [],
+              gasPrice
+            );
+            tx.from = process.env.ACCOUNT_ADDRESS_TEST;
+            tx.nonce = Web3Utils.toHex(nonce);
+            tx.gasLimit = Web3Utils.toHex("1000000");
+            tx.gasPrice = Web3Utils.toHex(tx.gasPrice.toFixed(0));
 
-                let signedTx = new Tx(tx, {
-                  chain: "ropsten",
-                  hardfork: "petersburg"
-                });
-                signedTx.sign(
-                  Buffer.from(process.env.ACCOUNT_SECRET_TEST, "hex")
-                );
-                signedTx = "0x" + signedTx.serialize().toString("hex");
+            let signedTx = new Tx(tx, {
+              chain: "ropsten",
+              hardfork: "petersburg"
+            });
+            signedTx.sign(Buffer.from(process.env.ACCOUNT_SECRET_TEST, "hex"));
+            signedTx = "0x" + signedTx.serialize().toString("hex");
 
-                return web3.ropsten.eth.sendSignedTransaction(signedTx);
-              });
+            return web3.ropsten.eth.sendSignedTransaction(signedTx);
           });
         });
     });

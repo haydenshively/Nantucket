@@ -107,12 +107,12 @@ function notifyMissedOpportunity(event) {
 const database = new Database();
 const handle1 = setInterval(
   database.pullFromCTokenService.bind(database),
-  6 * 60 * 1000
+  20 * 60 * 1000
 );
 const handle2 = setInterval(async () => {
   await database.pullFromAccountService.bind(database)();
   updateCandidates();
-}, 9 * 60 * 1000);
+}, 8 * 60 * 1000);
 
 // pull from Coinbase reporter
 const reporter = Reporter.mainnet;
@@ -126,12 +126,7 @@ const handle3 = setInterval(async () => {
   checkLiquidities();
 
   winston.info("🏷 *Prices* | Updated from Coinbase");
-}, 500);
-
-// immediately set oracles and update candidates, rather than waiting
-// for the first 6-9 minute interval
-setOracles();
-updateCandidates();
+}, 1200);
 
 // watch for new blocks
 web3.eth.subscribe("newBlockHeaders", (err, block) => {
@@ -178,7 +173,6 @@ process.on("SIGINT", () => {
     web3.currentProvider.connection.destroy();
   }
   database.stop();
-
   process.exit();
 });
 

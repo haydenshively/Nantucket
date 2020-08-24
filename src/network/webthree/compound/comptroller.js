@@ -6,33 +6,6 @@ const SmartContract = require("../smartcontract");
 
 class Comptroller extends SmartContract {
   /**
-   * Enters the markets corresponding to cTokens (SEND -- uses gas)
-   * Markets must be entered before a user can supply/borrow
-   *
-   * @param {Array} cTokens an array of type Token (specifies the markets to enter)
-   * @param {Number} gasPrice the gas price to use, in gwei
-   * @return {Object} the transaction object
-   */
-  enterMarketsFor(cTokens, gasPrice) {
-    const method = this._inner.methods.enterMarkets(
-      cTokens.map(x => x.address)
-    );
-    return this.txFor(method, Big("300000"), gasPrice);
-  }
-
-  /**
-   * Opposite of enterMarketsFor (SEND -- uses gas)
-   *
-   * @param {CToken} cToken specifies the market to exit
-   * @param {Number} gasPrice the gas price to use, in gwei
-   * @return {Object} the transaction object
-   */
-  exitMarketFor(cToken, gasPrice) {
-    const method = this._inner.methods.exitMarket(cToken.address);
-    return this.txFor(method, Big("300000"), gasPrice);
-  }
-
-  /**
    * Figures out which markets the wallet is participating in
    *
    * @param {string} wallet account address of any user
