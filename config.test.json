@@ -20,10 +20,6 @@
     "mainnet": {
       "providers": [
         {
-          "type": "IPC",
-          "envKeyPath": "PROVIDER_IPC_PATH"
-        },
-        {
           "type": "WS_Infura",
           "envKeyID": "PROVIDER_INFURA_ID"
         },
