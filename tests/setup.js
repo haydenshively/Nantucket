@@ -1,5 +1,4 @@
 require("dotenv").config();
-const config = require("../config.test.json");
 
 global.inCI = process.env.CI;
 
@@ -11,31 +10,21 @@ global.pool = new Pool({
 });
 
 // configure web3
-const Web3 = require("web3");
-const net = require("net");
-
-global.web3s = {};
-for (let key in config.networks) {
-  web3s[key] = [];
-  for (let spec of config.networks[key].providers) {
-    let path;
-    switch (spec.type) {
-      case "IPC":
-        path = process.env[spec.envKeyPath];
-        web3s[key].push(new Web3(path, net));
-        break;
-      case "WS_Infura":
-        path = `wss://${key}.infura.io/ws/v3/` + process.env[spec.envKeyID];
-        web3s[key].push(new Web3(path));
-        break;
-      case "WS_Alchemy":
-        path =
-          `wss://eth-${key}.ws.alchemyapi.io/v2/` + process.env[spec.envKeyKey];
-        web3s[key].push(new Web3(path));
-        break;
-    }
-  }
-}
+global.web3 = {}
+const {
+  MultiSendProvider,
+  ProviderFor
+} = require("../src/network/webthree/providers");
+const infura = {
+  type: "WS_Infura",
+  envKeyID: "PROVIDER_INFURA_ID"
+};
+const alchemy = {
+  type: "WS_Alchemy",
+  envKeyKey: "PROVIDER_ALCHEMY_KEY"
+};
+web3.mainnet = new MultiSendProvider("mainnet", [infura, alchemy]);
+web3.ropsten = ProviderFor("ropsten", infura);
 
 // configure winston
 const winston = require("winston");
@@ -57,14 +46,12 @@ winston.configure({
 });
 
 after(() => {
-  for (let net in web3s) {
-    for (let provider of web3s[net]) {
-      provider.eth.clearSubscriptions();
-      try {
-        provider.currentProvider.connection.close();
-      } catch {
-        provider.currentProvider.connection.destroy();
-      }
+  for (let chain in web3) {
+    web3[chain].eth.clearSubscriptions();
+    try {
+      web3[chain].currentProvider.connection.close();
+    } catch {
+      web3[chain].currentProvider.connection.destroy();
     }
   }
   pool.end();

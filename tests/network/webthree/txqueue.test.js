@@ -8,12 +8,18 @@ const Web3Utils = require("web3-utils");
 const TxQueue = require("../../../src/network/webthree/txqueue");
 
 describe("network/webthree || TxQueue Test", () => {
-  const web3 = web3s.ropsten[0];
+  const chain = web3.ropsten;
   const txQueue = new TxQueue(
-    web3,
+    chain,
     "ACCOUNT_ADDRESS_TEST",
     "ACCOUNT_SECRET_TEST"
   );
+
+  it("should initialize with correct chain", () => {
+    return txQueue
+      .init()
+      .then(() => assert(txQueue._wallet._net.chain === "ropsten"));
+  });
 
   it("should map nonces to indices", async () => {
     await txQueue.rebase();
@@ -27,7 +33,7 @@ describe("network/webthree || TxQueue Test", () => {
   it("should append and dump a transaction", async () => {
     await txQueue.rebase();
     const tx = {
-      gasPrice: Big(await web3.eth.getGasPrice()).times(0.8),
+      gasPrice: Big(await chain.eth.getGasPrice()).times(0.8),
       gasLimit: Big("36000"),
       to: "0x0000000000000000000000000000000000000000",
       value: Web3Utils.toHex("0")

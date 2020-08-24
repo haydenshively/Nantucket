@@ -36,14 +36,21 @@
       "txManager": "A"
     }
   ],
-  "networks": {
-    "mainnet": {
-      "providers": [
-        {
-          "type": "IPC",
-          "envKeyPath": "PROVIDER_IPC_PATH"
-        }
-      ]
-    }
+  "network": {
+    "name": "mainnet",
+    "providers": [
+      {
+        "type": "IPC",
+        "envKeyPath": "PROVIDER_IPC_PATH"
+      },
+      {
+        "type": "WS_Infura",
+        "envKeyID": "PROVIDER_INFURA_ID"
+      },
+      {
+        "type": "WS_Alchemy",
+        "envKeyKey": "PROVIDER_ALCHEMY_KEY"
+      }
+    ]
   }
 }

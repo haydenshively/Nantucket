@@ -35,10 +35,10 @@ class Wallet {
     const chainID = await this._provider.eth.getChainId();
     switch (chainID) {
       case 1:
-        this._net = { chain: "mainnet", hardfork: "instanbul" };
+        this._net = { chain: "mainnet", hardfork: "petersburg" };
         break;
       case 3:
-        this._net = { chain: "ropsten", hardfork: "instanbul" };
+        this._net = { chain: "ropsten", hardfork: "petersburg" };
         break;
     }
   }

@@ -74,13 +74,17 @@ for (let liquidator of config.liquidators) {
 
 // MARK: SETUP MASTER DATABASE AND BLOCKCHAIN WORKER ----------------
 function setOracles() {
-  workers.forEach(w => Channel(Oracle).broadcast("Set", reporter.msg(), w.process));
+  workers.forEach(w =>
+    Channel(Oracle).broadcast("Set", reporter.msg(), w.process)
+  );
   for (let key in txManagers)
     Channel(Oracle).broadcast("Set", reporter.msg(), txManagers[key]);
 }
 
 function checkLiquidities() {
-  workers.forEach(w => new Message().broadcast("CheckCandidatesLiquidity", w.process));
+  workers.forEach(w =>
+    new Message().broadcast("CheckCandidatesLiquidity", w.process)
+  );
 }
 
 function updateCandidates() {
@@ -130,7 +134,7 @@ setOracles();
 updateCandidates();
 
 // watch for new blocks
-web3s.mainnet[0].eth.subscribe("newBlockHeaders", (err, block) => {
+web3.eth.subscribe("newBlockHeaders", (err, block) => {
   if (err) {
     winston.error("🚨 *Block Headers* | " + String(err));
     return;
@@ -144,7 +148,7 @@ web3s.mainnet[0].eth.subscribe("newBlockHeaders", (err, block) => {
 // watch for new liquidations
 for (let symbol in Tokens.mainnet) {
   const token = Tokens.mainnet[symbol];
-  token.subscribeToLogEvent(web3s.mainnet[0], "LiquidateBorrow", (err, event) => {
+  token.subscribeToLogEvent(web3, "LiquidateBorrow", (err, event) => {
     if (err) return;
     notifyMissedOpportunity(event);
     const addr = event.borrower;
@@ -167,15 +171,11 @@ process.on("SIGINT", () => {
   for (key in txManagers) txManagers[key].kill("SIGINT");
   workers.forEach(w => w.process.kill("SIGINT"));
 
-  for (let net in web3s) {
-    for (let provider of web3s[net]) {
-      provider.eth.clearSubscriptions();
-      try {
-        provider.currentProvider.connection.close();
-      } catch {
-        provider.currentProvider.connection.destroy();
-      }
-    }
+  web3.eth.clearSubscriptions();
+  try {
+    web3.currentProvider.connection.close();
+  } catch {
+    web3.currentProvider.connection.destroy();
   }
   database.stop();
 

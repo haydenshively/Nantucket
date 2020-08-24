@@ -82,7 +82,7 @@ class Worker extends Database {
       // TODO does this really need to happen every single block?
       // TODO these web3 provider things should come from constructor
       await c.refreshBalances(
-        web3s.mainnet[0],
+        web3,
         Comptroller.mainnet,
         CTokens.mainnet
       );
@@ -109,7 +109,7 @@ class Worker extends Database {
         return;
       }
       // TODO these web3 provider things should come from constructor
-      if (await c.isLiquidatable(web3s.mainnet[0], Comptroller.mainnet)) {
+      if (await c.isLiquidatable(web3, Comptroller.mainnet)) {
         this._candidates[i].msg().broadcast("Liquidate");
         this._candidates.splice(i, 1);
       }
