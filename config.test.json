@@ -28,5 +28,20 @@
         "envKeyKey": "PROVIDER_ALCHEMY_KEY"
       }
     ]
+  },
+  "fetching": {
+    "cTokenServiceInterval": 1200000,
+    "accountServiceInterval": 480000,
+    "coinbaseReporter": 1200
+  },
+  "logging": {
+    "ipc": {
+      "Oracles>Set": true,
+      "Messages>CheckCandidatesLiquidity": false,
+      "Messages>UpdateCandidates": true,
+      "Messages>MissedOpportunity": true,
+      "Candidates>Liquidate": true,
+      "Candidates>LiquidateWithPriceUpdate": true
+    }
   }
 }
