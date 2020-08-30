@@ -1,7 +1,6 @@
 const Big = require("big.js");
 Big.DP = 40;
 Big.RM = 0;
-
 const winston = require("winston");
 
 const Wallet = require("./wallet");

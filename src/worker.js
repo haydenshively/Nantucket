@@ -87,6 +87,8 @@ class Worker extends Database {
 
       // TODO TxManager isn't hooked into the Database logic, so we have
       // to pass along the repay and seize addresses here
+      // (ctokenidpay and ctokenidseize are normally Ints, but here
+      // they change to Strings)
       if (!String(c.ctokenidpay).startsWith("0x")) {
         const repay = `0x${await this._tCTokens.getAddress(c.ctokenidpay)}`;
         this._candidates[i].ctokenidpay = repay;
@@ -97,7 +99,8 @@ class Worker extends Database {
       }
 
       // In the code below, if .splice(i, 1) isn't called, the code
-      // will try to liquidate people over and over
+      // will send candidates tp TxManager repeatedly. TxManager has
+      // logic to prevent duplicates, but better to be safe than sorry.
       if (
         this._oracle !== null &&
         (await c.isLiquidatableWithPriceFrom(this._oracle))

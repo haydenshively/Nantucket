@@ -1,8 +1,3 @@
-if (process.argv.length < 3) {
-  console.log("Please pass path to config*.json");
-  process.exit();
-}
-const config = require(process.argv[2]);
 require("./setup");
 
 const child_process = require("child_process");
@@ -22,6 +17,12 @@ const Tokens = require("./network/webthree/compound/ctoken");
 
 console.log(`Master ${process.pid} is running`);
 
+// MARK: LOAD AND VERIFY CONFIG.JSON --------------------------------
+if (process.argv.length < 3) {
+  console.error("Please pass path to config*.json");
+  process.exit();
+}
+const config = require(process.argv[2]);
 const numCPUs = require("os").cpus().length;
 if (numCPUs < config.txManagers.length + config.liquidators.length) {
   console.error("Nantucket requires more CPU cores for this config");
@@ -35,10 +36,16 @@ for (let key in config.txManagers) {
   txManagers[key] = child_process.fork(
     "start_txmanager.js",
     [
+      process.argv[2],
       txManager.envKeyAddress,
       txManager.envKeySecret,
       txManager.interval,
-      txManager.maxFee_Eth
+      txManager.maxFee_Eth,
+      // logging
+      config.logging.ipc["Oracles>Set"],
+      config.logging.ipc["Messages>MissedOpportunity"],
+      config.logging.ipc["Candidates>Liquidate"],
+      config.logging.ipc["Candidates>LiquidateWithPriceUpdate"]
     ],
     { cwd: "src" }
   );
@@ -55,10 +62,15 @@ for (let liquidator of config.liquidators) {
   const worker = child_process.fork(
     "start_worker.js",
     [
+      process.argv[2],
       liquidator.minRevenue,
       liquidator.maxRevenue,
       liquidator.maxHealth,
-      liquidator.numCandidates
+      liquidator.numCandidates,
+      // logging
+      config.logging.ipc["Oracles>Set"],
+      config.logging.ipc["Messages>UpdateCandidates"],
+      config.logging.ipc["Messages>CheckCandidatesLiquidity"]
     ],
     { cwd: "src" }
   );
@@ -79,16 +91,28 @@ function setOracles() {
   );
   for (let key in txManagers)
     Channel(Oracle).broadcast("Set", reporter.msg(), txManagers[key]);
+
+  // logging
+  if (config.logging.ipc["Oracles>Set"])
+    winston.info("🏷 *Oracles* | Broadcasted 'Set'");
 }
 
 function checkLiquidities() {
   workers.forEach(w =>
     new Message().broadcast("CheckCandidatesLiquidity", w.process)
   );
+
+  // logging
+  if (config.logging.ipc["Messages>CheckCandidatesLiquidity"])
+    winston.info("📢 *Messages* | Broadcasted 'Check Candidates Liquidity'");
 }
 
 function updateCandidates() {
   workers.forEach(w => new Message().broadcast("UpdateCandidates", w.process));
+
+  // logging
+  if (config.logging.ipc["Messages>UpdateCandidates"])
+    winston.info("📢 *Messages* | Broadcasted 'Update Candidates'");
 }
 
 function notifyNewBlock() {
@@ -101,32 +125,37 @@ function notifyMissedOpportunity(event) {
     new Message({
       address: event.borrower
     }).broadcast("MissedOpportunity", txManagers[key]);
+
+  // logging
+  if (config.logging.ipc["Messages>MissedOpportunity"])
+    winston.info("📢 *Messages* | Broadcasted 'Missed Opportunity'");
 }
 
 // pull from cTokenService and AccountService
 const database = new Database();
 const handle1 = setInterval(
   database.pullFromCTokenService.bind(database),
-  20 * 60 * 1000
+  config.fetching.cTokenServiceInterval
 );
 const handle2 = setInterval(async () => {
   await database.pullFromAccountService.bind(database)();
   updateCandidates();
-}, 8 * 60 * 1000);
+}, config.fetching.accountServiceInterval);
 
 // pull from Coinbase reporter
 const reporter = Reporter.mainnet;
 const handle3 = setInterval(async () => {
-  const addrToCheck = "0x4ddc2d193948926d02f9b1fe9e1daa0718270ed5";
-  const before = reporter.getPrice(addrToCheck);
+  // assume that if any prices change, they all change
+  // (as such it doesn't matter which token we check)
+  // --> randomly select from a subset of tokens
+  const symToCheck = ["ETH", "BTC", "BAT", "DAI"][(4 * Math.random()) << 0];
+  const before = reporter.getPriceSymbol(symToCheck);
   await reporter.fetch.bind(reporter)();
-  if (reporter.getPrice(addrToCheck) === before) return;
+  if (reporter.getPriceSymbol(symToCheck) === before) return;
 
   setOracles();
   checkLiquidities();
-
-  winston.info("🏷 *Prices* | Updated from Coinbase");
-}, 1200);
+}, config.fetching.coinbaseReporter);
 
 // watch for new blocks
 web3.eth.subscribe("newBlockHeaders", (err, block) => {
