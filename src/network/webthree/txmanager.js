@@ -1,8 +1,7 @@
 const Big = require("big.js");
 Big.DP = 40;
 Big.RM = 0;
-
-const Web3Utils = require("web3-utils");
+const winston = require("winston");
 
 // src.messaging
 const Candidate = require("../../messaging/candidate");
@@ -21,8 +20,6 @@ const FlashLiquidator = require("./goldenage/flashliquidator");
  * __IPC Messaging:__
  *
  * _Subscriptions:_
- * - Messages>NewBlock | Calls `reset()` (clears candidates and dumps txs) ✅
- *    _currently disabled_
  * - Messages>MissedOpportunity | Removes the borrower given by
  *    `msg.__data.address` and caches an updated transaction. If the
  *    borrower was the only one, the next transaction will be an empty
@@ -61,7 +58,6 @@ class TxManager {
     this.interval = interval;
     this.maxFee_Eth = maxFee_Eth;
 
-    // Channel(Message).on("NewBlock", _ => this.reset());
     Channel(Oracle).on("Set", oracle => (this._oracle = oracle));
   }
 
@@ -86,7 +82,6 @@ class TxManager {
     // replace failed liquidations. In theory it's good enough,
     // but it may be good to have some other safe guard.
     Channel(Message).on("MissedOpportunity", msg => {
-      console.log("Received missed op msg for " + msg.__data.address);
       this._removeCandidate(msg.__data.address);
       this._cacheTransaction();
     });
@@ -104,12 +99,11 @@ class TxManager {
 
     if (needsPriceUpdate) this._idxsNeedingPriceUpdate.push(idx);
 
-    // TODO for now profitability is still in ETH since Compound's API
-    // is in ETH, but that may change now that the oracle is in USD
     this._profitabilities[c.address] = Number(c.profitability);
     this._profitability += this._profitabilities[c.address];
-    console.log(
-      `Candidate ${c.label} was added for a new profit of ${this._profitability}`
+
+    winston.info(
+      `🧮 *TxManager* | Added ${c.label} for new profit of ${this._profitability} Eth`
     );
   }
 
@@ -126,14 +120,18 @@ class TxManager {
       );
 
       // The only time this should be false is if _removeCandidate gets
-      // called twice for some reason. This could happen if a block
-      // containing a liquidation got re-ordered, for example.
+      // called twice for some reason. For example, this could happen
+      // if a block containing a liquidation got mined twice
       if (address in this._profitabilities) {
         this._profitability -= this._profitabilities[address];
         delete this._profitabilities[c.address];
       }
-      return;
+      break;
     }
+
+    winston.info(
+      `🧮 *TxManager* | Removed ${address.slice(0, 6)} for new profit of ${this._profitability} Eth`
+    );
   }
 
   async _cacheTransaction() {
@@ -175,7 +173,7 @@ class TxManager {
 
   /**
    * To be called every `this.interval` milliseconds.
-   * Sends `this._tx` if profitable and non-null
+   * Sends `this._tx` if non-null and profitable
    * @private
    */
   _periodic() {
@@ -206,11 +204,9 @@ class TxManager {
     }
 
     this._queue.replace(0, tx, "clip", /*dryRun*/ true);
-    // After dry run, tx.gasPrice will be updated...
+    // Pass by reference, so after dry run, tx.gasPrice will be updated...
     const fee = TxManager._estimateFee(tx);
-    console.log([fee.toFixed(5), this._profitability]);
     if (fee.gt(this.maxFee_Eth) || fee.gt(this._profitability)) return;
-    console.log("Increasing bid");
     this._queue.replace(0, tx, "clip");
   }
 
