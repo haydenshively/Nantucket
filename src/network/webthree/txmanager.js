@@ -25,8 +25,8 @@ const FlashLiquidator = require("./goldenage/flashliquidator");
  *    caches an updated transaction to be sent on next bid ✅
  * - Candidates>LiquidateWithPriceUpdate | Same idea, but will make sure
  *    to update Open Price Feed prices ✅
- * - Messages>CheckCandidatesLiquidityComplete | Removes candidates stale
- *    candidates (those that were update more than `msg.__data.time` ms ago)
+ * - Messages>CheckCandidatesLiquidityComplete | Removes stale candidates
+ *    (those that were update more than `msg.__data.time` ms ago)
  *
  * Please call `init()` as soon as possible. Bidding can't happen beforehand.
  */
@@ -112,7 +112,7 @@ class TxManager {
     let revenue = 0;
     let needPriceUpdate = false;
 
-    for (let addr of this._candidates) {
+    for (let addr in this._candidates) {
       const c = this._candidates[addr];
 
       borrowers.push(addr);
@@ -122,7 +122,7 @@ class TxManager {
       needPriceUpdate |= c.needsPriceUpdate;
     }
 
-    this._revenue = revenue
+    this._revenue = revenue;
 
     if (borrowers.length === 0) {
       this._tx = null;
@@ -170,12 +170,6 @@ class TxManager {
       this.dumpAll();
       return;
     }
-    // TODO edge case: it's possible that the tx could be non-null,
-    // but due to a recent candidate removal, the current gasPrice&gasLimit
-    // create a no-longer-profitable situation. In this case, any pending
-    // tx should be replaced with an empty tx, but `_sendIfProfitable` doesn't
-    // do that. It will only see that a gasPrice raise isn't possible, and
-    // give up
     this._sendIfProfitable(this._tx);
   }
 
@@ -187,14 +181,27 @@ class TxManager {
    * @param {Object} tx an object describing the transaction
    */
   _sendIfProfitable(tx) {
+    // First, check that current gasPrice is profitable. If it's not (due
+    // to network congestion or a recently-removed candidate), then replace
+    // any pending transactions with empty ones.
+    let fee = TxManager._estimateFee(this._tx);
+    if (fee.gt(this.maxFee_Eth) || fee.gt(this._revenue)) {
+      this.dumpAll();
+      return;
+    }
+
+    // If there are no pending transactions, start a new one
     if (this._queue.length === 0) {
       this._queue.append(tx);
       return;
     }
 
+    // If there's already a pending transaction, check whether raising
+    // the gasPrice (re-bidding) results in a still-profitable tx. If it
+    // does, go ahead and re-bid.
     this._queue.replace(0, tx, "clip", /*dryRun*/ true);
     // Pass by reference, so after dry run, tx.gasPrice will be updated...
-    const fee = TxManager._estimateFee(tx);
+    fee = TxManager._estimateFee(tx);
     if (fee.gt(this.maxFee_Eth) || fee.gt(this._revenue)) return;
     this._queue.replace(0, tx, "clip");
   }

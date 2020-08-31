@@ -78,7 +78,7 @@ class Worker extends Database {
         this._maxHealth
       )
     ).map(c => new Candidate(c));
-    
+
     // TODO after doing this to initialize the candidate,
     // they should get updated by subscribing to borrow/supply
     // events on the blockchain
@@ -127,12 +127,9 @@ class Worker extends Database {
     }
 
     const liquidityCheckTime = Date.now() - timestampStart;
-    if (liquidityCheckTime > this._maxLiquidityCheckTime) {
-      this._maxLiquidityCheckTime = liquidityCheckTime;
-      new Message({ time: liquidityCheckTime }).broadcast(
-        "CheckCandidatesLiquidityComplete"
-      );
-    }
+    new Message({ time: liquidityCheckTime }).broadcast(
+      "CheckCandidatesLiquidityComplete"
+    );
   }
 
   _removeCandidate(address) {

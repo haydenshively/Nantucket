@@ -146,8 +146,6 @@ const handle2 = setInterval(async () => {
   updateCandidates();
 }, config.fetching.accountServiceInterval);
 
-updateCandidates();
-
 // pull from Coinbase reporter
 const reporter = Reporter.mainnet;
 const handle3 = setInterval(async () => {
