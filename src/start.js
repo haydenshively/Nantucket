@@ -43,9 +43,9 @@ for (let key in config.txManagers) {
       txManager.maxFee_Eth,
       // logging
       config.logging.ipc["Oracles>Set"],
-      config.logging.ipc["Messages>MissedOpportunity"],
       config.logging.ipc["Candidates>Liquidate"],
-      config.logging.ipc["Candidates>LiquidateWithPriceUpdate"]
+      config.logging.ipc["Candidates>LiquidateWithPriceUpdate"],
+      config.logging.ipc["Messages>CheckCandidatesLiquidityComplete"]
     ],
     { cwd: "src" }
   );
@@ -70,13 +70,15 @@ for (let liquidator of config.liquidators) {
       // logging
       config.logging.ipc["Oracles>Set"],
       config.logging.ipc["Messages>UpdateCandidates"],
-      config.logging.ipc["Messages>CheckCandidatesLiquidity"]
+      config.logging.ipc["Messages>CheckCandidatesLiquidity"],
+      config.logging.ipc["Messages>MissedOpportunity"]
     ],
     { cwd: "src" }
   );
   const txManager = txManagers[liquidator.txManager];
   passthrough(Candidate, "Liquidate", worker, txManager);
   passthrough(Candidate, "LiquidateWithPriceUpdate", worker, txManager);
+  passthrough(Message, "CheckCandidatesLiquidityComplete", worker, txManager);
 
   workers.push({
     process: worker,
@@ -121,10 +123,12 @@ function notifyNewBlock() {
 }
 
 function notifyMissedOpportunity(event) {
-  for (let key in txManagers)
-    new Message({
-      address: event.borrower
-    }).broadcast("MissedOpportunity", txManagers[key]);
+  workers.forEach(w =>
+    new Message({ address: event.borrower }).broadcast(
+      "MissedOpportunity",
+      w.process
+    )
+  );
 
   // logging
   if (config.logging.ipc["Messages>MissedOpportunity"])

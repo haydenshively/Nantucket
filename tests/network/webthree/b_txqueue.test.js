@@ -51,5 +51,13 @@ describe("network/webthree || TxQueue Test", () => {
     txQueue.dump(0);
     assert(txQueue.length === 1);
     assert(txQueue.tx(0).gasLimit.eq("21000"));
+
+    await new Promise((resolve, reject) => {
+      const check = () => {
+        if (txQueue.length === 0) resolve();
+        else setTimeout(check, 500);
+      };
+      setTimeout(check, 500);
+    });
   }).timeout(120000);
 });

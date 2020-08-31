@@ -20,15 +20,13 @@ const FlashLiquidator = require("./goldenage/flashliquidator");
  * __IPC Messaging:__
  *
  * _Subscriptions:_
- * - Messages>MissedOpportunity | Removes the borrower given by
- *    `msg.__data.address` and caches an updated transaction. If the
- *    borrower was the only one, the next transaction will be an empty
- *    replacement ✅
  * - Oracles>Set | Sets the txManager's oracle to the one in the message ✅
  * - Candidates>Liquidate | Appends the candidate from the message and
  *    caches an updated transaction to be sent on next bid ✅
  * - Candidates>LiquidateWithPriceUpdate | Same idea, but will make sure
  *    to update Open Price Feed prices ✅
+ * - Messages>CheckCandidatesLiquidityComplete | Removes stale candidates
+ *    (those that were update more than `msg.__data.time` ms ago)
  *
  * Please call `init()` as soon as possible. Bidding can't happen beforehand.
  */
@@ -46,13 +44,8 @@ class TxManager {
     this._queue = new TxQueue(provider, envKeyAddress, envKeySecret);
     this._oracle = null;
 
-    // These variables get updated any time a new candidate is received
-    this._borrowers = [];
-    this._repayCTokens = [];
-    this._seizeCTokens = [];
-    this._idxsNeedingPriceUpdate = [];
-    this._profitabilities = {};
-    this._profitability = 0.0; // in Eth, modify in tandem with _profitabilities
+    this._candidates = {};
+    this._revenue = 0;
     this._tx = null;
 
     this.interval = interval;
@@ -66,23 +59,15 @@ class TxManager {
     await this._queue.rebase();
 
     Channel(Candidate).on("Liquidate", c => {
-      // prevent duplicates
-      if (c.address in this._profitabilities) return;
-      this._appendCandidate(c);
+      this._storeCandidate(c);
       this._cacheTransaction();
     });
     Channel(Candidate).on("LiquidateWithPriceUpdate", c => {
-      // prevent duplicates
-      if (c.address in this._profitabilities) return;
-      this._appendCandidate(c, true);
+      this._storeCandidate(c, true);
       this._cacheTransaction();
     });
-    // TODO the following Message is currently the only way that
-    // candidates get removed & empty transactions get sent to
-    // replace failed liquidations. In theory it's good enough,
-    // but it may be good to have some other safe guard.
-    Channel(Message).on("MissedOpportunity", msg => {
-      this._removeCandidate(msg.__data.address);
+    Channel(Message).on("CheckCandidatesLiquidityComplete", msg => {
+      this._removeStaleCandidates(msg.__data.time);
       this._cacheTransaction();
     });
 
@@ -92,63 +77,64 @@ class TxManager {
     );
   }
 
-  _appendCandidate(c, needsPriceUpdate = false) {
-    const idx = this._borrowers.push(c.address);
-    this._repayCTokens.push(c.ctokenidpay);
-    this._seizeCTokens.push(c.ctokenidseize);
+  _storeCandidate(c, needsPriceUpdate = false) {
+    const isNew = !(c.address in this._candidates);
 
-    if (needsPriceUpdate) this._idxsNeedingPriceUpdate.push(idx);
+    this._candidates[c.address] = {
+      repayCToken: c.ctokenidpay,
+      seizeCToken: c.ctokenidseize,
+      needsPriceUpdate: needsPriceUpdate,
+      revenue: Number(c.profitability),
+      lastSeen: Date.now()
+    };
 
-    this._profitabilities[c.address] = Number(c.profitability);
-    this._profitability += this._profitabilities[c.address];
-
-    winston.info(
-      `🧮 *TxManager* | Added ${c.label} for new profit of ${this._profitability} Eth`
-    );
+    if (isNew)
+      winston.info(
+        `🧮 *TxManager* | Added ${c.label} for revenue of ${c.profitability} Eth`
+      );
   }
 
-  _removeCandidate(address) {
-    for (let i = 0; i < this._borrowers.length; i++) {
-      if (this._borrowers[i] !== address) continue;
+  _removeStaleCandidates(updatePeriod) {
+    const now = Date.now();
 
-      this._borrowers.splice(i, 1);
-      this._repayCTokens.splice(i, 1);
-      this._seizeCTokens.splice(i, 1);
+    for (let addr in this._candidates) {
+      if (now - this._candidates[addr].lastSeen <= updatePeriod) continue;
+      delete this._candidates[addr];
 
-      this._idxsNeedingPriceUpdate = this._idxsNeedingPriceUpdate.filter(
-        idx => idx !== i
-      );
-
-      // The only time this should be false is if _removeCandidate gets
-      // called twice for some reason. For example, this could happen
-      // if a block containing a liquidation got mined twice
-      if (address in this._profitabilities) {
-        this._profitability -= this._profitabilities[address];
-        delete this._profitabilities[c.address];
-      }
-      break;
+      winston.info(`🧮 *TxManager* | Removed ${addr.slice(0, 6)}`);
     }
-
-    winston.info(
-      `🧮 *TxManager* | Removed ${address.slice(0, 6)} for new profit of ${this._profitability} Eth`
-    );
   }
 
   async _cacheTransaction() {
-    // Profitability should never be less than 0, but just in case...
-    // TODO (this is probably something we should test. if it's ever
-    // negative then there's a bug somewhere)
-    if (this._profitability <= 0.0 || this._borrowers.length === 0) {
+    let borrowers = [];
+    let repayCTokens = [];
+    let seizeCTokens = [];
+    let revenue = 0;
+    let needPriceUpdate = false;
+
+    for (let addr in this._candidates) {
+      const c = this._candidates[addr];
+
+      borrowers.push(addr);
+      repayCTokens.push(c.repayCToken);
+      seizeCTokens.push(c.seizeCToken);
+      revenue += c.revenue;
+      needPriceUpdate |= c.needsPriceUpdate;
+    }
+
+    this._revenue = revenue;
+
+    if (borrowers.length === 0) {
       this._tx = null;
       return;
     }
     const initialGasPrice = await this._getInitialGasPrice();
 
-    if (this._idxsNeedingPriceUpdate.length === 0) {
-      this._tx = await FlashLiquidator.mainnet.liquidateMany(
-        this._borrowers,
-        this._repayCTokens,
-        this._seizeCTokens,
+    if (!needPriceUpdate) {
+      this._tx = FlashLiquidator.mainnet.liquidateMany(
+        borrowers,
+        repayCTokens,
+        seizeCTokens,
         initialGasPrice
       );
       return;
@@ -157,16 +143,19 @@ class TxManager {
     // TODO if oracle is null and some (but not all) candidates
     // need price updates, we should do the above code with filtered
     // versions of the lists, rather than just returning like the code below
-    if (this._oracle === null) return;
+    if (this._oracle === null) {
+      this._tx = null;
+      return;
+    }
 
     const postable = this._oracle.postableData();
-    this._tx = await FlashLiquidator.mainnet.liquidateManyWithPriceUpdate(
+    this._tx = FlashLiquidator.mainnet.liquidateManyWithPriceUpdate(
       postable[0],
       postable[1],
       postable[2],
-      this._borrowers,
-      this._repayCTokens,
-      this._seizeCTokens,
+      borrowers,
+      repayCTokens,
+      seizeCTokens,
       initialGasPrice
     );
   }
@@ -181,12 +170,6 @@ class TxManager {
       this.dumpAll();
       return;
     }
-    // TODO edge case: it's possible that the tx could be non-null,
-    // but due to a recent candidate removal, the current gasPrice&gasLimit
-    // create a no-longer-profitable situation. In this case, any pending
-    // tx should be replaced with an empty tx, but `_sendIfProfitable` doesn't
-    // do that. It will only see that a gasPrice raise isn't possible, and
-    // give up
     this._sendIfProfitable(this._tx);
   }
 
@@ -198,16 +181,33 @@ class TxManager {
    * @param {Object} tx an object describing the transaction
    */
   _sendIfProfitable(tx) {
+    // First, check that current gasPrice is profitable. If it's not (due
+    // to network congestion or a recently-removed candidate), then replace
+    // any pending transactions with empty ones.
+    let fee = TxManager._estimateFee(this._tx);
+    if (fee.gt(this.maxFee_Eth) || fee.gt(this._revenue)) {
+      this.dumpAll();
+      return;
+    }
+
+    // If there are no pending transactions, start a new one
     if (this._queue.length === 0) {
       this._queue.append(tx);
       return;
     }
 
-    this._queue.replace(0, tx, "clip", /*dryRun*/ true);
+    // If there's already a pending transaction, check whether raising
+    // the gasPrice (re-bidding) results in a still-profitable tx. If it
+    // does, go ahead and re-bid.
+    const newTx = { ...tx };
     // Pass by reference, so after dry run, tx.gasPrice will be updated...
-    const fee = TxManager._estimateFee(tx);
-    if (fee.gt(this.maxFee_Eth) || fee.gt(this._profitability)) return;
+    this._queue.replace(0, newTx, "clip", /*dryRun*/ true);
+
+    fee = TxManager._estimateFee(newTx);
+    if (fee.gt(this.maxFee_Eth) || fee.gt(this._revenue)) return;
+    
     this._queue.replace(0, tx, "clip");
+    tx.gasPrice = newTx.gasPrice;
   }
 
   /**
@@ -244,12 +244,8 @@ class TxManager {
    * Clears candidates and dumps existing transactions
    */
   reset() {
-    this._borrowers = [];
-    this._repayCTokens = [];
-    this._seizeCTokens = [];
-    this._idxsNeedingPriceUpdate = [];
-    this._profitabilities = {};
-    this._profitability = 0.0; // in Eth
+    this._candidates = {};
+    this._revenue = 0.0; // in Eth
     this._tx = null;
 
     this.dumpAll();

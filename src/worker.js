@@ -22,12 +22,17 @@ const CTokens = require("./network/webthree/compound/ctoken");
  *    the datbase
  * - Messages>CheckCandidatesLiquidity | Iterates through candidates list
  *    and broadcasts those that are liquidatable ✅
+ * - Messages>MissedOpportunity | Removes the borrower given by
+ *    `msg.__data.address` ✅
  *
  * _Broadcasts_:
  * - Candidates>Liquidate | The candidate can be liquidated without
  *    price updates ✅
  * - Candidates>LiquidateWithPriceUpdate | Same idea, but price updates
  *    are required ✅
+ * - Messages>CheckCandidatesLiquidityComplete | Finished running code
+ *    that was triggered by a CheckCandidatesLiquidity message. The
+ *    time it took to run (in ms) is given by `msg.__data.time` ✅
  */
 class Worker extends Database {
   /**
@@ -59,6 +64,9 @@ class Worker extends Database {
     Channel(Message).on("CheckCandidatesLiquidity", _ =>
       this.checkCandidatesLiquidity.bind(this)()
     );
+    Channel(Message).on("MissedOpportunity", msg =>
+      this._removeCandidate.bind(this)(msg.__data.address)
+    );
   }
 
   async updateCandidates() {
@@ -73,17 +81,18 @@ class Worker extends Database {
   }
 
   async checkCandidatesLiquidity() {
+    const timestampStart = Date.now();
+
     for (let i = 0; i < this._candidates.length; i++) {
       const c = this._candidates[i];
       // this is pairID DAI and SAI. There's no AAVE pool for it.
       if (c.ctokenidpay == 2 || (c.ctokenidpay == 6 && c.ctokenidseize == 2))
         continue;
 
-      await c.refreshBalances(
-        web3,
-        Comptroller.mainnet,
-        CTokens.mainnet
-      );
+      // TODO instead of this (which won't work with any Web3 provider except
+      // the local Geth node due to latency issues) just subscribe to Compound
+      // events for "borrow" and "supply" and update based on that.
+      await c.refreshBalances(web3, Comptroller.mainnet, CTokens.mainnet);
 
       // TODO TxManager isn't hooked into the Database logic, so we have
       // to pass along the repay and seize addresses here
@@ -98,21 +107,29 @@ class Worker extends Database {
         this._candidates[i].ctokenidseize = seize;
       }
 
-      // In the code below, if .splice(i, 1) isn't called, the code
-      // will send candidates tp TxManager repeatedly. TxManager has
-      // logic to prevent duplicates, but better to be safe than sorry.
       if (
         this._oracle !== null &&
         (await c.isLiquidatableWithPriceFrom(this._oracle))
       ) {
         this._candidates[i].msg().broadcast("LiquidateWithPriceUpdate");
-        this._candidates.splice(i, 1);
-        return;
+        continue;
       }
       if (await c.isLiquidatable(web3, Comptroller.mainnet)) {
         this._candidates[i].msg().broadcast("Liquidate");
-        this._candidates.splice(i, 1);
       }
+    }
+
+    const liquidityCheckTime = Date.now() - timestampStart;
+    new Message({ time: liquidityCheckTime }).broadcast(
+      "CheckCandidatesLiquidityComplete"
+    );
+  }
+
+  _removeCandidate(address) {
+    for (let i = 0; i < this._candidates.length; i++) {
+      if (this._candidates[i].address !== address) continue;
+      this._candidates.splice(i, 1);
+      break;
     }
   }
 }

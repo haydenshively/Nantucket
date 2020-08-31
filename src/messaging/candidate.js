@@ -80,7 +80,7 @@ class Candidate extends Message {
   }
 
   async isLiquidatable(web3, comptroller) {
-    const liquidity = await this.liquidityOnChain(comptroller)(web3);
+    const liquidity = await this.liquidityOnChain(web3, comptroller);
     return liquidity !== null && liquidity[1].gt(0.0);
   }
 }

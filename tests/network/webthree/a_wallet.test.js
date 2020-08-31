@@ -40,17 +40,16 @@ describe("network/webthree || Wallet Test", () => {
     assert(typeof wallet._sign(tx) === "string");
   });
 
-  // Interferes with TxQueue tests
-  // it("should send a transaction", async () => {
-  //   const nonce = await wallet.getLowestLiquidNonce();
-  //   wallet.emptyTx.gasPrice = Big(await web3.eth.getGasPrice());
-  //   const sentTx = wallet.signAndSend(wallet.emptyTx, nonce, true);
+  it("should send a transaction", async () => {
+    const nonce = await wallet.getLowestLiquidNonce();
+    wallet.emptyTx.gasPrice = Big(await web3.ropsten.eth.getGasPrice());
+    const sentTx = wallet.signAndSend(wallet.emptyTx, nonce, true);
 
-  //   return sentTx.then(receipt => {
-  //     assert(receipt.status === true);
-  //     assert(receipt.to === process.env[wallet._envKeyAddress].toLowerCase());
-  //     assert(receipt.to === receipt.from);
-  //     assert(receipt.gasUsed === 21000);
-  //   })
-  // }).timeout(60000);
+    return sentTx.then(receipt => {
+      assert(receipt.status === true);
+      assert(receipt.to === process.env[wallet._envKeyAddress].toLowerCase());
+      assert(receipt.to === receipt.from);
+      assert(receipt.gasUsed === 21000);
+    })
+  }).timeout(120000);
 });
