@@ -78,16 +78,6 @@ class Worker extends Database {
         this._maxHealth
       )
     ).map(c => new Candidate(c));
-
-    // TODO after doing this to initialize the candidate,
-    // they should get updated by subscribing to borrow/supply
-    // events on the blockchain
-    for (let i = 0; i < this._candidates.length; i++)
-      await this._candidates[i].refreshBalances(
-        web3,
-        Comptroller.mainnet,
-        CTokens.mainnet
-      );
   }
 
   async checkCandidatesLiquidity() {
@@ -99,7 +89,10 @@ class Worker extends Database {
       if (c.ctokenidpay == 2 || (c.ctokenidpay == 6 && c.ctokenidseize == 2))
         continue;
 
-      if (c._markets === null) continue;
+      // TODO instead of this (which won't work with any Web3 provider except
+      // the local Geth node due to latency issues) just subscribe to Compound
+      // events for "borrow" and "supply" and update based on that.
+      await c.refreshBalances(web3, Comptroller.mainnet, CTokens.mainnet);
 
       // TODO TxManager isn't hooked into the Database logic, so we have
       // to pass along the repay and seize addresses here
