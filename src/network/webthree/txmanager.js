@@ -199,11 +199,15 @@ class TxManager {
     // If there's already a pending transaction, check whether raising
     // the gasPrice (re-bidding) results in a still-profitable tx. If it
     // does, go ahead and re-bid.
-    this._queue.replace(0, tx, "clip", /*dryRun*/ true);
+    const newTx = { ...tx };
     // Pass by reference, so after dry run, tx.gasPrice will be updated...
-    fee = TxManager._estimateFee(tx);
+    this._queue.replace(0, newTx, "clip", /*dryRun*/ true);
+
+    fee = TxManager._estimateFee(newTx);
     if (fee.gt(this.maxFee_Eth) || fee.gt(this._revenue)) return;
+    
     this._queue.replace(0, tx, "clip");
+    tx.gasPrice = newTx.gasPrice;
   }
 
   /**

@@ -59,17 +59,17 @@ describe("network/webthree || TxManager Test", () => {
     assert(txManager._tx === null);
   });
 
-  it("should raise minimally stop bidding eventually", () => {
+  it("should raise minimally and stop bidding eventually", () => {
     txManager._storeCandidate({
       label: "0x7e3A",
       address: "0x7e3A0C2300175FF712742c21F36216e9fb63b487",
       ctokenidpay: "0x0000000000000000000000000000000000000000",
       ctokenidseize: "0x0000000000000000000000000000000000000000",
-      profitability: 0.1
+      profitability: 0.05
     });
     return txManager._cacheTransaction().then(() => {
       let gasPrice = txManager._tx.gasPrice;
-      for (let i = 0; i < 20; i++) {
+      for (let i = 0; i < 100; i++) {
         txManager._sendIfProfitable(txManager._tx);
         assert(
           txManager._tx.gasPrice.eq(gasPrice) ||
@@ -78,7 +78,7 @@ describe("network/webthree || TxManager Test", () => {
         gasPrice = txManager._tx.gasPrice;
       }
       assert(txManager._queue.length === 1);
-      assert(TxManager._estimateFee(txManager._tx).lte("0.1"));
+      assert(TxManager._estimateFee(txManager._tx).lte("0.05"));
     });
   });
 
