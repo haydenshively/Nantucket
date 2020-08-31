@@ -28,8 +28,8 @@ class TableUsers {
         SELECT usersnonzero.id, usersnonzero.address, usersnonzero.profitability, payseizepairs.ctokenidpay, payseizepairs.ctokenidseize
         FROM usersnonzero INNER JOIN payseizepairs ON (usersnonzero.pairid=payseizepairs.id)
         WHERE usersnonzero.profitability>=$1
-          ${(max_Eth === null) ? "" : `AND usersnonzero.profitability<${max_Eth}`}
-          ${(maxHealth === null) ? "" : `AND usersnonzero.liquidity<${maxHealth}`}
+          ${max_Eth === null ? "" : `AND usersnonzero.profitability<${max_Eth}`}
+          ${maxHealth === null ? "" : `AND usersnonzero.liquidity<${maxHealth}`}
         ORDER BY usersnonzero.liquidity ASC
         LIMIT $2
         `,
@@ -66,9 +66,12 @@ class TableUsers {
         borrow += borrow_uUnits * costineth;
         supply += supply_uUnits * costineth * collat;
 
-        const closableAmount_Eth = borrow_uUnits * costineth * closeFactor;
+        const closableAmount_Eth =
+          borrow_uUnits * costineth * Number(closeFactor);
         const seizableAmount_Eth =
-          (supply_uUnits * costineth) / liquidationIncentive;
+          collat > 0.0
+            ? (supply_uUnits * costineth) / Number(liquidationIncentive)
+            : 0.0;
 
         if (closableMax_Eth[0] < closableAmount_Eth) {
           closableMax_Eth = [closableAmount_Eth, closableMax_Eth[0]];
@@ -105,34 +108,13 @@ class TableUsers {
         closableMax_Eth = closableMax_Eth[closeIdx];
         seizableMax_Eth = seizableMax_Eth[seizeIdx];
 
-        // if (isV2Token) {
-        //   // V2 tokens allow for repaying/seizing the same asset
-        //   bestAssetToClose = bestAssetToClose[0];
-        //   bestAssetToSeize = bestAssetToSeize[0];
-        //   closableMax_Eth = closableMax_Eth[0];
-        //   seizableMax_Eth = seizableMax_Eth[0];
-        // } else {
-        //   // V1 tokens don't
-        //   if (bestAssetToClose[1] > bestAssetToSeize[1]) {
-        //     bestAssetToClose = bestAssetToClose[1];
-        //     bestAssetToSeize = bestAssetToSeize[0];
-        //     closableMax_Eth = closableMax_Eth[1];
-        //     seizableMax_Eth = closableMax_Eth[0];
-        //   } else {
-        //     bestAssetToClose = bestAssetToClose[0];
-        //     bestAssetToSeize = bestAssetToSeize[1];
-        //     closableMax_Eth = closableMax_Eth[0];
-        //     seizableMax_Eth = closableMax_Eth[1];
-        //   }
-        // }
-
         pairID = await this._tablePaySeizePairs.getID(
           bestAssetToClose,
           bestAssetToSeize
         );
         profitability =
           Math.min(closableMax_Eth, seizableMax_Eth) *
-          (liquidationIncentive - 1.0 - 0.0009 - 0.003);
+          (Number(liquidationIncentive) - 1.0 - 0.0009 - 0.003);
       }
 
       // const liquidity = supply - borrow;

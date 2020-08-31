@@ -7,4 +7,4 @@ CREATE VIEW ctokunderlying AS
 DROP VIEW IF EXISTS usersnonzero;
 CREATE VIEW usersnonzero AS
   SELECT * FROM users
-  WHERE users.profitability!=0;
+  WHERE users.profitability!=0 AND users.liquidity>0;

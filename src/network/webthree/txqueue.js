@@ -135,6 +135,12 @@ class TxQueue {
    * @param {Number} idx a queue index
    */
   dump(idx) {
+    // NOTE Just because the gasLimit matches that of an empty tx doesn't
+    // necessarily mean it's an empty tx. However, the use case of Nantucket
+    // is limiting enough that we can make this assumption. TODO if using
+    // this class elsewhere/for other projects, make sure to have stricter
+    // matching/checking
+    if (this._queue[idx].gasLimit.eq("21000")) return;
     this._queue[idx] = this._wallet.emptyTx;
     this._queue[idx].gasPrice = this._wallet.minGasPriceFor(this.nonce(idx));
     this._broadcast(idx);

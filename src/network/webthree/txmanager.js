@@ -128,7 +128,10 @@ class TxManager {
       this._tx = null;
       return;
     }
-    const initialGasPrice = await this._getInitialGasPrice();
+    const initialGasPrice =
+      this._tx !== null
+        ? this._tx.gasPrice
+        : (await this._getInitialGasPrice()).times(0.4);
 
     if (!needPriceUpdate) {
       this._tx = FlashLiquidator.mainnet.liquidateMany(
@@ -205,7 +208,7 @@ class TxManager {
 
     fee = TxManager._estimateFee(newTx);
     if (fee.gt(this.maxFee_Eth) || fee.gt(this._revenue)) return;
-    
+
     this._queue.replace(0, tx, "clip");
     tx.gasPrice = newTx.gasPrice;
   }
