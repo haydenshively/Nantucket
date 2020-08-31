@@ -15,15 +15,15 @@ console.log(`Worker ${process.pid} is running`);
 const Worker = require("./worker");
 const worker = new Worker(
   Number(process.argv[3]),
-  process.argv[4] == "null" ? null : Number(process.argv[3]),
-  process.argv[5] == "null" ? null : Number(process.argv[4]),
+  process.argv[4] == "null" ? null : Number(process.argv[4]),
+  process.argv[5] == "null" ? null : Number(process.argv[5]),
   Number(process.argv[6])
 );
 
 // Add logging handlers *after* initializing the worker so that they don't
 // clog up the list of IPC hooks. process.on(...) handlers are called
 // in the order they're added
-if (process.argv.length === 10) {
+if (process.argv.length === 11) {
   const pid = process.pid;
   if (process.argv[7] === "true")
     Channel(Oracle).on("Set", _ =>
@@ -36,6 +36,10 @@ if (process.argv.length === 10) {
   if (process.argv[9] === "true")
     Channel(Message).on("CheckCandidatesLiquidity", _ =>
       winston.info(`📢 *Messages* | ${pid} got 'Check Candidates Liquidity'`)
+    );
+  if (process.argv[10] === "true")
+    Channel(Message).on("MissedOpportunity", _ =>
+      winston.info(`📢 *Messages* | ${pid} got 'Missed Opportunity'`)
     );
 }
 

@@ -34,16 +34,18 @@ if (process.argv.length === 11) {
       winston.info(`🏷 *Oracles* | ${pid} got 'Set'`)
     );
   if (process.argv[8] === "true")
-    Channel(Message).on("MissedOpportunity", _ =>
-      winston.info(`📢 *Messages* | ${pid} got 'Missed Opportunity'`)
-    );
-  if (process.argv[9] === "true")
     Channel(Candidate).on("Liquidate", _ =>
       winston.info(`🐳 *Candidates* | ${pid} got 'Liquidate'`)
     );
-  if (process.argv[10] === "true")
+  if (process.argv[9] === "true")
     Channel(Candidate).on("LiquidateWithPriceUpdate", _ =>
       winston.info(`🐳 *Candidates* | ${pid} got 'Liquidate With Price Update'`)
+    );
+  if (process.argv[10] === "true")
+    Channel(Message).on("CheckCandidatesLiquidityComplete", msg =>
+      winston.info(
+        `📢 *Messages* | ${pid} got 'Check Candidates Liquidity Complete' (after ${msg.__data.time} ms)`
+      )
     );
 }
 

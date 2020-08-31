@@ -62,6 +62,7 @@
     "ipc": {
       "Oracles>Set": false,
       "Messages>CheckCandidatesLiquidity": false,
+      "Messages>CheckCandidatesLiquidityComplete": false,
       "Messages>UpdateCandidates": false,
       "Messages>MissedOpportunity": false,
       "Candidates>Liquidate": false,
