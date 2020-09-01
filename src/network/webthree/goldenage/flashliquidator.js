@@ -42,9 +42,9 @@ class FlashLiquidator extends SmartContract {
   liquidateMany(borrowers, repayCTokens, seizeCTokens, gasPrice) {
     const cTokens = this._combineTokens(repayCTokens, seizeCTokens);
     const method = this._inner.methods.liquidateMany(borrowers, cTokens);
-    const gasLimit = String(23 * borrowers.length) + "00000";
+    const gasLimit = String(20 * borrowers.length) + "00000";
 
-    return this._txFor(method, Big(gasLimit).plus(500000), gasPrice);
+    return this._txFor(method, Big(gasLimit).plus(100000), gasPrice);
   }
 
   liquidateManyWithPriceUpdate(
@@ -64,9 +64,9 @@ class FlashLiquidator extends SmartContract {
       borrowers,
       cTokens
     );
-    const gasLimit = String(23 * borrowers.length) + "00000";
+    const gasLimit = String(20 * borrowers.length) + "00000";
 
-    return this._txFor(method, Big(gasLimit).plus(700000), gasPrice);
+    return this._txFor(method, Big(gasLimit).plus(400000), gasPrice);
   }
 
   _combineTokens(repayList, seizeList) {
