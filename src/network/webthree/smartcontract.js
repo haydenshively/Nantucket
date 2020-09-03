@@ -12,8 +12,8 @@ class SmartContract {
     this._inner = new Web3Contract(abi, address);
   }
 
-  _callerForUint256(method) {
-    return this._callerFor(method, ["uint256"], x => Big(x["0"]));
+  _callerForUint256(method, modifier = x => x) {
+    return this._callerFor(method, ["uint256"], x => modifier(Big(x["0"])));
   }
 
   _callerFor(method, outputTypes, modifier = x => x) {
