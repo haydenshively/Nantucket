@@ -44,19 +44,38 @@ class TableUsers {
     closeFactor,
     liquidationIncentive
   ) {
+    closeFactor = Number(closeFactor);
+    liquidationIncentive = Number(liquidationIncentive);
+    if (closeFactor > 1.0 || liquidationIncentive > 2.0) {
+      console.error(
+        "Problem upserting from Account Service: close factor or liquidation incentive too high"
+      );
+      return;
+    }
+
     for (let account of accounts) {
+      // Supply and borrow represent the account's *total* collateral
+      // and borrow amounts (in Eth)
       let supply = 0.0;
       let borrow = 0.0;
-      let bestAssetToClose = [null, null];
-      let bestAssetToSeize = [null, null];
-      let closableMax_Eth = [0.0, 0.0];
-      let seizableMax_Eth = [0.0, 0.0];
+      // top2AssetsTo_____ will contain Token IDs. Idx 0 is the best,
+      // and idx 1 is the second best
+      let top2AssetsToRepay = [null, null];
+      let top2AssetsToSeize = [null, null];
+      // top2________Amnts_Eth will contain the amounts (in Eth) correspodning
+      // to the top2AssetsTo_____ IDs
+      let top2RepayAmnts_Eth = [0.0, 0.0];
+      let top2SeizeAmnts_Eth = [0.0, 0.0];
 
       for (let token of account.tokens) {
         const borrow_uUnits = Number(token.borrowBalanceUnderlying());
+        // TODO it's possible that the user is holding CTokens but hasn't
+        // actually entered the market, in which case their supply balance
+        // shouldn't actually contribute to their collateral computation.
+        // Also it wouldn't be seizable
         const supply_uUnits = Number(token.supplyBalanceUnderlying());
 
-        if (borrow_uUnits == 0.0 && supply_uUnits == 0.0) continue;
+        if (borrow_uUnits === 0.0 && supply_uUnits === 0.0) continue;
 
         const cTokenID = await this._tableCTokens.getID(
           token.address().slice(2)
@@ -66,55 +85,83 @@ class TableUsers {
         borrow += borrow_uUnits * costineth;
         supply += supply_uUnits * costineth * collat;
 
-        const closableAmount_Eth =
-          borrow_uUnits * costineth * Number(closeFactor);
-        const seizableAmount_Eth =
+        const repayAmount_Eth = borrow_uUnits * costineth * closeFactor;
+        const seizeAmount_Eth =
           collat > 0.0
-            ? (supply_uUnits * costineth) / Number(liquidationIncentive)
+            ? (supply_uUnits * costineth) / liquidationIncentive
             : 0.0;
 
-        if (closableMax_Eth[0] < closableAmount_Eth) {
-          closableMax_Eth = [closableAmount_Eth, closableMax_Eth[0]];
-          bestAssetToClose = [cTokenID, bestAssetToClose[0]];
-        } else if (closableMax_Eth[1] < closableAmount_Eth) {
-          closableMax_Eth[1] = closableAmount_Eth;
-          bestAssetToClose[1] = cTokenID;
+        if (top2RepayAmnts_Eth[0] < repayAmount_Eth) {
+          top2RepayAmnts_Eth = [repayAmount_Eth, top2RepayAmnts_Eth[0]];
+          top2AssetsToRepay = [cTokenID, top2AssetsToRepay[0]];
+        } else if (top2RepayAmnts_Eth[1] < repayAmount_Eth) {
+          top2RepayAmnts_Eth[1] = repayAmount_Eth;
+          top2AssetsToRepay[1] = cTokenID;
         }
 
-        if (seizableMax_Eth[0] < seizableAmount_Eth) {
-          seizableMax_Eth = [seizableAmount_Eth, seizableMax_Eth[0]];
-          bestAssetToSeize = [cTokenID, bestAssetToSeize[0]];
-        } else if (seizableMax_Eth[1] < seizableAmount_Eth) {
-          seizableMax_Eth[1] = seizableAmount_Eth;
-          bestAssetToSeize[1] = cTokenID;
+        if (top2SeizeAmnts_Eth[0] < seizeAmount_Eth) {
+          top2SeizeAmnts_Eth = [seizeAmount_Eth, top2SeizeAmnts_Eth[0]];
+          top2AssetsToSeize = [cTokenID, top2AssetsToSeize[0]];
+        } else if (top2SeizeAmnts_Eth[1] < seizeAmount_Eth) {
+          top2SeizeAmnts_Eth[1] = seizeAmount_Eth;
+          top2AssetsToSeize[1] = cTokenID;
         }
       }
-
-      const isV2Token =
-        bestAssetToClose[0] !== bestAssetToSeize[0] ||
-        ["6", "9"].includes(String(bestAssetToClose[0]));
 
       let pairID = null;
       let profitability = 0;
 
-      if (bestAssetToClose[0] !== null && bestAssetToSeize[0] !== null) {
-        const closeIdx = Number(
-          !isV2Token && bestAssetToClose[1] > bestAssetToSeize[1]
-        );
-        const seizeIdx = Number(isV2Token ? false : !closeIdx);
+      if (top2AssetsToRepay[0] !== null && top2AssetsToSeize[0] !== null) {
+        // cDAI and cUSDT are "v2" tokens, meaning that they can be both
+        // repaid and seized in a single liquidation. Their IDs are 6 and 9
+        // respectively. For all other tokens, the repaid type must be different
+        // from the seize type. This is why we can't always blindly pick the
+        // `topAssetToRepay` and `topAssetToSeize`
+        const ableToPickBest =
+          top2AssetsToRepay[0] !== top2AssetsToSeize[0] ||
+          ["6", "9"].includes(String(top2AssetsToRepay[0]));
 
-        bestAssetToClose = bestAssetToClose[closeIdx];
-        bestAssetToSeize = bestAssetToSeize[seizeIdx];
-        closableMax_Eth = closableMax_Eth[closeIdx];
-        seizableMax_Eth = seizableMax_Eth[seizeIdx];
-
-        pairID = await this._tablePaySeizePairs.getID(
-          bestAssetToClose,
-          bestAssetToSeize
+        // If `ableToPickBest === true`, then the first clause will be false, and the statement
+        // will evaluate to 0. This is what we want, because in this case, index 0 corresponds
+        // to the best repay asset
+        // ---
+        // If `ableToPickBest === false`, then we have to decide which diagonal to take from a
+        // matrix like the following:
+        // top repay: [cETH: 3, cDAI: 0.5]
+        // top seize: [cETH: 1, cZRX: 1.1]
+        // If top-right is greater than bottom-right, then to maximize revenue we use the upward
+        // slanting diagonal, and vice versa. If you need to convince yourself that this logic
+        // is correct, play around with the numbers in the table. Remember that in a given row,
+        // index 0 must be greater than index 1.
+        // In the case that everything in the second column is `null`, either `repayIdx` or
+        // `seizeIdx` will point to null, which we take care of later. If just the top-right
+        // is `null`, then `null > AnyNumber` evaluates to `false`, and `repayIdx` will be 0,
+        // avoiding the missing value. If just the bottom-right is `null`, then `AnyNumber > null`
+        // evaluates to `true`, and `repayIdx` will be 1, again avoiding the missing value! Yay!
+        const repayIdx = Number(
+          !ableToPickBest && top2RepayAmnts_Eth[1] > top2SeizeAmnts_Eth[1]
         );
-        profitability =
-          Math.min(closableMax_Eth, seizableMax_Eth) *
-          (Number(liquidationIncentive) - 1.0 - 0.0009 - 0.003);
+        // If `ableToPickBest === true`, then the statement will evaluate to 0. Again, this is
+        // what we want, because in this case, index 0 corresponds to the best seize asset
+        // ---
+        // If `ableToPickBest === false`, then we'll get `Number(!repayIdx)`. This will force
+        // `seizeIdx` to be the opposite of `repayIdx` (diagonal to it in the matrix)
+        const seizeIdx = Number(ableToPickBest ? false : !repayIdx);
+
+        const assetToRepay = top2AssetsToRepay[repayIdx];
+        const assetToSeize = top2AssetsToSeize[seizeIdx];
+        const amounToRepay = top2RepayAmnts_Eth[repayIdx];
+        const amounToSeize = top2SeizeAmnts_Eth[seizeIdx];
+
+        if (assetToRepay !== null && assetToSeize !== null) {
+          pairID = await this._tablePaySeizePairs.getID(
+            assetToRepay,
+            assetToSeize
+          );
+          profitability =
+            Math.min(amounToRepay, amounToSeize) *
+            (liquidationIncentive - 1.0 - 0.0009 - 0.003);
+        }
       }
 
       // const liquidity = supply - borrow;
