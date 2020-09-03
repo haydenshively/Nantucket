@@ -41,7 +41,7 @@ describe("network/webthree/goldenage || FlashLiquidator Test", () => {
 
   it("should update price", () => {
     return web3.ropsten.eth.getGasPrice().then(gasPrice => {
-      gasPrice = Big(gasPrice).times(1.2);
+      gasPrice = Big(gasPrice).times(2.0);
 
       return web3.ropsten.eth
         .getTransactionCount(process.env.ACCOUNT_ADDRESS_TEST)
