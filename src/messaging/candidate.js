@@ -39,7 +39,7 @@ class Candidate extends Message {
         address: addr,
         borrow_uUnits: Number(await token.uUnitsBorrowedBy(this.address)(web3)),
         supply_uUnits: Number(await token.uUnitsSuppliedBy(this.address)(web3)),
-        collat: Number(await comptroller.collateralFactorFor(token))
+        collat: Number(await comptroller.collateralFactorFor(token)(web3))
       });
     }
 
@@ -53,7 +53,7 @@ class Candidate extends Message {
     let supply = 0;
 
     for (let market of this._markets) {
-      const costInUSD = oracle.getPrice(market.address);
+      const costInUSD = oracle.getPrice(market.address.toLowerCase());
       if (costInUSD === null) return 0;
 
       borrow += market.borrow_uUnits * costInUSD;
