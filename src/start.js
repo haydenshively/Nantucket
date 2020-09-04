@@ -181,10 +181,10 @@ for (let symbol in Tokens.mainnet) {
     notifyMissedOpportunity(event);
     const addr = event.borrower;
     winston.warn(
-      `🚨 *Liquidate Event* | Didn't liquidate ${addr.slice(
+      `🚨 *Liquidation* | ${event.liquidator.slice(
         0,
         6
-      )} due to bad logic or gas war.`
+      )} seized collateral from ${addr.slice(0, 6)}`
     );
   });
 }
