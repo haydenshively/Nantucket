@@ -1,13 +1,14 @@
 // src
-const Database = require("./database");
+import Database from "./database";
 // src.messaging
-const Candidate = require("./messaging/candidate");
-const Channel = require("./messaging/channel");
-const Message = require("./messaging/message");
-const Oracle = require("./messaging/oracle");
+import Candidate from "./messaging/candidate";
+import Channel from "./messaging/channel";
+import Message from "./messaging/message";
+import Oracle from "./messaging/oracle";
 // src.network.webthree
-const Comptroller = require("./network/webthree/compound/comptroller");
-const CTokens = require("./network/webthree/compound/ctoken");
+import Comptroller from "./network/webthree/compound/comptroller";
+import CToken from "./network/webthree/compound/ctoken";
+import { EthNet } from "./network/webthree/ethnet";
 
 /**
  * Given a list of candidates, this worker will determine which
@@ -30,6 +31,7 @@ const CTokens = require("./network/webthree/compound/ctoken");
  *    are required ✅
  */
 class Worker extends Database {
+
   /**
    * @param {number} minRevenue Any user with potential revenue less
    *    than this number will be excluded when choosing candidates
@@ -41,74 +43,84 @@ class Worker extends Database {
    *    (lowest to highest). This specifies how many candidates
    *    should be taken from the top of that list
    */
-  constructor(minRevenue, maxRevenue, maxHealth, numCandidates) {
+  private minRevenue: number;
+  private maxRevenue: number;
+  private maxHealth: number;
+  private numCandidates: number;
+  private oracle: any;
+  private candidates: any[];
+  private web3: any;
+
+  constructor(minRevenue: number, maxRevenue: number, maxHealth: number, numCandidates: number, web3: any) {
     super();
 
-    this._minRevenue = minRevenue;
-    this._maxRevenue = maxRevenue;
-    this._maxHealth = maxHealth;
-    this._numCandidates = Math.floor(numCandidates);
+    this.minRevenue = minRevenue;
+    this.maxRevenue = maxRevenue;
+    this.maxHealth = maxHealth;
+    this.numCandidates = Math.floor(numCandidates);
 
-    this._oracle = null;
-    this._candidates = [];
+    this.oracle = null;
+    this.candidates = [];
+    this.web3 = web3;
 
-    Channel(Oracle).on("Set", oracle => (this._oracle = oracle));
-    Channel(Message).on("UpdateCandidates", _ =>
+    Channel.for(Oracle).on("Set", (oracle: any) => (this.oracle = oracle));
+    Channel.for(Message).on("UpdateCandidates", _ =>
       this.updateCandidates.bind(this)()
     );
-    Channel(Message).on("CheckCandidatesLiquidity", _ =>
+    Channel.for(Message).on("CheckCandidatesLiquidity", _ =>
       this.checkCandidatesLiquidity.bind(this)()
     );
   }
 
   async updateCandidates() {
-    this._candidates = (
+    this.candidates = (
       await this._tUsers.getLiquidationCandidates(
-        this._numCandidates,
-        this._minRevenue,
-        this._maxRevenue,
-        this._maxHealth
+        this.numCandidates,
+        this.minRevenue,
+        this.maxRevenue,
+        this.maxHealth
       )
-    ).map(c => new Candidate(c));
+    ).map((c: any) => new Candidate(c));
   }
 
   async checkCandidatesLiquidity() {
-    for (let i = 0; i < this._candidates.length; i++) {
-      const c = this._candidates[i];
+    for (let i = 0; i < this.candidates.length; i++) {
+      const c = this.candidates[i];
       // this is pairID DAI and SAI. There's no AAVE pool for it.
       if (c.ctokenidpay == 2 || (c.ctokenidpay == 6 && c.ctokenidseize == 2))
         continue;
 
       await c.refreshBalances(
-        web3,
-        Comptroller.mainnet,
-        CTokens.mainnet
+        this.web3,
+        Comptroller.forNet(EthNet.mainnet),
+        // TODO: Adjust this to use symbols for ctokens in Candidate
+        CToken.forNet(EthNet.mainnet, null)
       );
 
       // TODO TxManager isn't hooked into the Database logic, so we have
       // to pass along the repay and seize addresses here
       if (!String(c.ctokenidpay).startsWith("0x")) {
         const repay = `0x${await this._tCTokens.getAddress(c.ctokenidpay)}`;
-        this._candidates[i].ctokenidpay = repay;
+        this.candidates[i].ctokenidpay = repay;
       }
       if (!String(c.ctokenidseize).startsWith("0x")) {
         const seize = `0x${await this._tCTokens.getAddress(c.ctokenidseize)}`;
-        this._candidates[i].ctokenidseize = seize;
+        this.candidates[i].ctokenidseize = seize;
       }
 
       // In the code below, if .splice(i, 1) isn't called, the code
       // will try to liquidate people over and over
       if (
-        this._oracle !== null &&
-        (await c.isLiquidatableWithPriceFrom(this._oracle))
+        this.oracle !== null &&
+        (await c.isLiquidatableWithPriceFrom(this.oracle))
       ) {
-        this._candidates[i].msg().broadcast("LiquidateWithPriceUpdate");
-        this._candidates.splice(i, 1);
+        this.candidates[i].msg().broadcast("LiquidateWithPriceUpdate");
+        this.candidates.splice(i, 1);
         return;
       }
-      if (await c.isLiquidatable(web3, Comptroller.mainnet)) {
-        this._candidates[i].msg().broadcast("Liquidate");
-        this._candidates.splice(i, 1);
+      if (await c.isLiquidatable(this.web3, Comptroller.forNet(EthNet.mainnet))) {
+        this.candidates[i].msg().broadcast("Liquidate");
+        this.candidates.splice(i, 1);
       }
     }
   }

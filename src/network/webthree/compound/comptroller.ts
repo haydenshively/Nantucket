@@ -1,10 +1,26 @@
-const Big = require("big.js");
-Big.DP = 40;
-Big.RM = 0;
+import Big from "../../../big";
+import SmartContract from "../smartcontract";
+import { EthNet, MultiEthNet } from "../ethnet";
+import { staticImplements } from "../../../utils";
 
-const SmartContract = require("../smartcontract");
+const addresses = {
+  [EthNet.mainnet]: "0x3d9819210a31b4961b30ef54be2aed79b9c9cd3b",
+  [EthNet.ropsten]: "0x54188bBeDD7b68228fa89CbDDa5e3e930459C6c6"
+};
 
-class Comptroller extends SmartContract {
+@staticImplements<MultiEthNet>()
+export default class Comptroller extends SmartContract {
+
+  /**
+   * Factory method for constructing an instance of Comptroller on a given
+   * Ethereum network.
+   * @param network - the network (mainnet or a testnet) to build on.
+   */
+  public static forNet(network: EthNet): Comptroller {
+    const abi: any = require(`../abis/${network}/compound/comptroller.json`);
+    return new Comptroller(addresses[network], abi);
+  }
+
   /**
    * Figures out which markets the wallet is participating in
    *
@@ -12,7 +28,7 @@ class Comptroller extends SmartContract {
    * @return {function(provider, Number?): Promise<Array<String>>} the addresses of the cToken contracts
    */
   marketsEnteredBy(wallet) {
-    const method = this._inner.methods.getAssetsIn(wallet);
+    const method = this.inner.methods.getAssetsIn(wallet);
     return this._callerFor(method, ["address[]"], x => x["0"]);
   }
 
@@ -23,7 +39,7 @@ class Comptroller extends SmartContract {
    * @return {function(provider, Number?): Promise<Big>} the collateral factor
    */
   collateralFactorFor(cToken) {
-    const method = this._inner.methods.markets(cToken.address);
+    const method = this.inner.methods.markets(cToken.address);
     return this._callerFor(method, ["bool", "uint256"], res => {
       const { 0: isListed, 1: collateralFactorMantissa } = res;
       return Big(collateralFactorMantissa).div(1e18);
@@ -38,7 +54,7 @@ class Comptroller extends SmartContract {
    * @return {function(provider, Number?): Promise<Array<Big>?>} tuple (liquidity, shortfall) or null on error
    */
   accountLiquidityOf(borrower) {
-    const method = this._inner.methods.getAccountLiquidity(borrower);
+    const method = this.inner.methods.getAccountLiquidity(borrower);
     return this._callerFor(method, ["uint256", "uint256", "uint256"], res => {
       const { 0: error, 1: liquidity, 2: shortfall } = res;
       if (error !== "0") return null;
@@ -54,7 +70,7 @@ class Comptroller extends SmartContract {
    * @return {function(provider, Number?): Promise<Big>} the close factor
    */
   closeFactor() {
-    const method = this._inner.methods.closeFactorMantissa();
+    const method = this.inner.methods.closeFactorMantissa();
     return this._callerForUint256(method, x => x.div(1e18));
   }
 
@@ -66,17 +82,7 @@ class Comptroller extends SmartContract {
    * @return {function(provider, Number?): Promise<Big>} the liquidation incentive
    */
   liquidationIncentive() {
-    const method = this._inner.methods.liquidationIncentiveMantissa();
+    const method = this.inner.methods.liquidationIncentiveMantissa();
     return this._callerForUint256(method, x => x.div(1e18));
   }
-}
-
-const addresses = {
-  mainnet: "0x3d9819210a31b4961b30ef54be2aed79b9c9cd3b",
-  ropsten: "0x54188bBeDD7b68228fa89CbDDa5e3e930459C6c6"
-};
-
-for (let net in addresses) {
-  const abi = require(`../abis/${net}/compound/comptroller.json`);
-  exports[net] = new Comptroller(addresses[net], abi);
 }

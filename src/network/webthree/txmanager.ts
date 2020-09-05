@@ -1,17 +1,15 @@
-const Big = require("big.js");
-Big.DP = 40;
-Big.RM = 0;
-
-const Web3Utils = require("web3-utils");
+import Web3Utils from "web3-utils";
+import Big from "../../big";
 
 // src.messaging
-const Candidate = require("../../messaging/candidate");
-const Channel = require("../../messaging/channel");
-const Message = require("../../messaging/message");
-const Oracle = require("../../messaging/oracle");
+import Candidate from "../../messaging/candidate";
+import Channel from "../../messaging/channel";
+import Message from "../../messaging/message";
+import Oracle from "../../messaging/oracle";
 // src.network.webthree
-const TxQueue = require("./txqueue");
-const FlashLiquidator = require("./goldenage/flashliquidator");
+import TxQueue from "./txqueue";
+import FlashLiquidator from "./goldenage/flashliquidator";
+import { EthNet } from "./ethnet";
 
 /**
  * Given a list of liquidatable candidates, TxManager will participate
@@ -35,7 +33,22 @@ const FlashLiquidator = require("./goldenage/flashliquidator");
  *
  * Please call `init()` as soon as possible. Bidding can't happen beforehand.
  */
-class TxManager {
+export default class TxManager {
+
+  public interval: any;
+  public maxFeeEth: any;
+
+  private queue: TxQueue;
+  private oracle: Oracle;
+  private borrowers: any;
+  private repayCTokens: any;
+  private seizeCTokens: any;
+  private idxsNeedingPriceUpdate: any;
+  private profitabilities: any;
+  private profitability: any;
+  private tx: any;
+  private intervalHandle: any;
+
   /**
    * @param {Provider} provider the Web3 provider to use for transactions
    * @param {String} envKeyAddress Name of the environment variable containing
@@ -46,38 +59,38 @@ class TxManager {
    * @param {Number} maxFee_Eth The maximum possible tx fee in Eth
    */
   constructor(provider, envKeyAddress, envKeySecret, interval, maxFee_Eth) {
-    this._queue = new TxQueue(provider, envKeyAddress, envKeySecret);
-    this._oracle = null;
+    this.queue = new TxQueue(provider, envKeyAddress, envKeySecret);
+    this.oracle = null;
 
     // These variables get updated any time a new candidate is received
-    this._borrowers = [];
-    this._repayCTokens = [];
-    this._seizeCTokens = [];
-    this._idxsNeedingPriceUpdate = [];
-    this._profitabilities = {};
-    this._profitability = 0.0; // in Eth, modify in tandem with _profitabilities
-    this._tx = null;
+    this.borrowers = [];
+    this.repayCTokens = [];
+    this.seizeCTokens = [];
+    this.idxsNeedingPriceUpdate = [];
+    this.profitabilities = {};
+    this.profitability = 0.0; // in Eth, modify in tandem with _profitabilities
+    this.tx = null;
 
     this.interval = interval;
-    this.maxFee_Eth = maxFee_Eth;
+    this.maxFeeEth = maxFee_Eth;
 
     // Channel(Message).on("NewBlock", _ => this.reset());
-    Channel(Oracle).on("Set", oracle => (this._oracle = oracle));
+    Channel.for(Oracle).on("Set", oracle => (this.oracle = oracle));
   }
 
   async init() {
-    await this._queue.init();
-    await this._queue.rebase();
+    await this.queue.init();
+    await this.queue.rebase();
 
-    Channel(Candidate).on("Liquidate", c => {
+    Channel.for(Candidate).on("Liquidate", c => {
       // prevent duplicates
-      if (c.address in this._profitabilities) return;
+      if (c.address in this.profitabilities) return;
       this._appendCandidate(c);
       this._cacheTransaction();
     });
-    Channel(Candidate).on("LiquidateWithPriceUpdate", c => {
+    Channel.for(Candidate).on("LiquidateWithPriceUpdate", c => {
       // prevent duplicates
-      if (c.address in this._profitabilities) return;
+      if (c.address in this.profitabilities) return;
       this._appendCandidate(c, true);
       this._cacheTransaction();
     });
@@ -85,52 +98,56 @@ class TxManager {
     // candidates get removed & empty transactions get sent to
     // replace failed liquidations. In theory it's good enough,
     // but it may be good to have some other safe guard.
-    Channel(Message).on("MissedOpportunity", msg => {
+    Channel.for(Message).on("MissedOpportunity", msg => {
       console.log("Received missed op msg for " + msg.__data.address);
       this._removeCandidate(msg.__data.address);
       this._cacheTransaction();
     });
 
-    this._intervalHandle = setInterval(
+    this.intervalHandle = setInterval(
       this._periodic.bind(this),
       this.interval
     );
   }
 
   _appendCandidate(c, needsPriceUpdate = false) {
-    const idx = this._borrowers.push(c.address);
-    this._repayCTokens.push(c.ctokenidpay);
-    this._seizeCTokens.push(c.ctokenidseize);
+    const idx = this.borrowers.push(c.address);
+    this.repayCTokens.push(c.ctokenidpay);
+    this.seizeCTokens.push(c.ctokenidseize);
 
-    if (needsPriceUpdate) this._idxsNeedingPriceUpdate.push(idx);
+    if (needsPriceUpdate) this.idxsNeedingPriceUpdate.push(idx);
 
     // TODO for now profitability is still in ETH since Compound's API
     // is in ETH, but that may change now that the oracle is in USD
-    this._profitabilities[c.address] = Number(c.profitability);
-    this._profitability += this._profitabilities[c.address];
+    this.profitabilities[c.address] = Number(c.profitability);
+    this.profitability += this.profitabilities[c.address];
     console.log(
-      `Candidate ${c.label} was added for a new profit of ${this._profitability}`
+      `Candidate ${c.label} was added for a new profit of ${this.profitability}`
     );
   }
 
   _removeCandidate(address) {
-    for (let i = 0; i < this._borrowers.length; i++) {
-      if (this._borrowers[i] !== address) continue;
+    for (let i = 0; i < this.borrowers.length; i++) {
+      if (this.borrowers[i] !== address) continue;
 
-      this._borrowers.splice(i, 1);
-      this._repayCTokens.splice(i, 1);
-      this._seizeCTokens.splice(i, 1);
+      this.borrowers.splice(i, 1);
+      this.repayCTokens.splice(i, 1);
+      this.seizeCTokens.splice(i, 1);
 
-      this._idxsNeedingPriceUpdate = this._idxsNeedingPriceUpdate.filter(
+      this.idxsNeedingPriceUpdate = this.idxsNeedingPriceUpdate.filter(
         idx => idx !== i
       );
 
       // The only time this should be false is if _removeCandidate gets
       // called twice for some reason. This could happen if a block
       // containing a liquidation got re-ordered, for example.
-      if (address in this._profitabilities) {
-        this._profitability -= this._profitabilities[address];
-        delete this._profitabilities[c.address];
+      if (address in this.profitabilities) {
+        this.profitability -= this.profitabilities[address];
+        // TODO: Inspect changes on this line.
+        // Used to be:
+        // delete this.profitabilities[c.address];
+        // But c is not defined in this scope.
+        delete this.profitabilities[address];
       }
       return;
     }
@@ -140,17 +157,17 @@ class TxManager {
     // Profitability should never be less than 0, but just in case...
     // TODO (this is probably something we should test. if it's ever
     // negative then there's a bug somewhere)
-    if (this._profitability <= 0.0 || this._borrowers.length === 0) {
-      this._tx = null;
+    if (this.profitability <= 0.0 || this.borrowers.length === 0) {
+      this.tx = null;
       return;
     }
     const initialGasPrice = await this._getInitialGasPrice();
 
-    if (this._idxsNeedingPriceUpdate.length === 0) {
-      this._tx = await FlashLiquidator.mainnet.liquidateMany(
-        this._borrowers,
-        this._repayCTokens,
-        this._seizeCTokens,
+    if (this.idxsNeedingPriceUpdate.length === 0) {
+      this.tx = await FlashLiquidator.forNet(EthNet.mainnet).liquidateMany(
+        this.borrowers,
+        this.repayCTokens,
+        this.seizeCTokens,
         initialGasPrice
       );
       return;
@@ -159,16 +176,16 @@ class TxManager {
     // TODO if oracle is null and some (but not all) candidates
     // need price updates, we should do the above code with filtered
     // versions of the lists, rather than just returning like the code below
-    if (this._oracle === null) return;
+    if (this.oracle === null) return;
 
-    const postable = this._oracle.postableData();
-    this._tx = await FlashLiquidator.mainnet.liquidateManyWithPriceUpdate(
+    const postable = this.oracle.postableData();
+    this.tx = await FlashLiquidator.forNet(EthNet.mainnet).liquidateManyWithPriceUpdate(
       postable[0],
       postable[1],
       postable[2],
-      this._borrowers,
-      this._repayCTokens,
-      this._seizeCTokens,
+      this.borrowers,
+      this.repayCTokens,
+      this.seizeCTokens,
       initialGasPrice
     );
   }
@@ -179,7 +196,7 @@ class TxManager {
    * @private
    */
   _periodic() {
-    if (this._tx === null) {
+    if (this.tx === null) {
       this.dumpAll();
       return;
     }
@@ -189,7 +206,7 @@ class TxManager {
     // tx should be replaced with an empty tx, but `_sendIfProfitable` doesn't
     // do that. It will only see that a gasPrice raise isn't possible, and
     // give up
-    this._sendIfProfitable(this._tx);
+    this._sendIfProfitable(this.tx);
   }
 
   /**
@@ -200,18 +217,18 @@ class TxManager {
    * @param {Object} tx an object describing the transaction
    */
   _sendIfProfitable(tx) {
-    if (this._queue.length === 0) {
-      this._queue.append(tx);
+    if (this.queue.length === 0) {
+      this.queue.append(tx);
       return;
     }
 
-    this._queue.replace(0, tx, "clip", /*dryRun*/ true);
+    this.queue.replace(0, tx, "clip", /*dryRun*/ true);
     // After dry run, tx.gasPrice will be updated...
     const fee = TxManager._estimateFee(tx);
-    console.log([fee.toFixed(5), this._profitability]);
-    if (fee.gt(this.maxFee_Eth) || fee.gt(this._profitability)) return;
+    console.log([fee.toFixed(5), this.profitability]);
+    if (fee.gt(this.maxFeeEth) || fee.gt(this.profitability)) return;
     console.log("Increasing bid");
-    this._queue.replace(0, tx, "clip");
+    this.queue.replace(0, tx, "clip");
   }
 
   /**
@@ -233,7 +250,7 @@ class TxManager {
    * @returns {Big} the gas price in Wei
    */
   async _getInitialGasPrice() {
-    return Big(await this._queue._wallet._provider.eth.getGasPrice());
+    return Big(await this.queue._wallet._provider.eth.getGasPrice());
   }
 
   /**
@@ -241,20 +258,20 @@ class TxManager {
    * Intended to be run when terminating the process
    */
   dumpAll() {
-    for (let i = 0; i < this._queue.length; i++) this._queue.dump(i);
+    for (let i = 0; i < this.queue.length; i++) this.queue.dump(i);
   }
 
   /**
    * Clears candidates and dumps existing transactions
    */
   reset() {
-    this._borrowers = [];
-    this._repayCTokens = [];
-    this._seizeCTokens = [];
-    this._idxsNeedingPriceUpdate = [];
-    this._profitabilities = {};
-    this._profitability = 0.0; // in Eth
-    this._tx = null;
+    this.borrowers = [];
+    this.repayCTokens = [];
+    this.seizeCTokens = [];
+    this.idxsNeedingPriceUpdate = [];
+    this.profitabilities = {};
+    this.profitability = 0.0; // in Eth
+    this.tx = null;
 
     this.dumpAll();
   }
@@ -266,8 +283,6 @@ class TxManager {
    */
   stop() {
     this.reset();
-    clearInterval(this._intervalHandle);
+    clearInterval(this.intervalHandle);
   }
 }
-
-module.exports = TxManager;

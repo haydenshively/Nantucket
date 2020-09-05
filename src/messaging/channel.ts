@@ -1,10 +1,12 @@
-class _Channel {
-  constructor(messageClass) {
+export default class Channel {
+  public Message: any;
+  public name: string;
+  constructor(messageClass: any) {
     this.Message = messageClass.prototype.constructor;
     this.name = this.Message.name + "s";
   }
 
-  on(action, callback, target = null) {
+  on(action: any, callback: (arg0: any) => void, target: any = null) {
     if (target === null) target = process;
     target.on("message", msg => {
       if (msg.channel === this.name && msg.action === action) {
@@ -31,13 +33,8 @@ class _Channel {
       action: withAction
     });
   }
-}
 
-// Allows _Channel to be used without the "new" keyword
-const Channel = new Proxy(_Channel, {
-  apply: function(target, thisArg, argumentsList) {
-    return new target(...argumentsList);
+  static for(messageClass: any) {
+    return new Channel(messageClass);
   }
-});
-
-module.exports = Channel;
+}

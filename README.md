@@ -89,4 +89,4 @@ first-come first-serve liquidation battle. **In practice, other liquidators mana
 Key Files:
 - [Start](./src/start.js)
 - [Main](./src/main.js)
-- [TxManager](./src/network/webthree/txmanager.js)
+- [Txmanager](src/network/webthree/txmanager.ts)

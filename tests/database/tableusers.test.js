@@ -12,7 +12,7 @@ describe("database || Table Users Test", () => {
   });
 
   it("should retrieve cToken collateral factor and cost in Eth", async function() {
-    const {collat, costineth} = await table.getCollatAndCost(1);
+    const { collat, costineth } = await table.getCollatAndCost(1);
     assert(collat >= 0.0);
     assert(costineth >= 0.0);
   });

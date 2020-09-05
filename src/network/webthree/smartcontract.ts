@@ -1,15 +1,19 @@
-const Big = require("big.js");
-Big.DP = 40;
-Big.RM = 0;
+import { Contract as Web3Contract } from "web3-eth-contract";
+import { AbiCoder } from "web3-eth-abi";
+import Web3Utils from "web3-utils";
 
-const ABIUtils = require("web3-eth-abi");
-const Web3Contract = require("web3-eth-contract");
-const Web3Utils = require("web3-utils");
+import Big from "../../big";
 
-class SmartContract {
+export default class SmartContract {
+
+  public address: string;
+  protected inner: Web3Contract;
+  private abiCoder: AbiCoder;
+
   constructor(address, abi) {
     this.address = address;
-    this._inner = new Web3Contract(abi, address);
+    this.inner = new Web3Contract(abi, address);
+    this.abiCoder = new AbiCoder()
   }
 
   _callerForUint256(method, modifier = x => x) {
@@ -19,7 +23,7 @@ class SmartContract {
   _callerFor(method, outputTypes, modifier = x => x) {
     return async (provider, block = "latest") => {
       const x = await provider.eth.call(this._txFor(method), block);
-      return modifier(ABIUtils.decodeParameters(outputTypes, x));
+      return modifier(this.abiCoder.decodeParameters(outputTypes, x));
     };
   }
 
@@ -33,8 +37,11 @@ class SmartContract {
   }
 
   subscribeToLogEvent(provider, eventName, callback) {
+    // TODO: Verify that this usage of web3 utils is correct
+    // @ts-ignore
     const eventJsonInterface = Web3Utils._.find(
-      this._inner._jsonInterface,
+      // @ts-ignore
+      this.inner._jsonInterface,
       o => o.name === eventName && o.type === "event"
     );
     return provider.eth.subscribe(
@@ -48,7 +55,7 @@ class SmartContract {
           callback(error, null);
           return;
         }
-        const eventObj = ABIUtils.decodeLog(
+        const eventObj = this.abiCoder.decodeLog(
           eventJsonInterface.inputs,
           result.data,
           result.topics.slice(1)
@@ -65,10 +72,8 @@ class SmartContract {
     .on("error", (error, receipt) => {}) // receipt only present if failed on-chain
     .on("data", (event) => {}) // event.removed = undefined
     */
-    return this._inner.events[eventName]({
+    return this.inner.events[eventName]({
       fromBlock: "pending"
     });
   }
 }
-
-module.exports = SmartContract;

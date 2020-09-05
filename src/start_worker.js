@@ -11,7 +11,8 @@ const worker = new Worker(
   Number(process.argv[2]),
   process.argv[3] == "null" ? null : Number(process.argv[3]),
   process.argv[4] == "null" ? null : Number(process.argv[4]),
-  Number(process.argv[5])
+  Number(process.argv[5]),
+  global.web3
 );
 
 process.on("SIGINT", code => {

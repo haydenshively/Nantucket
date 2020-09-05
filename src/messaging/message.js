@@ -1,6 +1,6 @@
 const Channel = require("./channel");
 
-class Message {
+export default class Message {
   constructor(data = {}) {
     this.__data = data;
     this.__channel = Channel(Object.getPrototypeOf(this).constructor);

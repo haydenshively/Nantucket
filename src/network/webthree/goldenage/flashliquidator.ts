@@ -1,12 +1,28 @@
-const Big = require("big.js");
-Big.DP = 40;
-Big.RM = 0;
+import Web3Utils from "web3-utils";
 
-const Web3Utils = require("web3-utils");
+import Big from "../../../big";
+import SmartContract from "../smartcontract";
+import { EthNet, MultiEthNet } from "../ethnet";
+import { staticImplements } from "../../../utils";
 
-const SmartContract = require("../smartcontract");
+const addresses = {
+  [EthNet.mainnet]: "0x82c539c060E28B667B43ecBE0B12011e9b617b5e",
+  [EthNet.ropsten]: "0x2ab4C66757a9934b3a0dBD91f94bE830855839cd"
+};
 
-class FlashLiquidator extends SmartContract {
+@staticImplements<MultiEthNet>()
+export default class FlashLiquidator extends SmartContract {
+
+  /**
+   * Factory method for constructing an instance of FlashLiquidator on a given
+   * Ethereum network.
+   * @param network - the network (mainnet or a testnet) to build on.
+   */
+  public static forNet(network: EthNet): FlashLiquidator {
+    const abi: any = require(`../abis/${network}/compound/comptroller.json`);
+    return new FlashLiquidator(addresses[network], abi);
+  }
+
   /**
    * Performs liquidation (SEND -- uses gas)
    *
@@ -19,7 +35,7 @@ class FlashLiquidator extends SmartContract {
    */
   async liquidate(borrower, repayCToken, seizeCToken, amount, gasPrice) {
     const hexAmount = Web3Utils.toHex(amount.toFixed(0));
-    const method = this._inner.methods.liquidate(
+    const method = this.inner.methods.liquidate(
       borrower,
       repayCToken,
       seizeCToken,
@@ -27,7 +43,7 @@ class FlashLiquidator extends SmartContract {
     );
     const gasLimit = 1.07 * (await method.estimateGas({ gas: "3000000" }));
 
-    return this.txFor(method, Big(gasLimit), gasPrice);
+    return this._txFor(method, Big(gasLimit), gasPrice);
   }
 
   /**
@@ -41,7 +57,7 @@ class FlashLiquidator extends SmartContract {
    */
   liquidateMany(borrowers, repayCTokens, seizeCTokens, gasPrice) {
     const cTokens = this._combineTokens(repayCTokens, seizeCTokens);
-    const method = this._inner.methods.liquidateMany(borrowers, cTokens);
+    const method = this.inner.methods.liquidateMany(borrowers, cTokens);
     const gasLimit = String(3 * borrowers.length) + "000000";
 
     return this._txFor(method, Big(gasLimit), gasPrice);
@@ -57,7 +73,7 @@ class FlashLiquidator extends SmartContract {
     gasPrice
   ) {
     const cTokens = this._combineTokens(repayCTokens, seizeCTokens);
-    const method = this._inner.methods.liquidateManyWithPriceUpdate(
+    const method = this.inner.methods.liquidateManyWithPriceUpdate(
       messages,
       signatures,
       symbols,
@@ -76,11 +92,6 @@ class FlashLiquidator extends SmartContract {
     return cTokens;
   }
 }
-
-const addresses = {
-  mainnet: "0x82c539c060E28B667B43ecBE0B12011e9b617b5e",
-  ropsten: "0x2ab4C66757a9934b3a0dBD91f94bE830855839cd"
-};
 
 for (let net in addresses) {
   const abi = require(`../abis/${net}/goldenage/flashliquidator.json`);

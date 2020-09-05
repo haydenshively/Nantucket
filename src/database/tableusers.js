@@ -28,8 +28,8 @@ class TableUsers {
         SELECT usersnonzero.id, usersnonzero.address, usersnonzero.profitability, payseizepairs.ctokenidpay, payseizepairs.ctokenidseize
         FROM usersnonzero INNER JOIN payseizepairs ON (usersnonzero.pairid=payseizepairs.id)
         WHERE usersnonzero.profitability>=$1
-          ${(max_Eth === null) ? "" : `AND usersnonzero.profitability<${max_Eth}`}
-          ${(maxHealth === null) ? "" : `AND usersnonzero.liquidity<${maxHealth}`}
+          ${max_Eth === null ? "" : `AND usersnonzero.profitability<${max_Eth}`}
+          ${maxHealth === null ? "" : `AND usersnonzero.liquidity<${maxHealth}`}
         ORDER BY usersnonzero.liquidity ASC
         LIMIT $2
         `,

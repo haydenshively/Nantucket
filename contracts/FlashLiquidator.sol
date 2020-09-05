@@ -98,8 +98,8 @@ contract FlashLiquidator is FlashLoanReceiverBase {
 
         Args:
             _borrower (address): The Compound user to liquidate
-            _repayCToken (address): A CToken for which the user is in debt
-            _seizeCToken (address): A CToken for which the user has a supply balance
+            _repayCToken (address): A Ctoken for which the user is in debt
+            _seizeCToken (address): A Ctoken for which the user has a supply balance
             _amount (uint256): The amount (specified in units of _repayCToken.underlying) to flash loan and pay off
 
         Returns:
@@ -171,7 +171,7 @@ contract FlashLiquidator is FlashLoanReceiverBase {
             // we should have `_amount` of repayCToken.underlying. This should match `_reserve`.
             address repayToken = CErc20Storage(repayCToken).underlying();
             require(repayToken == _reserve, "Flash loan obtained the wrong token");
-            // The borrower took out a loan from CToken contract X. Before we can liquidate them,
+            // The borrower took out a loan from Ctoken contract X. Before we can liquidate them,
             // we must approve contract X to take our money.
             approve(repayToken, repayCToken, _amount);
             // Perform the liquidation. If all goes well, we receive an amount of seizeCTokens

@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "experimentalDecorators": true,
+    "esModuleInterop": true,
+    "noImplicitAny": false,
+    "removeComments": true,
+    "preserveConstEnums": true,
+    "sourceMap": true,
+    "rootDir": "src",
+    "outDir": "build",
+    "allowJs": true,
+    "target": "ES5"
+  },
+  "include": ["src/**/*"]
+}

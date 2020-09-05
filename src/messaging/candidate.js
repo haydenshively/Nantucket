@@ -61,7 +61,7 @@ class Candidate extends Message {
     }
 
     // TODO: Note that this is in USD from the Coinbase reporter oracle,
-    // but values from Compound's CToken endpoint are still in ETH. Just
+    // but values from Compound's Ctoken endpoint are still in ETH. Just
     // be careful until this is documented
     return {
       liquidity: supply - borrow,

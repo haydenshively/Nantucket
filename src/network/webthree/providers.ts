@@ -59,6 +59,9 @@ const ProvidersFor = (chain, specs) => {
 };
 
 class MultiSendProvider {
+
+  public providers: any;
+
   constructor(chain, specs) {
     this.providers = ProvidersFor(chain, specs);
 

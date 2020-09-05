@@ -15,7 +15,7 @@ class TxQueue {
   }
 
   async init() {
-    return this._wallet.init()
+    return this._wallet.init();
   }
 
   /**
@@ -29,7 +29,7 @@ class TxQueue {
 
   /**
    * Gets the most recent transaction at a given index
-   * 
+   *
    * @param {Number} idx a queue index
    * @returns {Object} an object describing the transaction
    */
@@ -114,11 +114,11 @@ class TxQueue {
    * txQueue.replace(0, tx, "min");
    */
   replace(idx, tx, gasPriceMode, dryRun = false) {
+    const minGasPrice = this._wallet.minGasPriceFor(this.nonce(idx));
     switch (gasPriceMode) {
       case "as_is":
         break;
       case "clip":
-        const minGasPrice = this._wallet.minGasPriceFor(this.nonce(idx));
         if (tx.gasPrice.gt(minGasPrice)) break;
       case "min":
         tx.gasPrice = minGasPrice;

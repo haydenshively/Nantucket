@@ -8,7 +8,9 @@ describe("messaging || Channel Test", () => {
 
   it("should base itself on message class", () => {
     class Foo {
-      constructor() { this.baz = 42; }
+      constructor() {
+        this.baz = 42;
+      }
     }
 
     const channel = Channel(Foo);
