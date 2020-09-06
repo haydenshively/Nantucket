@@ -8,6 +8,13 @@ const addresses = {
   [EthNet.ropsten]: "0x54188bBeDD7b68228fa89CbDDa5e3e930459C6c6"
 };
 
+// Cache the abi json files in memory at import time to avoid I/O during runtime
+const abiMap: Map<EthNet, any> = new Map();
+for (let network in addresses) {
+  let ethnet: EthNet = EthNet[network as keyof typeof EthNet];
+  abiMap.set(ethnet, require(`../abis/${network}/compound/comptroller.json`));
+}
+
 @staticImplements<MultiEthNet>()
 export default class Comptroller extends SmartContract {
 
@@ -17,7 +24,7 @@ export default class Comptroller extends SmartContract {
    * @param network - the network (mainnet or a testnet) to build on.
    */
   public static forNet(network: EthNet): Comptroller {
-    const abi: any = require(`../abis/${network}/compound/comptroller.json`);
+    const abi: any = abiMap.get(network);
     return new Comptroller(addresses[network], abi);
   }
 

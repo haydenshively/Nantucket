@@ -10,6 +10,13 @@ const addresses = {
   [EthNet.ropsten]: "0x2ab4C66757a9934b3a0dBD91f94bE830855839cd"
 };
 
+// Cache the abi json files in memory at import time to avoid I/O during runtime
+const abiMap: Map<EthNet, any> = new Map();``
+for (let network in addresses) {
+  let ethnet: EthNet = EthNet[network as keyof typeof EthNet];
+  abiMap.set(ethnet, require(`../abis/${network}/goldenage/flashliquidator.json`));
+}
+
 @staticImplements<MultiEthNet>()
 export default class FlashLiquidator extends SmartContract {
 
@@ -19,7 +26,7 @@ export default class FlashLiquidator extends SmartContract {
    * @param network - the network (mainnet or a testnet) to build on.
    */
   public static forNet(network: EthNet): FlashLiquidator {
-    const abi: any = require(`../abis/${network}/compound/comptroller.json`);
+    const abi: any = abiMap.get(network);
     return new FlashLiquidator(addresses[network], abi);
   }
 

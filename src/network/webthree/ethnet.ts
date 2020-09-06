@@ -10,5 +10,5 @@ export enum EthNet {
 // This interface is intended to be implemented statically
 // See https://stackoverflow.com/a/43674389
 export interface MultiEthNet {
-  forNet(network: EthNet, symbol?: string): SmartContract;
+  forNet(network: EthNet): SmartContract;
 }
