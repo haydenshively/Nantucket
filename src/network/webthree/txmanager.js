@@ -112,6 +112,9 @@ class TxManager {
     let revenue = 0;
     let needPriceUpdate = false;
 
+    let idxBest = 0;
+    let best = 0;
+
     for (let addr in this._candidates) {
       const c = this._candidates[addr];
 
@@ -120,9 +123,15 @@ class TxManager {
       seizeCTokens.push(c.seizeCToken);
       revenue += c.revenue;
       needPriceUpdate |= c.needsPriceUpdate;
+
+      if (c.revenue > best) {
+        idxBest = borrowers.length - 1;
+        best = c.revenue;
+      }
     }
 
-    this._revenue = revenue;
+    // this._revenue = revenue;
+    this._revenue = best;
 
     if (borrowers.length === 0) {
       this._tx = null;
@@ -131,13 +140,13 @@ class TxManager {
     const initialGasPrice =
       this._tx !== null
         ? this._tx.gasPrice
-        : (await this._getInitialGasPrice()).times(0.4);
+        : (await this._getInitialGasPrice()).times(0.9);
 
     if (!needPriceUpdate) {
       this._tx = FlashLiquidator.mainnet.liquidateMany(
-        borrowers,
-        repayCTokens,
-        seizeCTokens,
+        [borrowers[idxBest]],
+        [repayCTokens[idxBest]],
+        [seizeCTokens[idxBest]],
         initialGasPrice
       );
       return;
@@ -156,9 +165,9 @@ class TxManager {
       postable[0],
       postable[1],
       postable[2],
-      borrowers,
-      repayCTokens,
-      seizeCTokens,
+      [borrowers[idxBest]],
+      [repayCTokens[idxBest]],
+      [seizeCTokens[idxBest]],
       initialGasPrice
     );
   }
