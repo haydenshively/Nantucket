@@ -14,7 +14,7 @@ class TxQueue {
   }
 
   async init() {
-    return this._wallet.init()
+    return this._wallet.init();
   }
 
   /**
@@ -28,7 +28,7 @@ class TxQueue {
 
   /**
    * Gets the most recent transaction at a given index
-   * 
+   *
    * @param {Number} idx a queue index
    * @returns {Object} an object describing the transaction
    */

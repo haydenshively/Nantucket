@@ -14,4 +14,4 @@ exports.forAllTokens = async (instances, methodName, args, test) => {
       test(await caller(web3[chain]));
     }
   }
-}
+};

@@ -49,7 +49,9 @@ class Database {
     // database is designed to match mainnet, not testnets
     const blockLabel = (await web3.eth.getBlockNumber()) - 20;
     const closeFact = Number(await Comptroller.mainnet.closeFactor()(web3));
-    const liqIncent = Number(await Comptroller.mainnet.liquidationIncentive()(web3));
+    const liqIncent = Number(
+      await Comptroller.mainnet.liquidationIncentive()(web3)
+    );
 
     // 0 means pull most recent block
     // We label it with an older block number to avoid overwriting fresher
