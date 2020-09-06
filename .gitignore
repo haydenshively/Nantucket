@@ -1,3 +1,5 @@
+.idea
+.vscode
 *.code-workspace
 .DS_STORE
 
