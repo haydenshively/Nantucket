@@ -26,30 +26,34 @@ class TablePaySeizePairs {
       VALUES ($1, $2)
       ON CONFLICT DO NOTHING
       `,
-      [ payID, seizeID ]
+      [payID, seizeID]
     );
   }
 
   async getID(idPay, idSeize) {
-    const row = (await this._pool.query(
-      `
+    const row = (
+      await this._pool.query(
+        `
       SELECT id FROM payseizepairs
       WHERE (ctokenidpay=$1 AND ctokenidseize=$2)
       `,
-      [idPay, idSeize]
-    )).rows[0];
-    
+        [idPay, idSeize]
+      )
+    ).rows[0];
+
     return row === undefined ? null : row.id;
   }
 
   async getPair(id) {
-    return (await this._pool.query(
-      `
+    return (
+      await this._pool.query(
+        `
       SELECT ctokenidpay, ctokenidseize FROM payseizepairs
       WHERE id=$1
       `,
-      [id]
-    )).rows[0];
+        [id]
+      )
+    ).rows[0];
   }
 }
 

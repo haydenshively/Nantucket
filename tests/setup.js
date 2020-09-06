@@ -10,7 +10,7 @@ global.pool = new Pool({
 });
 
 // configure web3
-global.web3 = {}
+global.web3 = {};
 const {
   MultiSendProvider,
   ProviderFor

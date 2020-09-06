@@ -64,7 +64,7 @@ class Oracle extends Message {
   getPriceSymbol(tokenSymbol) {
     if (this._prices === null) return null;
 
-    return this._prices[tokenSymbol]
+    return this._prices[tokenSymbol];
   }
 }
 
