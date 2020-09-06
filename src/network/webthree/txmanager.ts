@@ -1,5 +1,6 @@
 import Web3Utils from "web3-utils";
 import Big from "../../big";
+const winston = require("winston");
 
 // src.messaging
 import Candidate from "../../messaging/candidate";
@@ -19,34 +20,27 @@ import { EthNet } from "./ethnet";
  * __IPC Messaging:__
  *
  * _Subscriptions:_
- * - Messages>NewBlock | Calls `reset()` (clears candidates and dumps txs) ✅
- *    _currently disabled_
- * - Messages>MissedOpportunity | Removes the borrower given by
- *    `msg.__data.address` and caches an updated transaction. If the
- *    borrower was the only one, the next transaction will be an empty
- *    replacement ✅
  * - Oracles>Set | Sets the txManager's oracle to the one in the message ✅
  * - Candidates>Liquidate | Appends the candidate from the message and
  *    caches an updated transaction to be sent on next bid ✅
  * - Candidates>LiquidateWithPriceUpdate | Same idea, but will make sure
  *    to update Open Price Feed prices ✅
+ * - Messages>CheckCandidatesLiquidityComplete | Removes stale candidates
+ *    (those that were update more than `msg.__data.time` ms ago)
  *
  * Please call `init()` as soon as possible. Bidding can't happen beforehand.
  */
 export default class TxManager {
 
-  public interval: any;
-  public maxFeeEth: any;
+  public interval: number;
+  public maxFee_Eth: number;
 
   private queue: TxQueue;
   private oracle: Oracle;
-  private borrowers: any;
-  private repayCTokens: any;
-  private seizeCTokens: any;
-  private idxsNeedingPriceUpdate: any;
-  private profitabilities: any;
-  private profitability: any;
+  private candidates: any;
+  private revenue: number;
   private tx: any;
+
   private intervalHandle: any;
 
   /**
@@ -62,19 +56,13 @@ export default class TxManager {
     this.queue = new TxQueue(provider, envKeyAddress, envKeySecret);
     this.oracle = null;
 
-    // These variables get updated any time a new candidate is received
-    this.borrowers = [];
-    this.repayCTokens = [];
-    this.seizeCTokens = [];
-    this.idxsNeedingPriceUpdate = [];
-    this.profitabilities = {};
-    this.profitability = 0.0; // in Eth, modify in tandem with _profitabilities
+    this.candidates = {};
+    this.revenue = 0;
     this.tx = null;
 
     this.interval = interval;
-    this.maxFeeEth = maxFee_Eth;
+    this.maxFee_Eth = maxFee_Eth;
 
-    // Channel(Message).on("NewBlock", _ => this.reset());
     Channel.for(Oracle).on("Set", oracle => (this.oracle = oracle));
   }
 
@@ -83,24 +71,15 @@ export default class TxManager {
     await this.queue.rebase();
 
     Channel.for(Candidate).on("Liquidate", c => {
-      // prevent duplicates
-      if (c.address in this.profitabilities) return;
-      this._appendCandidate(c);
+      this._storeCandidate(c);
       this._cacheTransaction();
     });
     Channel.for(Candidate).on("LiquidateWithPriceUpdate", c => {
-      // prevent duplicates
-      if (c.address in this.profitabilities) return;
-      this._appendCandidate(c, true);
+      this._storeCandidate(c, true);
       this._cacheTransaction();
     });
-    // TODO the following Message is currently the only way that
-    // candidates get removed & empty transactions get sent to
-    // replace failed liquidations. In theory it's good enough,
-    // but it may be good to have some other safe guard.
-    Channel.for(Message).on("MissedOpportunity", msg => {
-      console.log("Received missed op msg for " + msg.__data.address);
-      this._removeCandidate(msg.__data.address);
+    Channel.for(Message).on("CheckCandidatesLiquidityComplete", msg => {
+      this._removeStaleCandidates(msg.__data.time);
       this._cacheTransaction();
     });
 
@@ -110,64 +89,67 @@ export default class TxManager {
     );
   }
 
-  _appendCandidate(c, needsPriceUpdate = false) {
-    const idx = this.borrowers.push(c.address);
-    this.repayCTokens.push(c.ctokenidpay);
-    this.seizeCTokens.push(c.ctokenidseize);
+  _storeCandidate(c, needsPriceUpdate = false) {
+    const isNew = !(c.address in this.candidates);
 
-    if (needsPriceUpdate) this.idxsNeedingPriceUpdate.push(idx);
+    this.candidates[c.address] = {
+      repayCToken: c.ctokenidpay,
+      seizeCToken: c.ctokenidseize,
+      needsPriceUpdate: needsPriceUpdate,
+      revenue: Number(c.profitability),
+      lastSeen: Date.now()
+    };
 
-    // TODO for now profitability is still in ETH since Compound's API
-    // is in ETH, but that may change now that the oracle is in USD
-    this.profitabilities[c.address] = Number(c.profitability);
-    this.profitability += this.profitabilities[c.address];
-    console.log(
-      `Candidate ${c.label} was added for a new profit of ${this.profitability}`
-    );
+    if (isNew)
+      winston.info(
+        `🧮 *TxManager* | Added ${c.label} for revenue of ${c.profitability} Eth`
+      );
   }
 
-  _removeCandidate(address) {
-    for (let i = 0; i < this.borrowers.length; i++) {
-      if (this.borrowers[i] !== address) continue;
+  _removeStaleCandidates(updatePeriod) {
+    const now = Date.now();
 
-      this.borrowers.splice(i, 1);
-      this.repayCTokens.splice(i, 1);
-      this.seizeCTokens.splice(i, 1);
+    for (let addr in this.candidates) {
+      if (now - this.candidates[addr].lastSeen <= updatePeriod) continue;
+      delete this.candidates[addr];
 
-      this.idxsNeedingPriceUpdate = this.idxsNeedingPriceUpdate.filter(
-        idx => idx !== i
-      );
-
-      // The only time this should be false is if _removeCandidate gets
-      // called twice for some reason. This could happen if a block
-      // containing a liquidation got re-ordered, for example.
-      if (address in this.profitabilities) {
-        this.profitability -= this.profitabilities[address];
-        // TODO: Inspect changes on this line.
-        // Used to be:
-        // delete this.profitabilities[c.address];
-        // But c is not defined in this scope.
-        delete this.profitabilities[address];
-      }
-      return;
+      winston.info(`🧮 *TxManager* | Removed ${addr.slice(0, 6)}`);
     }
   }
 
   async _cacheTransaction() {
-    // Profitability should never be less than 0, but just in case...
-    // TODO (this is probably something we should test. if it's ever
-    // negative then there's a bug somewhere)
-    if (this.profitability <= 0.0 || this.borrowers.length === 0) {
+    let borrowers = [];
+    let repayCTokens = [];
+    let seizeCTokens = [];
+    let revenue = 0;
+    let needPriceUpdate: boolean = false;
+
+    for (let addr in this.candidates) {
+      const c = this.candidates[addr];
+
+      borrowers.push(addr);
+      repayCTokens.push(c.repayCToken);
+      seizeCTokens.push(c.seizeCToken);
+      revenue += c.revenue;
+      needPriceUpdate |= c.needsPriceUpdate;
+    }
+
+    this.revenue = revenue;
+
+    if (borrowers.length === 0) {
       this.tx = null;
       return;
     }
-    const initialGasPrice = await this._getInitialGasPrice();
+    const initialGasPrice =
+      this.tx !== null
+        ? this.tx.gasPrice
+        : (await this._getInitialGasPrice()).times(0.4);
 
-    if (this.idxsNeedingPriceUpdate.length === 0) {
-      this.tx = await FlashLiquidator.forNet(EthNet.mainnet).liquidateMany(
-        this.borrowers,
-        this.repayCTokens,
-        this.seizeCTokens,
+    if (!needPriceUpdate) {
+      this.tx = FlashLiquidator.forNet(EthNet.mainnet).liquidateMany(
+        borrowers,
+        repayCTokens,
+        seizeCTokens,
         initialGasPrice
       );
       return;
@@ -176,23 +158,26 @@ export default class TxManager {
     // TODO if oracle is null and some (but not all) candidates
     // need price updates, we should do the above code with filtered
     // versions of the lists, rather than just returning like the code below
-    if (this.oracle === null) return;
+    if (this.oracle === null) {
+      this.tx = null;
+      return;
+    }
 
     const postable = this.oracle.postableData();
-    this.tx = await FlashLiquidator.forNet(EthNet.mainnet).liquidateManyWithPriceUpdate(
+    this.tx = FlashLiquidator.forNet(EthNet.mainnet).liquidateManyWithPriceUpdate(
       postable[0],
       postable[1],
       postable[2],
-      this.borrowers,
-      this.repayCTokens,
-      this.seizeCTokens,
+      borrowers,
+      repayCTokens,
+      seizeCTokens,
       initialGasPrice
     );
   }
 
   /**
    * To be called every `this.interval` milliseconds.
-   * Sends `this._tx` if profitable and non-null
+   * Sends `this._tx` if non-null and profitable
    * @private
    */
   _periodic() {
@@ -200,12 +185,6 @@ export default class TxManager {
       this.dumpAll();
       return;
     }
-    // TODO edge case: it's possible that the tx could be non-null,
-    // but due to a recent candidate removal, the current gasPrice&gasLimit
-    // create a no-longer-profitable situation. In this case, any pending
-    // tx should be replaced with an empty tx, but `_sendIfProfitable` doesn't
-    // do that. It will only see that a gasPrice raise isn't possible, and
-    // give up
     this._sendIfProfitable(this.tx);
   }
 
@@ -217,18 +196,33 @@ export default class TxManager {
    * @param {Object} tx an object describing the transaction
    */
   _sendIfProfitable(tx) {
+    // First, check that current gasPrice is profitable. If it's not (due
+    // to network congestion or a recently-removed candidate), then replace
+    // any pending transactions with empty ones.
+    let fee = TxManager._estimateFee(this.tx);
+    if (fee.gt(this.maxFee_Eth) || fee.gt(this.revenue)) {
+      this.dumpAll();
+      return;
+    }
+
+    // If there are no pending transactions, start a new one
     if (this.queue.length === 0) {
       this.queue.append(tx);
       return;
     }
 
-    this.queue.replace(0, tx, "clip", /*dryRun*/ true);
-    // After dry run, tx.gasPrice will be updated...
-    const fee = TxManager._estimateFee(tx);
-    console.log([fee.toFixed(5), this.profitability]);
-    if (fee.gt(this.maxFeeEth) || fee.gt(this.profitability)) return;
-    console.log("Increasing bid");
+    // If there's already a pending transaction, check whether raising
+    // the gasPrice (re-bidding) results in a still-profitable tx. If it
+    // does, go ahead and re-bid.
+    const newTx = { ...tx };
+    // Pass by reference, so after dry run, tx.gasPrice will be updated...
+    this.queue.replace(0, newTx, "clip", /*dryRun*/ true);
+
+    fee = TxManager._estimateFee(newTx);
+    if (fee.gt(this.maxFee_Eth) || fee.gt(this.revenue)) return;
+
     this.queue.replace(0, tx, "clip");
+    tx.gasPrice = newTx.gasPrice;
   }
 
   /**
@@ -265,12 +259,8 @@ export default class TxManager {
    * Clears candidates and dumps existing transactions
    */
   reset() {
-    this.borrowers = [];
-    this.repayCTokens = [];
-    this.seizeCTokens = [];
-    this.idxsNeedingPriceUpdate = [];
-    this.profitabilities = {};
-    this.profitability = 0.0; // in Eth
+    this.candidates = {};
+    this.revenue = 0.0; // in Eth
     this.tx = null;
 
     this.dumpAll();

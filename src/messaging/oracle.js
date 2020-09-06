@@ -60,6 +60,12 @@ class Oracle extends Message {
     const symbol = this._symbols[tokenAddress];
     return this._prices[symbol];
   }
+
+  getPriceSymbol(tokenSymbol) {
+    if (this._prices === null) return null;
+
+    return this._prices[tokenSymbol]
+  }
 }
 
 module.exports = Oracle;

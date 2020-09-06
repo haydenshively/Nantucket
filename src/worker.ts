@@ -23,12 +23,17 @@ import { EthNet } from "./network/webthree/ethnet";
  *    the datbase
  * - Messages>CheckCandidatesLiquidity | Iterates through candidates list
  *    and broadcasts those that are liquidatable ✅
+ * - Messages>MissedOpportunity | Removes the borrower given by
+ *    `msg.__data.address` ✅
  *
  * _Broadcasts_:
  * - Candidates>Liquidate | The candidate can be liquidated without
  *    price updates ✅
  * - Candidates>LiquidateWithPriceUpdate | Same idea, but price updates
  *    are required ✅
+ * - Messages>CheckCandidatesLiquidityComplete | Finished running code
+ *    that was triggered by a CheckCandidatesLiquidity message. The
+ *    time it took to run (in ms) is given by `msg.__data.time` ✅
  */
 class Worker extends Database {
 
@@ -70,6 +75,9 @@ class Worker extends Database {
     Channel.for(Message).on("CheckCandidatesLiquidity", _ =>
       this.checkCandidatesLiquidity.bind(this)()
     );
+    Channel.for(Message).on("MissedOpportunity", msg =>
+      this.removeCandidate.bind(this)(msg.__data.address)
+    );
   }
 
   async updateCandidates() {
@@ -84,12 +92,17 @@ class Worker extends Database {
   }
 
   async checkCandidatesLiquidity() {
+    const timestampStart = Date.now();
+
     for (let i = 0; i < this.candidates.length; i++) {
       const c = this.candidates[i];
       // this is pairID DAI and SAI. There's no AAVE pool for it.
       if (c.ctokenidpay == 2 || (c.ctokenidpay == 6 && c.ctokenidseize == 2))
         continue;
 
+      // TODO instead of this (which won't work with any Web3 provider except
+      // the local Geth node due to latency issues) just subscribe to Compound
+      // events for "borrow" and "supply" and update based on that.
       await c.refreshBalances(
         this.web3,
         Comptroller.forNet(EthNet.mainnet),
@@ -99,6 +112,8 @@ class Worker extends Database {
 
       // TODO TxManager isn't hooked into the Database logic, so we have
       // to pass along the repay and seize addresses here
+      // (ctokenidpay and ctokenidseize are normally Ints, but here
+      // they change to Strings)
       if (!String(c.ctokenidpay).startsWith("0x")) {
         const repay = `0x${await this._tCTokens.getAddress(c.ctokenidpay)}`;
         this.candidates[i].ctokenidpay = repay;
@@ -108,20 +123,29 @@ class Worker extends Database {
         this.candidates[i].ctokenidseize = seize;
       }
 
-      // In the code below, if .splice(i, 1) isn't called, the code
-      // will try to liquidate people over and over
       if (
         this.oracle !== null &&
         (await c.isLiquidatableWithPriceFrom(this.oracle))
       ) {
         this.candidates[i].msg().broadcast("LiquidateWithPriceUpdate");
-        this.candidates.splice(i, 1);
-        return;
+        continue;
       }
       if (await c.isLiquidatable(this.web3, Comptroller.forNet(EthNet.mainnet))) {
         this.candidates[i].msg().broadcast("Liquidate");
-        this.candidates.splice(i, 1);
       }
+    }
+
+    const liquidityCheckTime = Date.now() - timestampStart;
+    new Message({ time: liquidityCheckTime }).broadcast(
+      "CheckCandidatesLiquidityComplete"
+    );
+  }
+
+  removeCandidate(address: string) {
+    for (let i = 0; i < this.candidates.length; i++) {
+      if (this.candidates[i].address !== address) continue;
+      this.candidates.splice(i, 1);
+      break;
     }
   }
 }

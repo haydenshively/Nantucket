@@ -17,7 +17,7 @@ export default class SmartContract {
   }
 
   _callerForUint256(method, modifier = x => x) {
-    return this._callerFor(method, ["uint256"], x => Big(x["0"]));
+    return this._callerFor(method, ["uint256"], x => modifier(Big(x["0"])));
   }
 
   _callerFor(method, outputTypes, modifier = x => x) {
