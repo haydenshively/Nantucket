@@ -1,8 +1,8 @@
+// src.messaging
+import Channel from "./messaging/channel";
+
 require("./setup");
 const winston = require("winston");
-
-// src.messaging
-const Channel = require("./messaging/channel");
 const Message = require("./messaging/message");
 const Oracle = require("./messaging/oracle");
 
@@ -14,6 +14,7 @@ console.log(`Worker ${process.pid} is running`);
 
 const Worker = require("./worker");
 const worker = new Worker(
+  global.web3,
   Number(process.argv[3]),
   process.argv[4] == "null" ? null : Number(process.argv[4]),
   process.argv[5] == "null" ? null : Number(process.argv[5]),
@@ -26,19 +27,19 @@ const worker = new Worker(
 if (process.argv.length === 11) {
   const pid = process.pid;
   if (process.argv[7] === "true")
-    Channel(Oracle).on("Set", _ =>
+    Channel.for(Oracle).on("Set", _ =>
       winston.info(`🏷 *Oracles* | ${pid} got 'Set'`)
     );
   if (process.argv[8] === "true")
-    Channel(Message).on("UpdateCandidates", _ =>
+    Channel.for(Message).on("UpdateCandidates", _ =>
       winston.info(`📢 *Messages* | ${pid} got 'Update Candidates'`)
     );
   if (process.argv[9] === "true")
-    Channel(Message).on("CheckCandidatesLiquidity", _ =>
+    Channel.for(Message).on("CheckCandidatesLiquidity", _ =>
       winston.info(`📢 *Messages* | ${pid} got 'Check Candidates Liquidity'`)
     );
   if (process.argv[10] === "true")
-    Channel(Message).on("MissedOpportunity", _ =>
+    Channel.for(Message).on("MissedOpportunity", _ =>
       winston.info(`📢 *Messages* | ${pid} got 'Missed Opportunity'`)
     );
 }

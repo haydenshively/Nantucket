@@ -54,9 +54,9 @@ class Worker extends Database {
   private numCandidates: number;
   private oracle: any;
   private candidates: any[];
-  private web3: any;
+  private provider: any;
 
-  constructor(minRevenue: number, maxRevenue: number, maxHealth: number, numCandidates: number, web3: any) {
+  constructor(provider: any, minRevenue: number, maxRevenue: number, maxHealth: number, numCandidates: number, ) {
     super();
 
     this.minRevenue = minRevenue;
@@ -66,7 +66,7 @@ class Worker extends Database {
 
     this.oracle = null;
     this.candidates = [];
-    this.web3 = web3;
+    this.provider = provider;
 
     Channel.for(Oracle).on("Set", (oracle: any) => (this.oracle = oracle));
     Channel.for(Message).on("UpdateCandidates", _ =>
@@ -104,7 +104,7 @@ class Worker extends Database {
       // the local Geth node due to latency issues) just subscribe to Compound
       // events for "borrow" and "supply" and update based on that.
       await c.refreshBalances(
-        this.web3,
+        this.provider,
         Comptroller.forNet(EthNet.mainnet),
         // TODO: Adjust this to use symbols for ctokens in Candidate
         CToken.forNet(EthNet.mainnet, null)
@@ -130,7 +130,7 @@ class Worker extends Database {
         this.candidates[i].msg().broadcast("LiquidateWithPriceUpdate");
         continue;
       }
-      if (await c.isLiquidatable(this.web3, Comptroller.forNet(EthNet.mainnet))) {
+      if (await c.isLiquidatable(this.provider, Comptroller.forNet(EthNet.mainnet))) {
         this.candidates[i].msg().broadcast("Liquidate");
       }
     }

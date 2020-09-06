@@ -92,8 +92,3 @@ export default class FlashLiquidator extends SmartContract {
     return cTokens;
   }
 }
-
-for (let net in addresses) {
-  const abi = require(`../abis/${net}/goldenage/flashliquidator.json`);
-  exports[net] = new FlashLiquidator(addresses[net], abi);
-}

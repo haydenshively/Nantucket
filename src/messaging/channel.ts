@@ -1,7 +1,7 @@
 export default class Channel {
   public Message: any;
   public name: string;
-  constructor(messageClass: any) {
+  private constructor(messageClass: any) {
     this.Message = messageClass.prototype.constructor;
     this.name = this.Message.name + "s";
   }
