@@ -32,8 +32,9 @@ contract FlashLiquidator is FlashLoanReceiverBase {
     Comptroller public comptroller;
     PriceOracle public priceOracle;
 
-    event LogWithdraw(
-        address indexed _assetAddress,
+    event RevenueWithdrawn(
+        address recipient,
+        address token,
         uint amount
     );
 
@@ -234,6 +235,6 @@ contract FlashLiquidator is FlashLoanReceiverBase {
             assetBalance = IERC20(_assetAddress).balanceOf(address(this));
             IERC20(_assetAddress).safeTransfer(recipient, assetBalance);
         }
-        emit LogWithdraw(_assetAddress, assetBalance);
+        emit RevenueWithdrawn(recipient, _assetAddress, assetBalance);
     }
 }
