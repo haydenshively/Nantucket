@@ -73,7 +73,7 @@ jobs:
       shell: bash
 
     - name: Compile TypeScript
-        run: yarn compile
-        shell: bash
+      run: yarn compile
+      shell: bash
 
     - run: yarn nantucket-test
