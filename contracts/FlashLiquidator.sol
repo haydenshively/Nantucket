@@ -26,7 +26,7 @@ contract FlashLiquidator is FlashLoanReceiverBase {
 
     address constant ETHER = address(0);
     address constant CETH = 0x4Ddc2D193948926D02f9B1fE9e1daa0718270ED5;
-    address payable private wallet;
+    address payable private recipient;
 
     IUniswapV2Router02 public router;
     Comptroller public comptroller;
@@ -37,8 +37,8 @@ contract FlashLiquidator is FlashLoanReceiverBase {
         uint amount
     );
 
-    constructor(address payable _wallet, address _addressProvider) FlashLoanReceiverBase(_addressProvider) public {
-        wallet = _wallet;
+    constructor(address payable _recipient, address _addressProvider) FlashLoanReceiverBase(_addressProvider) public {
+        recipient = _recipient;
         router = IUniswapV2Router02(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
         comptroller = Comptroller(0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B);
         priceOracle = PriceOracle(0x9B8Eb8b3d6e2e0Db36F41455185FEF7049a35CaE);
@@ -114,7 +114,7 @@ contract FlashLiquidator is FlashLoanReceiverBase {
         ILendingPool lendingPool = ILendingPool(addressesProvider.getLendingPool());
         lendingPool.flashLoan(address(this), aaveReserveFor(_repayCToken), _amount, params);
 
-        // Send profits to wallet
+        // Send profits to current recipient
         withdraw((_seizeCToken == CETH) ? ETHER : CErc20Storage(_seizeCToken).underlying());
     }
 
@@ -229,10 +229,10 @@ contract FlashLiquidator is FlashLoanReceiverBase {
         if (_assetAddress == ETHER) {
             address self = address(this); // workaround for a possible solidity bug
             assetBalance = self.balance;
-            wallet.transfer(assetBalance);
+            recipient.transfer(assetBalance);
         } else {
             assetBalance = IERC20(_assetAddress).balanceOf(address(this));
-            IERC20(_assetAddress).safeTransfer(wallet, assetBalance);
+            IERC20(_assetAddress).safeTransfer(recipient, assetBalance);
         }
         emit LogWithdraw(_assetAddress, assetBalance);
     }
