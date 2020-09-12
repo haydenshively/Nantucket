@@ -3,14 +3,14 @@
     "TEST": {
       "envKeyAddress": "ACCOUNT_ADDRESS_TEST",
       "envKeySecret": "ACCOUNT_SECRET_TEST",
-      "interval": 500,
-      "maxFee_Eth": 0.3
+      "interval": 200,
+      "maxFee_Eth": 1.175
     }
   },
   "liquidators": [
     {
-      "minRevenue": 0.1,
-      "maxRevenue": 0.6,
+      "minRevenue": 1.0,
+      "maxRevenue": null,
       "maxHealth": null,
       "numCandidates": 50,
       "txManager": "TEST"
@@ -20,12 +20,12 @@
     "name": "mainnet",
     "providers": [
       {
-        "type": "WS_Infura",
-        "envKeyID": "PROVIDER_INFURA_ID"
+        "type": "IPC",
+        "envKeyPath": "PROVIDER_IPC_PATH"
       },
       {
-        "type": "WS_Alchemy",
-        "envKeyKey": "PROVIDER_ALCHEMY_KEY"
+        "type": "WS_Infura",
+        "envKeyID": "PROVIDER_INFURA_ID"
       }
     ]
   },
@@ -36,11 +36,11 @@
   },
   "logging": {
     "ipc": {
-      "Oracles>Set": true,
+      "Oracles>Set": false,
       "Messages>CheckCandidatesLiquidity": false,
       "Messages>CheckCandidatesLiquidityComplete": false,
       "Messages>UpdateCandidates": true,
-      "Messages>MissedOpportunity": true,
+      "Messages>MissedOpportunity": false,
       "Candidates>Liquidate": true,
       "Candidates>LiquidateWithPriceUpdate": true
     }
