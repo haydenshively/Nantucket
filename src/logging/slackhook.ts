@@ -1,4 +1,5 @@
-const nfetch = require("node-fetch");
+import nfetch from "node-fetch";
+
 const Transport = require("winston-transport");
 
 class SlackHook extends Transport {
@@ -13,7 +14,7 @@ class SlackHook extends Transport {
   }
 
   log(info, callback) {
-    let payload = {
+    let payload: any = {
       mrkdwn: this.mrkdwn
     };
 

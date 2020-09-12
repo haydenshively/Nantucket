@@ -1,6 +1,9 @@
+import { EthNet } from "../network/webthree/ethnet";
+import CToken from "../network/webthree/compound/ctoken";
+
 const Message = require("./message");
 
-class Candidate extends Message {
+export default class Candidate extends Message {
   constructor(data) {
     super();
 
@@ -29,12 +32,12 @@ class Candidate extends Message {
     return this;
   }
 
-  async refreshBalances(web3, comptroller, tokens) {
+  async refreshBalances(web3, comptroller, tokennet: EthNet) {
     let markets = [];
 
     const addrs = await comptroller.marketsEnteredBy(this.address)(web3);
     for (let addr of addrs) {
-      const token = tokens[addr.toLowerCase()];
+      const token = CToken.forSymbol(addr).forNet(tokennet);
       markets.push({
         address: addr,
         borrow_uUnits: Number(await token.uUnitsBorrowedBy(this.address)(web3)),
@@ -70,6 +73,7 @@ class Candidate extends Message {
   }
 
   isLiquidatableWithPriceFrom(oracle) {
+    // @ts-ignore
     return this.liquidityOffChain(oracle).liquidity < 0.0;
   }
 
@@ -84,5 +88,3 @@ class Candidate extends Message {
     return liquidity !== null && liquidity[1].gt(0.0);
   }
 }
-
-module.exports = Candidate;

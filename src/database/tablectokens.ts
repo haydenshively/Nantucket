@@ -1,7 +1,11 @@
 class TableCTokens {
+
+  pool: any;
+  tableUTokens: any;
+
   constructor(pool, tableUTokens) {
-    this._pool = pool;
-    this._tableUTokens = tableUTokens;
+    this.pool = pool;
+    this.tableUTokens = tableUTokens;
   }
 
   async upsertCTokenService(tokens) {
@@ -11,7 +15,7 @@ class TableCTokens {
         token.underlyingAddress() === null
           ? "0000000000000000000000000000000000000000"
           : String(token.underlyingAddress()).slice(2);
-      const uTokenID = await this._tableUTokens.getID(addressUnderlying);
+      const uTokenID = await this.tableUTokens.getID(addressUnderlying);
 
       await this.upsert(
         address,
@@ -36,7 +40,7 @@ class TableCTokens {
     supplyRate,
     uTokenID
   ) {
-    return this._pool.query(
+    return this.pool.query(
       `
       INSERT INTO ctokens (address, name, symbol, collateralfactor, exchangerate, borrowrate, supplyrate, utokenid)
       VALUES ($1::text, $2::text, $3::text, $4, $5, $6, $7, $8)
@@ -58,13 +62,13 @@ class TableCTokens {
 
   async getAddress(id) {
     return (
-      await this._pool.query("SELECT address FROM ctokens WHERE id=$1", [id])
+      await this.pool.query("SELECT address FROM ctokens WHERE id=$1", [id])
     ).rows[0].address;
   }
 
   async getID(address) {
     return (
-      await this._pool.query("SELECT id FROM ctokens WHERE address=$1::text", [
+      await this.pool.query("SELECT id FROM ctokens WHERE address=$1::text", [
         address
       ])
     ).rows[0].id;

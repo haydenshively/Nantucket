@@ -5,16 +5,21 @@ const winston = require("winston");
 
 const Wallet = require("./wallet");
 
-class TxQueue {
-  constructor(provider, envKeyAddress, envKeySecret) {
-    this._wallet = new Wallet(provider, envKeyAddress, envKeySecret);
+export default class TxQueue {
 
-    this._lowestLiquidNonce = 0;
-    this._queue = [];
+  wallet: any;
+  lowestLiquidNonce: any;
+  queue: any;
+
+  constructor(provider, envKeyAddress, envKeySecret) {
+    this.wallet = new Wallet(provider, envKeyAddress, envKeySecret);
+
+    this.lowestLiquidNonce = 0;
+    this.queue = [];
   }
 
   async init() {
-    return this._wallet.init();
+    return this.wallet.init();
   }
 
   /**
@@ -23,7 +28,7 @@ class TxQueue {
    * @returns {Number} queue length
    */
   get length() {
-    return this._queue.length;
+    return this.queue.length;
   }
 
   /**
@@ -33,7 +38,7 @@ class TxQueue {
    * @returns {Object} an object describing the transaction
    */
   tx(idx) {
-    return this._queue[idx];
+    return this.queue[idx];
   }
 
   /**
@@ -42,7 +47,7 @@ class TxQueue {
    * @param {Number} idx a queue index
    */
   nonce(idx) {
-    return this._lowestLiquidNonce + idx;
+    return this.lowestLiquidNonce + idx;
   }
 
   /**
@@ -52,7 +57,7 @@ class TxQueue {
    * @param {Number} nonce a nonce
    */
   idx(nonce) {
-    return nonce - this._lowestLiquidNonce;
+    return nonce - this.lowestLiquidNonce;
   }
 
   /**
@@ -64,9 +69,9 @@ class TxQueue {
    */
   async rebase() {
     const diff =
-      (await this._wallet.getLowestLiquidNonce()) - this._lowestLiquidNonce;
-    this._queue.splice(0, diff); // Could log confirmed txs via returned array slice
-    this._lowestLiquidNonce += diff;
+      (await this.wallet.getLowestLiquidNonce()) - this.lowestLiquidNonce;
+    this.queue.splice(0, diff); // Could log confirmed txs via returned array slice
+    this.lowestLiquidNonce += diff;
   }
 
   /**
@@ -86,7 +91,7 @@ class TxQueue {
    * txQueue.append(tx);
    */
   append(tx) {
-    const idx = this._queue.push(tx) - 1;
+    const idx = this.queue.push(tx) - 1;
     this._broadcast(idx);
   }
 
@@ -113,7 +118,7 @@ class TxQueue {
    * txQueue.replace(0, tx, "min");
    */
   replace(idx, tx, gasPriceMode, dryRun = false) {
-    const minGasPrice = this._wallet.minGasPriceFor(this.nonce(idx));
+    const minGasPrice = this.wallet.minGasPriceFor(this.nonce(idx));
     switch (gasPriceMode) {
       case "as_is":
         break;
@@ -124,7 +129,7 @@ class TxQueue {
     }
 
     if (dryRun) return;
-    this._queue[idx] = tx;
+    this.queue[idx] = tx;
     this._broadcast(idx);
   }
 
@@ -140,22 +145,22 @@ class TxQueue {
     // is limiting enough that we can make this assumption. TODO if using
     // this class elsewhere/for other projects, make sure to have stricter
     // matching/checking
-    if (this._queue[idx].gasLimit.eq("21000")) return;
-    this._queue[idx] = this._wallet.emptyTx;
-    this._queue[idx].gasPrice = this._wallet.minGasPriceFor(this.nonce(idx));
+    if (this.queue[idx].gasLimit.eq("21000")) return;
+    this.queue[idx] = this.wallet.emptyTx;
+    this.queue[idx].gasPrice = this.wallet.minGasPriceFor(this.nonce(idx));
     this._broadcast(idx);
   }
 
   _broadcast(idx) {
-    const tx = this._queue[idx];
+    const tx = this.queue[idx];
     const nonce = this.nonce(idx);
-    const sentTx = this._wallet.signAndSend(tx, nonce);
+    const sentTx = this.wallet.signAndSend(tx, nonce);
 
     this._setupTxEvents(sentTx, nonce);
   }
 
   _setupTxEvents(sentTx, nonce) {
-    const label = `💸 *Transaction* | ${this._wallet.label}:${nonce} `;
+    const label = `💸 *Transaction* | ${this.wallet.label}:${nonce} `;
 
     // After receiving the transaction hash, log its Etherscan link
     sentTx.on("transactionHash", hash => {
@@ -181,5 +186,3 @@ class TxQueue {
     });
   }
 }
-
-module.exports = TxQueue;

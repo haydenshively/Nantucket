@@ -131,7 +131,7 @@ export default class TxManager {
       repayCTokens.push(c.repayCToken);
       seizeCTokens.push(c.seizeCToken);
       revenue += c.revenue;
-      needPriceUpdate |= c.needsPriceUpdate;
+      needPriceUpdate = needPriceUpdate || c.needsPriceUpdate;
     }
 
     this.revenue = revenue;
@@ -244,7 +244,8 @@ export default class TxManager {
    * @returns {Big} the gas price in Wei
    */
   async _getInitialGasPrice() {
-    return Big(await this.queue._wallet._provider.eth.getGasPrice());
+    // TODO: Wallet should be private
+    return Big(await this.queue.wallet._provider.eth.getGasPrice());
   }
 
   /**

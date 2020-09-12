@@ -77,4 +77,8 @@ jobs:
         # npm rebuild @tensorflow/tfjs-node --build-from-source
       shell: bash
 
+    - name: Compile TypeScript
+      run: yarn compile
+      shell: bash
+
     - run: yarn test

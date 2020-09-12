@@ -1,7 +1,8 @@
-class Fetchable {
+export default class Fetchable {
   constructor() {
     if (new.target === Fetchable) {
       throw new TypeError(
+        // TODO: Convert to correct TS abstract class
         "Fetchable is abstract. Please subclass to construct."
       );
     }
@@ -9,5 +10,3 @@ class Fetchable {
 
   async fetch(withConfig) {}
 }
-
-module.exports = Fetchable;

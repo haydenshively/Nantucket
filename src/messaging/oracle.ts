@@ -2,7 +2,7 @@ const ABIUtils = require("web3-eth-abi");
 
 const Message = require("./message");
 
-class Oracle extends Message {
+export default class Oracle extends Message {
   constructor(data) {
     super();
 

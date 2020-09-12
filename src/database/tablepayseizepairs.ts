@@ -1,7 +1,11 @@
 class TablePaySeizePairs {
+
+  pool: any;
+  tableCTokens: any;
+
   constructor(pool, tableCTokens) {
-    this._pool = pool;
-    this._tableCTokens = tableCTokens;
+    this.pool = pool;
+    this.tableCTokens = tableCTokens;
   }
 
   async insertCTokenService(tokens) {
@@ -9,7 +13,7 @@ class TablePaySeizePairs {
 
     for (let token of tokens) {
       const address = String(token.address()).slice(2);
-      cTokenIDs.push(await this._tableCTokens.getID(address));
+      cTokenIDs.push(await this.tableCTokens.getID(address));
     }
 
     for (let payID of cTokenIDs) {
@@ -20,7 +24,7 @@ class TablePaySeizePairs {
   }
 
   async insert(payID, seizeID) {
-    return this._pool.query(
+    return this.pool.query(
       `
       INSERT INTO payseizepairs (ctokenidpay, ctokenidseize)
       VALUES ($1, $2)
@@ -32,7 +36,7 @@ class TablePaySeizePairs {
 
   async getID(idPay, idSeize) {
     const row = (
-      await this._pool.query(
+      await this.pool.query(
         `
       SELECT id FROM payseizepairs
       WHERE (ctokenidpay=$1 AND ctokenidseize=$2)
@@ -46,7 +50,7 @@ class TablePaySeizePairs {
 
   async getPair(id) {
     return (
-      await this._pool.query(
+      await this.pool.query(
         `
       SELECT ctokenidpay, ctokenidseize FROM payseizepairs
       WHERE id=$1

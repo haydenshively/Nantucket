@@ -1,6 +1,5 @@
-const nfetch = require("node-fetch");
-
-const Fetchable = require("../fetchable");
+import nfetch from "node-fetch";
+import Fetchable from "../fetchable";
 
 async function sleep(millis) {
   return new Promise(resolve => setTimeout(resolve, millis));
@@ -8,6 +7,7 @@ async function sleep(millis) {
 
 class Account {
   static CToken = class {
+    json: any;
     constructor(json) {
       this.json = json;
     }
@@ -24,6 +24,9 @@ class Account {
       return this.json.supply_balance_underlying.value;
     }
   };
+
+  json: any;
+  tokens: any;
 
   constructor(json) {
     this.json = json;
@@ -48,6 +51,7 @@ class Account {
 }
 
 class Accounts extends Fetchable {
+  // @ts-ignore
   async fetch(withConfig) {
     const params = {
       method: "GET",

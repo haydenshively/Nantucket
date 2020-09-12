@@ -1,8 +1,8 @@
-const nfetch = require("node-fetch");
-
-const Fetchable = require("../fetchable");
+import nfetch from "node-fetch";
+import Fetchable from "../fetchable";
 
 class CToken {
+  json: any;
   constructor(json) {
     this.json = json;
   }
@@ -81,6 +81,7 @@ class CToken {
 }
 
 class CTokens extends Fetchable {
+  // @ts-ignore
   async fetch(withConfig) {
     const params = {
       method: "GET",

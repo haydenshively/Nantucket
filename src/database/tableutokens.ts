@@ -1,6 +1,9 @@
 class TableUTokens {
+
+  pool: any;
+
   constructor(pool) {
-    this._pool = pool;
+    this.pool = pool;
   }
 
   async upsertCTokenService(tokens) {
@@ -20,7 +23,7 @@ class TableUTokens {
   }
 
   async upsert(address, name, symbol, costInEth) {
-    return this._pool.query(
+    return this.pool.query(
       `
       INSERT INTO utokens (address, name, symbol, costineth)
       VALUES ($1::text, $2::text, $3::text, $4)
@@ -33,7 +36,7 @@ class TableUTokens {
 
   async getID(address) {
     return (
-      await this._pool.query(
+      await this.pool.query(
         "SELECT id FROM utokens WHERE address = $1::text",
         [address]
       )

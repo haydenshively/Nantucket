@@ -1,5 +1,5 @@
-const crypto = require("crypto");
-const nfetch = require("node-fetch");
+import crypto from "crypto";
+import nfetch from "node-fetch";
 
 const Oracle = require("../../../messaging/oracle");
 
@@ -16,7 +16,7 @@ class Reporter extends Oracle {
     const timestamp = Date.now() / 1000;
     const prehash = timestamp + method.toUpperCase() + path + body;
     const hash = crypto
-      .createHmac("sha256", Buffer(process.env.CB_ACCESS_SECRET, "base64"))
+      .createHmac("sha256", new Buffer(process.env.CB_ACCESS_SECRET, "base64"))
       .update(prehash)
       .digest("base64");
 
@@ -48,6 +48,7 @@ class Reporter extends Oracle {
 
     const res = await nfetch(process.env.COINBASE_ENDPOINT + "/oracle", {
       method: "GET",
+      // @ts-ignore
       headers: headers
     });
 
@@ -64,8 +65,8 @@ class Reporter extends Oracle {
   }
 }
 
-exports.Reporter = Reporter;
-exports.mainnet = new Reporter({
+export default Reporter;
+export const mainnet = new Reporter({
   symbols: {
     "0x4ddc2d193948926d02f9b1fe9e1daa0718270ed5": "ETH",
     "0x6c8c6b02e7b2be14d4fa6022dfd6d75921d90e4e": "BAT",

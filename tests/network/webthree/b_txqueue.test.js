@@ -18,7 +18,7 @@ describe("network/webthree || TxQueue Test", () => {
   it("should initialize with correct chain", () => {
     return txQueue
       .init()
-      .then(() => assert(txQueue._wallet._net.chain === "ropsten"));
+      .then(() => assert(txQueue.wallet._net.chain === "ropsten"));
   });
 
   it("should map nonces to indices", async () => {
@@ -26,7 +26,7 @@ describe("network/webthree || TxQueue Test", () => {
     const indices = [0, 1, 2, 3, 4, 5, 6];
     for (let i of indices) {
       assert(txQueue.idx(txQueue.nonce(i)) === i);
-      assert(txQueue.nonce(i) === txQueue._lowestLiquidNonce + i);
+      assert(txQueue.nonce(i) === txQueue.lowestLiquidNonce + i);
     }
   });
 

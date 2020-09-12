@@ -107,7 +107,7 @@ class Worker extends Database {
         this.provider,
         Comptroller.forNet(EthNet.mainnet),
         // TODO: Adjust this to use symbols for ctokens in Candidate
-        CToken.forNet(EthNet.mainnet, null)
+        EthNet.mainnet
       );
 
       // TODO TxManager isn't hooked into the Database logic, so we have

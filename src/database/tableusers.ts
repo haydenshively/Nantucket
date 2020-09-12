@@ -1,8 +1,13 @@
 class TableUsers {
+
+  pool: any;
+  tableCTokens: any;
+  tablePaySeizePairs: any;
+
   constructor(pool, tableCTokens, tablePaySeizePairs) {
-    this._pool = pool;
-    this._tableCTokens = tableCTokens;
-    this._tablePaySeizePairs = tablePaySeizePairs;
+    this.pool = pool;
+    this.tableCTokens = tableCTokens;
+    this.tablePaySeizePairs = tablePaySeizePairs;
   }
 
   /*
@@ -23,7 +28,7 @@ class TableUsers {
     maxHealth = null
   ) {
     return (
-      await this._pool.query(
+      await this.pool.query(
         `
         SELECT usersnonzero.id, usersnonzero.address, usersnonzero.profitability, payseizepairs.ctokenidpay, payseizepairs.ctokenidseize
         FROM usersnonzero INNER JOIN payseizepairs ON (usersnonzero.pairid=payseizepairs.id)
@@ -77,7 +82,7 @@ class TableUsers {
 
         if (borrow_uUnits === 0.0 && supply_uUnits === 0.0) continue;
 
-        const cTokenID = await this._tableCTokens.getID(
+        const cTokenID = await this.tableCTokens.getID(
           token.address().slice(2)
         );
         const { collat, costineth } = await this.getCollatAndCost(cTokenID);
@@ -154,7 +159,7 @@ class TableUsers {
         const amounToSeize = top2SeizeAmnts_Eth[seizeIdx];
 
         if (assetToRepay !== null && assetToSeize !== null) {
-          pairID = await this._tablePaySeizePairs.getID(
+          pairID = await this.tablePaySeizePairs.getID(
             assetToRepay,
             assetToSeize
           );
@@ -180,7 +185,7 @@ class TableUsers {
   }
 
   async upsert(address, liquidity, profitability, pairID, blockUpdated) {
-    return this._pool.query(
+    return this.pool.query(
       `
       INSERT INTO users (address, liquidity, profitability, pairid, blockupdated)
       VALUES ($1::text, $2, $3, $4, $5)
@@ -194,7 +199,7 @@ class TableUsers {
 
   async getCollatAndCost(cTokenID) {
     return (
-      await this._pool.query(
+      await this.pool.query(
         "SELECT collat, costineth FROM ctokunderlying WHERE id = $1",
         [cTokenID]
       )

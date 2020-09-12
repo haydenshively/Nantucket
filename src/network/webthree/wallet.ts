@@ -1,11 +1,18 @@
-const Big = require("big.js");
-Big.DP = 40;
-Big.RM = 0;
+import Big from "../../big"
 
 const Tx = require("ethereumjs-tx").Transaction;
 const Web3Utils = require("web3-utils");
 
 class Wallet {
+
+  private _provider: any;
+  private _envKeyAddress: any;
+  private _envKeySecret: any;
+  private _net: any;
+  private gasPrices: any;
+  public label: any;
+  public emptyTx: any;
+
   /**
    * Constructs a new Wallet instance
    *
@@ -21,7 +28,7 @@ class Wallet {
     this._net = undefined;
     // Nothing is ever deleted from _gasPrices. If this code were
     // to run forever, this would cause memory to grow forever (very slowly).
-    this._gasPrices = {};
+    this.gasPrices = {};
 
     this.label = String(process.env[envKeyAddress]).slice(0, 6);
     this.emptyTx = {
@@ -53,8 +60,8 @@ class Wallet {
    * @returns {Big} smallest gas price that would allow the nonce into the mempool
    */
   minGasPriceFor(nonce) {
-    return nonce in this._gasPrices
-      ? this._gasPrices[nonce].times(1.12)
+    return nonce in this.gasPrices
+      ? this.gasPrices[nonce].times(1.12)
       : Big(0);
   }
 
@@ -78,7 +85,7 @@ class Wallet {
    */
   signAndSend(tx, nonce) {
     tx = { ...tx };
-    if ("gasPrice" in tx) this._gasPrices[nonce] = tx.gasPrice;
+    if ("gasPrice" in tx) this.gasPrices[nonce] = tx.gasPrice;
 
     tx.nonce = Web3Utils.toHex(nonce);
     tx.gasLimit = Web3Utils.toHex(tx.gasLimit.toFixed(0));
