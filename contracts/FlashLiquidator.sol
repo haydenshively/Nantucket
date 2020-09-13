@@ -124,7 +124,8 @@ contract FlashLiquidator is FlashLoanReceiverBase {
         for (uint8 i = 0; i < _borrowers.length; i++) {
             address borrower = _borrowers[i];
             ( , uint256 liquidity, ) = comptroller.getAccountLiquidity(borrower);
-            if (liquidity > 0) continue;
+            // `!=` uses less gas than `>`
+            if (liquidity != 0) continue;
             address repayCToken = _cTokens[i * 2];
             address seizeCToken = _cTokens[i * 2 + 1];
 
@@ -142,6 +143,7 @@ contract FlashLiquidator is FlashLoanReceiverBase {
             uint256 repay_Eth = (repayMax_Eth < seizeMax_Eth) ? repayMax_Eth : seizeMax_Eth;
             uint256 repay = repay_Eth / uPriceRepay;
 
+            if ((i != 0) && (tx.gasprice * 1500000 > repay_Eth * (liqIncent - uint256(10**18)))) break;
             liquidate(borrower, repayCToken, seizeCToken, repay);
             if (gasleft() < 2000000) break;
         }
