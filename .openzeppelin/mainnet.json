@@ -33,6 +33,13 @@
         "kind": "NonProxy",
         "bytecodeHash": "e282ba9bfedf27ff82c2f158a59b32d3ade17482b4e892ab1a7d1c03bfe76580"
       }
+    ],
+    "Flash Loan Liquidation/Split5050": [
+      {
+        "address": "0xf81F70CeC4c4c1d6Aa5038ED3e7CCd0228b05F09",
+        "kind": "NonProxy",
+        "bytecodeHash": "1f7b1bd83af51609351b127cae8780fb08fbdd4b1cbcef109b658aa6ffec3ea8"
+      }
     ]
   },
   "manifestVersion": "2.2"

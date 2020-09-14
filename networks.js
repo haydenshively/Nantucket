@@ -21,11 +21,7 @@ module.exports = {
           "https://mainnet.infura.io/v3/" + process.env.PROVIDER_INFURA_ID
         ),
       gas: 4000000,
-<<<<<<< HEAD
       gasPrice: 124e9,
-=======
-      gasPrice: 100e9,
->>>>>>> Deploy new contract and update ABIs + addresses (#70)
       networkId: "*"
     }
   }
