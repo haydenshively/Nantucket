@@ -50,6 +50,6 @@ describe("network/webthree || Wallet Test", () => {
       assert(receipt.to === process.env[wallet._envKeyAddress].toLowerCase());
       assert(receipt.to === receipt.from);
       assert(receipt.gasUsed === 21000);
-    })
+    });
   }).timeout(120000);
 });

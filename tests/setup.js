@@ -36,11 +36,6 @@ winston.configure({
   ),
   transports: [
     new winston.transports.Console({ handleExceptions: true }),
-    new SlackHook({
-      level: "info",
-      webhookUrl: process.env.SLACK_WEBHOOK,
-      mrkdwn: true
-    })
   ],
   exitOnError: false
 });
