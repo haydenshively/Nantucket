@@ -64,9 +64,9 @@ class FlashLiquidator extends SmartContract {
       borrowers,
       cTokens
     );
-    const gasLimit = String(20 * borrowers.length) + "00000";
+    const gasLimit = Big(1600000).times(borrowers.length);
 
-    return this._txFor(method, Big(gasLimit).plus(400000), gasPrice);
+    return this._txFor(method, gasLimit.plus(400000), gasPrice);
   }
 
   _combineTokens(repayList, seizeList) {

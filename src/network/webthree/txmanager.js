@@ -112,31 +112,32 @@ class TxManager {
     let revenue = 0;
     let needPriceUpdate = false;
 
-    let idxBest = 0;
-    let best = 0;
+    let candidates = Object.entries(this._candidates);
+    candidates = candidates.sort((a, b) => b[1].revenue - a[1].revenue);
 
-    for (let addr in this._candidates) {
-      const c = this._candidates[addr];
+    for (let entry of candidates) {
+      const c = entry[1];
 
-      borrowers.push(addr);
+      borrowers.push(entry[0]);
       repayCTokens.push(c.repayCToken);
       seizeCTokens.push(c.seizeCToken);
       revenue += c.revenue;
       needPriceUpdate |= c.needsPriceUpdate;
-
-      if (c.revenue > best) {
-        idxBest = borrowers.length - 1;
-        best = c.revenue;
-      }
     }
-
-    // this._revenue = revenue;
-    this._revenue = best;
 
     if (borrowers.length === 0) {
       this._tx = null;
       return;
     }
+    // Set expected revenue to the max of the candidate revenues
+    this._revenue = candidates[0][1].revenue;
+    // To simplify things, we assume that only 1 borrower will be
+    // liquidated (the first one in the list) and set the gas limit
+    // accordingly. If that borrower can't be liquidated for some
+    // reason, the smart contract will handle fallback options, so
+    // we don't have to worry about that here.
+    const gasLimit = Big(2000000);
+
     const initialGasPrice =
       this._tx !== null
         ? this._tx.gasPrice
@@ -144,17 +145,21 @@ class TxManager {
 
     if (!needPriceUpdate) {
       this._tx = FlashLiquidator.mainnet.liquidateMany(
-        [borrowers[idxBest]],
-        [repayCTokens[idxBest]],
-        [seizeCTokens[idxBest]],
+        borrowers,
+        repayCTokens,
+        seizeCTokens,
         initialGasPrice
       );
+      // Override gas limit
+      this._tx.gasLimit = gasLimit;
       return;
     }
 
-    // TODO if oracle is null and some (but not all) candidates
-    // need price updates, we should do the above code with filtered
-    // versions of the lists, rather than just returning like the code below
+    // Technically, if oracle is null and some (but not all) candidates
+    // need price updates, we should filter out candidates that need price
+    // updates and send the rest using the function above. However, that
+    // shoudn't happen very often (`_oracle` is only null on code startup),
+    // so it's safe to ignore that case.
     if (this._oracle === null) {
       this._tx = null;
       return;
@@ -165,11 +170,13 @@ class TxManager {
       postable[0],
       postable[1],
       postable[2],
-      [borrowers[idxBest]],
-      [repayCTokens[idxBest]],
-      [seizeCTokens[idxBest]],
+      borrowers,
+      repayCTokens,
+      seizeCTokens,
       initialGasPrice
     );
+    // Override gas limit
+    this._tx.gasLimit = gasLimit;
   }
 
   /**
