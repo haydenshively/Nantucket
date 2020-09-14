@@ -2,11 +2,6 @@
   {
     "inputs": [
       {
-        "internalType": "address payable",
-        "name": "_wallet",
-        "type": "address"
-      },
-      {
         "internalType": "address",
         "name": "_addressProvider",
         "type": "address"
@@ -19,9 +14,28 @@
     "anonymous": false,
     "inputs": [
       {
-        "indexed": true,
+        "indexed": false,
         "internalType": "address",
-        "name": "_assetAddress",
+        "name": "recipient",
+        "type": "address"
+      }
+    ],
+    "name": "RecipientChanged",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "recipient",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "token",
         "type": "address"
       },
       {
@@ -31,7 +45,7 @@
         "type": "uint256"
       }
     ],
-    "name": "LogWithdraw",
+    "name": "RevenueWithdrawn",
     "type": "event"
   },
   {
@@ -61,6 +75,13 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "confirmRecipientChange",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "address",
@@ -84,6 +105,32 @@
       }
     ],
     "name": "executeOperation",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address payable",
+        "name": "_recipient",
+        "type": "address"
+      }
+    ],
+    "name": "initiateRecipientChange",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "kill",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -182,6 +229,29 @@
   },
   {
     "inputs": [],
+    "name": "recipientChange",
+    "outputs": [
+      {
+        "internalType": "address payable",
+        "name": "recipient",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "waitingPeriodEnd",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bool",
+        "name": "pending",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "router",
     "outputs": [
       {
@@ -191,6 +261,45 @@
       }
     ],
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_comptrollerAddress",
+        "type": "address"
+      }
+    ],
+    "name": "setComptroller",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_oracleAddress",
+        "type": "address"
+      }
+    ],
+    "name": "setPriceOracle",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_routerAddress",
+        "type": "address"
+      }
+    ],
+    "name": "setRouter",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {

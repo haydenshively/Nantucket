@@ -78,8 +78,8 @@ class FlashLiquidator extends SmartContract {
 }
 
 const addresses = {
-  mainnet: "0x82c539c060E28B667B43ecBE0B12011e9b617b5e",
-  ropsten: "0x2ab4C66757a9934b3a0dBD91f94bE830855839cd"
+  mainnet: "0xbd08B0A4A6e591a7705238c5b3cC9fc5382fbB30",
+  ropsten: "0x7Ed10F0403F60991E9aA2d29E610eA871eF29e95"
 };
 
 for (let net in addresses) {
