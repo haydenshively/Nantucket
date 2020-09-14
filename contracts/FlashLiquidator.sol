@@ -21,27 +21,81 @@ import "./uniswap/IUniswapV2Router02.sol";
 
 contract FlashLiquidator is FlashLoanReceiverBase {
 
+    struct RecipientChange {
+        address payable recipient;
+        uint waitingPeriodEnd;
+        bool pending;
+    }
+
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
     address constant ETHER = address(0);
     address constant CETH = 0x4Ddc2D193948926D02f9B1fE9e1daa0718270ED5;
-    address payable private wallet;
+    uint constant RECIP_CHANGE_WAIT_PERIOD = 24 hours;
+
+    address payable private recipient;
+    RecipientChange public recipientChange;
 
     IUniswapV2Router02 public router;
     Comptroller public comptroller;
     PriceOracle public priceOracle;
 
-    event LogWithdraw(
-        address indexed _assetAddress,
+    event RevenueWithdrawn(
+        address recipient,
+        address token,
         uint amount
     );
+    event RecipientChanged(
+        address recipient
+    );
 
-    constructor(address payable _wallet, address _addressProvider) FlashLoanReceiverBase(_addressProvider) public {
-        wallet = _wallet;
+    modifier onlyRecipient() {
+        require(
+            msg.sender == recipient,
+            "Only recipient can call this function."
+        );
+        _;
+    }
+
+    constructor(address _addressProvider) FlashLoanReceiverBase(_addressProvider) public {
+        recipient = msg.sender;
         router = IUniswapV2Router02(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
         comptroller = Comptroller(0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B);
         priceOracle = PriceOracle(0x9B8Eb8b3d6e2e0Db36F41455185FEF7049a35CaE);
+    }
+
+    function kill() public onlyRecipient {
+        // Delete the contract and send any remaining funds to recipient
+        selfdestruct(recipient);
+    }
+
+    function initiateRecipientChange(address payable _recipient) public onlyRecipient returns (address) {
+        recipientChange = RecipientChange(_recipient, now + RECIP_CHANGE_WAIT_PERIOD, true);
+        return recipientChange.recipient;
+    }
+
+    function confirmRecipientChange() public onlyRecipient {
+        require(recipientChange.pending, "There is no pending recipient change.");
+        require(now > recipientChange.waitingPeriodEnd, "The waiting period isn't over yet.");
+        
+        recipient = recipientChange.recipient;
+        emit RecipientChanged(recipient);
+
+        // Clear the recipientChange struct. Equivalent to re-declaring it without initialization
+        delete recipientChange;
+    }
+
+    function setRouter(address _routerAddress) public onlyRecipient {
+        router = IUniswapV2Router02(_routerAddress);
+    }
+
+    function setComptroller(address _comptrollerAddress) public onlyRecipient {
+        comptroller = Comptroller(_comptrollerAddress);
+    }
+
+    function setPriceOracle(address _oracleAddress) public onlyRecipient {
+        priceOracle = PriceOracle(_oracleAddress);
     }
 
     function aaveReserveFor(address _cToken) internal view returns (address) {
@@ -70,7 +124,8 @@ contract FlashLiquidator is FlashLoanReceiverBase {
         for (uint8 i = 0; i < _borrowers.length; i++) {
             address borrower = _borrowers[i];
             ( , uint256 liquidity, ) = comptroller.getAccountLiquidity(borrower);
-            if (liquidity > 0) continue;
+            // `!=` uses less gas than `>`
+            if (liquidity != 0) continue;
             address repayCToken = _cTokens[i * 2];
             address seizeCToken = _cTokens[i * 2 + 1];
 
@@ -88,8 +143,9 @@ contract FlashLiquidator is FlashLoanReceiverBase {
             uint256 repay_Eth = (repayMax_Eth < seizeMax_Eth) ? repayMax_Eth : seizeMax_Eth;
             uint256 repay = repay_Eth / uPriceRepay;
 
+            if ((i != 0) && (tx.gasprice * 1500000 > repay_Eth * (liqIncent - uint256(10**18)))) break;
             liquidate(borrower, repayCToken, seizeCToken, repay);
-            if (gasleft() < 2300000) break;
+            if (gasleft() < 2000000) break;
         }
     }
 
@@ -114,7 +170,7 @@ contract FlashLiquidator is FlashLoanReceiverBase {
         ILendingPool lendingPool = ILendingPool(addressesProvider.getLendingPool());
         lendingPool.flashLoan(address(this), aaveReserveFor(_repayCToken), _amount, params);
 
-        // Send profits to wallet
+        // Send profits to current recipient
         withdraw((_seizeCToken == CETH) ? ETHER : CErc20Storage(_seizeCToken).underlying());
     }
 
@@ -229,11 +285,11 @@ contract FlashLiquidator is FlashLoanReceiverBase {
         if (_assetAddress == ETHER) {
             address self = address(this); // workaround for a possible solidity bug
             assetBalance = self.balance;
-            wallet.transfer(assetBalance);
+            recipient.transfer(assetBalance);
         } else {
             assetBalance = IERC20(_assetAddress).balanceOf(address(this));
-            IERC20(_assetAddress).safeTransfer(wallet, assetBalance);
+            IERC20(_assetAddress).safeTransfer(recipient, assetBalance);
         }
-        emit LogWithdraw(_assetAddress, assetBalance);
+        emit RevenueWithdrawn(recipient, _assetAddress, assetBalance);
     }
 }
