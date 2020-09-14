@@ -1,15 +1,19 @@
 import crypto from "crypto";
 import nfetch from "node-fetch";
-
-const Oracle = require("../../../messaging/oracle");
+import Oracle from "../../../messaging/oracle";
 
 class Reporter extends Oracle {
+
+  private USDC: string;
+  private USDT: string;
+  private SAI_PER_ETH: number;
+
   constructor(data) {
     super(data);
 
-    this._USDC = "1.00"; // in USD
-    this._USDT = "1.00"; // in USD
-    this._SAI_PER_ETH = 0.005285;
+    this.USDC = "1.00"; // in USD
+    this.USDT = "1.00"; // in USD
+    this.SAI_PER_ETH = 0.005285;
   }
 
   _mySignature(path = "/oracle", method = "GET", body = "") {
@@ -27,11 +31,11 @@ class Reporter extends Oracle {
   }
 
   _setStablecoins() {
-    if (this._prices === null) return;
-    this._prices["USDC"] = this._USDC;
-    this._prices["USDT"] = this._USDT;
-    this._prices["SAI"] = (
-      this._SAI_PER_ETH * Number(this._prices.ETH)
+    if (this.prices === null) return;
+    this.prices["USDC"] = this.USDC;
+    this.prices["USDT"] = this.USDT;
+    this.prices["SAI"] = (
+      this.SAI_PER_ETH * Number(this.prices.ETH)
     ).toFixed(6);
   }
 
@@ -54,9 +58,9 @@ class Reporter extends Oracle {
 
     try {
       const json = await res.json();
-      this._messages = json.messages;
-      this._signatures = json.signatures;
-      this._prices = json.prices;
+      this.messages = json.messages;
+      this.signatures = json.signatures;
+      this.prices = json.prices;
 
       this._setStablecoins();
     } catch {

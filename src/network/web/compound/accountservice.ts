@@ -1,11 +1,9 @@
 import nfetch from "node-fetch";
 import Fetchable from "../fetchable";
 
-async function sleep(millis) {
-  return new Promise(resolve => setTimeout(resolve, millis));
-}
+import { sleep } from "../../../utils"
 
-class Account {
+export class Account {
   static CToken = class {
     json: any;
     constructor(json) {
@@ -50,8 +48,7 @@ class Account {
   }
 }
 
-class Accounts extends Fetchable {
-  // @ts-ignore
+export default class Accounts implements Fetchable {
   async fetch(withConfig) {
     const params = {
       method: "GET",
@@ -113,5 +110,3 @@ class Accounts extends Fetchable {
     return accounts;
   }
 }
-
-module.exports = Accounts;

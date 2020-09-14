@@ -1,6 +1,6 @@
-class TableUTokens {
+export default class TableUTokens {
 
-  pool: any;
+  private pool: any;
 
   constructor(pool) {
     this.pool = pool;
@@ -43,5 +43,3 @@ class TableUTokens {
     ).rows[0].id;
   }
 }
-
-module.exports = TableUTokens;

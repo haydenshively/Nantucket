@@ -1,9 +1,16 @@
 import { EthNet } from "../network/webthree/ethnet";
 import CToken from "../network/webthree/compound/ctoken";
-
-const Message = require("./message");
+import Message from "./message";
 
 export default class Candidate extends Message {
+
+  public address: any;
+  public ctokenidpay: any;
+  public ctokenidseize: any;
+  public profitability: any;
+
+  private markets: any;
+
   constructor(data) {
     super();
 
@@ -14,7 +21,7 @@ export default class Candidate extends Message {
 
     if (this.address.length === 40) this.address = "0x" + this.address;
 
-    this._markets = "markets" in data ? data.markets : null;
+    this.markets = "markets" in data ? data.markets : null;
   }
 
   get label() {
@@ -22,12 +29,13 @@ export default class Candidate extends Message {
   }
 
   msg() {
-    super.__data = {
+    // This refers to data field of the superclass, Message
+    this.data = {
       address: this.address,
       ctokenidpay: this.ctokenidpay,
       ctokenidseize: this.ctokenidseize,
       profitability: this.profitability,
-      markets: this._markets
+      markets: this.markets
     };
     return this;
   }
@@ -46,16 +54,16 @@ export default class Candidate extends Message {
       });
     }
 
-    this._markets = markets;
+    this.markets = markets;
   }
 
   liquidityOffChain(oracle) {
-    if (this._markets === null) return {};
+    if (this.markets === null) return {};
 
     let borrow = 0;
     let supply = 0;
 
-    for (let market of this._markets) {
+    for (let market of this.markets) {
       const costInUSD = oracle.getPrice(market.address.toLowerCase());
       if (costInUSD === null) return 0;
 

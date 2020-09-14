@@ -1,7 +1,7 @@
-class TableCTokens {
+export default class TableCTokens {
 
-  pool: any;
-  tableUTokens: any;
+  private pool: any;
+  private tableUTokens: any;
 
   constructor(pool, tableUTokens) {
     this.pool = pool;
@@ -74,5 +74,3 @@ class TableCTokens {
     ).rows[0].id;
   }
 }
-
-module.exports = TableCTokens;

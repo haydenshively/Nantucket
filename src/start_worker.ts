@@ -1,10 +1,11 @@
 // src.messaging
 import Channel from "./messaging/channel";
+import Oracle from "./messaging/oracle";
+import Message from "./messaging/message";
+import winston from "winston";
 
-require("./setup");
-const winston = require("winston");
-const Message = require("./messaging/message");
-const Oracle = require("./messaging/oracle");
+// Run the setup script
+import { web3 } from "./setup";
 
 if (process.argv.length < 7) {
   console.log("Worker process requires config.json and 4 arguments");
@@ -14,7 +15,7 @@ console.log(`Worker ${process.pid} is running`);
 
 const Worker = require("./worker");
 const worker = new Worker(
-  global.web3,
+  web3,
   Number(process.argv[3]),
   process.argv[4] == "null" ? null : Number(process.argv[4]),
   process.argv[5] == "null" ? null : Number(process.argv[5]),
@@ -45,10 +46,12 @@ if (process.argv.length === 11) {
 }
 
 process.on("SIGINT", code => {
+  // @ts-ignore
   web3.eth.clearSubscriptions();
   try {
     web3.currentProvider.connection.close();
   } catch {
+    // @ts-ignore
     web3.currentProvider.connection.destroy();
   }
   worker.stop();

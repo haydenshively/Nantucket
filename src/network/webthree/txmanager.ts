@@ -1,6 +1,6 @@
 import Web3Utils from "web3-utils";
 import Big from "../../big";
-const winston = require("winston");
+import winston from "winston";
 
 // src.messaging
 import Candidate from "../../messaging/candidate";
@@ -11,6 +11,8 @@ import Oracle from "../../messaging/oracle";
 import TxQueue from "./txqueue";
 import FlashLiquidator from "./goldenage/flashliquidator";
 import { EthNet } from "./ethnet";
+
+
 
 /**
  * Given a list of liquidatable candidates, TxManager will participate
@@ -44,7 +46,7 @@ export default class TxManager {
   private intervalHandle: any;
 
   /**
-   * @param {Provider} provider the Web3 provider to use for transactions
+   * @param {provider} provider the Web3 provider to use for transactions
    * @param {String} envKeyAddress Name of the environment variable containing
    *    the wallet's address
    * @param {String} envKeySecret Name of the environment variable containing

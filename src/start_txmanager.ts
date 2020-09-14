@@ -1,11 +1,13 @@
-require("./setup");
-const winston = require("winston");
+import winston from "winston";
 
 // src.messaging
-const Candidate = require("./messaging/candidate");
-const Channel = require("./messaging/channel");
-const Message = require("./messaging/message");
-const Oracle = require("./messaging/oracle");
+import Candidate from "./messaging/candidate";
+import Channel from "./messaging/channel";
+import Message from "./messaging/message";
+import Oracle from "./messaging/oracle";
+
+// Run the setup script
+import { web3 } from "./setup";
 
 if (process.argv.length < 7) {
   console.log("TxManager process requires config.json and 4 arguments");
@@ -30,19 +32,19 @@ txManager.init();
 if (process.argv.length === 11) {
   const pid = process.pid;
   if (process.argv[7] === "true")
-    Channel(Oracle).on("Set", _ =>
+    Channel.for(Oracle).on("Set", _ =>
       winston.info(`🏷 *Oracles* | ${pid} got 'Set'`)
     );
   if (process.argv[8] === "true")
-    Channel(Candidate).on("Liquidate", _ =>
+    Channel.for(Candidate).on("Liquidate", _ =>
       winston.info(`🐳 *Candidates* | ${pid} got 'Liquidate'`)
     );
   if (process.argv[9] === "true")
-    Channel(Candidate).on("LiquidateWithPriceUpdate", _ =>
+    Channel.for(Candidate).on("LiquidateWithPriceUpdate", _ =>
       winston.info(`🐳 *Candidates* | ${pid} got 'Liquidate With Price Update'`)
     );
   if (process.argv[10] === "true")
-    Channel(Message).on("CheckCandidatesLiquidityComplete", msg =>
+    Channel.for(Message).on("CheckCandidatesLiquidityComplete", msg =>
       winston.info(
         `📢 *Messages* | ${pid} got 'Check Candidates Liquidity Complete' (after ${msg.__data.time} ms)`
       )
@@ -50,10 +52,12 @@ if (process.argv.length === 11) {
 }
 
 process.on("SIGINT", code => {
+  // @ts-ignore
   web3.eth.clearSubscriptions();
   try {
     web3.currentProvider.connection.close();
   } catch {
+    // @ts-ignore
     web3.currentProvider.connection.destroy();
   }
   txManager.stop();

@@ -54,10 +54,9 @@ class Worker extends Database {
   private numCandidates: number;
   private oracle: any;
   private candidates: any[];
-  private provider: any;
 
   constructor(provider: any, minRevenue: number, maxRevenue: number, maxHealth: number, numCandidates: number, ) {
-    super();
+    super(provider);
 
     this.minRevenue = minRevenue;
     this.maxRevenue = maxRevenue;
@@ -66,7 +65,6 @@ class Worker extends Database {
 
     this.oracle = null;
     this.candidates = [];
-    this.provider = provider;
 
     Channel.for(Oracle).on("Set", (oracle: any) => (this.oracle = oracle));
     Channel.for(Message).on("UpdateCandidates", _ =>
@@ -82,7 +80,7 @@ class Worker extends Database {
 
   async updateCandidates() {
     this.candidates = (
-      await this._tUsers.getLiquidationCandidates(
+      await this.tUsers.getLiquidationCandidates(
         this.numCandidates,
         this.minRevenue,
         this.maxRevenue,
@@ -115,11 +113,11 @@ class Worker extends Database {
       // (ctokenidpay and ctokenidseize are normally Ints, but here
       // they change to Strings)
       if (!String(c.ctokenidpay).startsWith("0x")) {
-        const repay = `0x${await this._tCTokens.getAddress(c.ctokenidpay)}`;
+        const repay = `0x${await this.tCTokens.getAddress(c.ctokenidpay)}`;
         this.candidates[i].ctokenidpay = repay;
       }
       if (!String(c.ctokenidseize).startsWith("0x")) {
-        const seize = `0x${await this._tCTokens.getAddress(c.ctokenidseize)}`;
+        const seize = `0x${await this.tCTokens.getAddress(c.ctokenidseize)}`;
         this.candidates[i].ctokenidseize = seize;
       }
 

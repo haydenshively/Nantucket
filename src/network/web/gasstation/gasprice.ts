@@ -1,8 +1,7 @@
 import nfetch from "node-fetch";
 import Fetchable from "../fetchable";
 
-class GasPrice extends Fetchable {
-  // @ts-ignore
+class GasPrice implements Fetchable {
   async fetch() {
     const res = await nfetch(process.env.GAS_STATION_ENDPOINT, {
       method: "GET"

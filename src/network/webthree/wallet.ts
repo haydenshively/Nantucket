@@ -1,9 +1,8 @@
 import Big from "../../big"
+import Web3Utils from "web3-utils";
+import { Transaction as Tx } from "ethereumjs-tx";
 
-const Tx = require("ethereumjs-tx").Transaction;
-const Web3Utils = require("web3-utils");
-
-class Wallet {
+export default class Wallet {
 
   private _provider: any;
   private _envKeyAddress: any;
@@ -142,5 +141,3 @@ class Wallet {
     );
   }
 }
-
-module.exports = Wallet;

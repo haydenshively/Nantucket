@@ -1,19 +1,19 @@
-require("./setup");
-
-const child_process = require("child_process");
-const winston = require("winston");
-
+import child_process from "child_process";
+import winston from "winston";
 // src
-const Database = require("./database");
+import Database from "./database";
 // src.messaging
-const Candidate = require("./messaging/candidate");
-const Channel = require("./messaging/channel");
-const Message = require("./messaging/message");
-const Oracle = require("./messaging/oracle");
+import Candidate from "./messaging/candidate";
+import Channel from "./messaging/channel";
+import Message from "./messaging/message";
+import Oracle from "./messaging/oracle";
 // src.network.web
-const Reporter = require("./network/web/coinbase/reporter");
+import { mainnet as reporterMainnet } from "./network/web/coinbase/reporter";
 // src.network.webthree
-const Tokens = require("./network/webthree/compound/ctoken");
+import Tokens, { CTokenType } from "./network/webthree/compound/ctoken";
+import { EthNet } from "./network/webthree/ethnet";
+// Run the setup script
+import { web3 } from "./setup";
 
 console.log(`Master ${process.pid} is running`);
 
@@ -53,7 +53,7 @@ for (let key in config.txManagers) {
 
 // MARK: SETUP CANDIDATE WORKERS ------------------------------------
 function passthrough(channel, action, from, to) {
-  channel = Channel(channel);
+  channel = Channel.for(channel);
   channel.on(action, msg => channel.broadcast(action, msg.msg(), to), from);
 }
 
@@ -89,10 +89,10 @@ for (let liquidator of config.liquidators) {
 // MARK: SETUP MASTER DATABASE AND BLOCKCHAIN WORKER ----------------
 function setOracles() {
   workers.forEach(w =>
-    Channel(Oracle).broadcast("Set", reporter.msg(), w.process)
+    Channel.for(Oracle).broadcast("Set", reporter.msg(), w.process)
   );
   for (let key in txManagers)
-    Channel(Oracle).broadcast("Set", reporter.msg(), txManagers[key]);
+    Channel.for(Oracle).broadcast("Set", reporter.msg(), txManagers[key]);
 
   // logging
   if (config.logging.ipc["Oracles>Set"])
@@ -136,7 +136,7 @@ function notifyMissedOpportunity(event) {
 }
 
 // pull from cTokenService and AccountService
-const database = new Database();
+const database = new Database(web3);
 const handle1 = setInterval(
   database.pullFromCTokenService.bind(database),
   config.fetching.cTokenServiceInterval
@@ -147,7 +147,7 @@ const handle2 = setInterval(async () => {
 }, config.fetching.accountServiceInterval);
 
 // pull from Coinbase reporter
-const reporter = Reporter.mainnet;
+const reporter = reporterMainnet;
 const handle3 = setInterval(async () => {
   // assume that if any prices change, they all change
   // (as such it doesn't matter which token we check)
@@ -162,6 +162,7 @@ const handle3 = setInterval(async () => {
 }, config.fetching.coinbaseReporter);
 
 // watch for new blocks
+// @ts-ignore
 web3.eth.subscribe("newBlockHeaders", (err, block) => {
   if (err) {
     winston.error("🚨 *Block Headers* | " + String(err));
@@ -174,8 +175,8 @@ web3.eth.subscribe("newBlockHeaders", (err, block) => {
 });
 
 // watch for new liquidations
-for (let symbol in Tokens.mainnet) {
-  const token = Tokens.mainnet[symbol];
+for (let symbol in CTokenType) {
+  const token = Tokens.forSymbol(CTokenType[symbol as keyof typeof CTokenType]).forNet(EthNet.mainnet);
   token.subscribeToLogEvent(web3, "LiquidateBorrow", (err, event) => {
     if (err) return;
     notifyMissedOpportunity(event);
@@ -196,13 +197,15 @@ process.on("SIGINT", () => {
   clearInterval(handle2);
   clearInterval(handle3);
 
-  for (key in txManagers) txManagers[key].kill("SIGINT");
+  for (let key in txManagers) txManagers[key].kill("SIGINT");
   workers.forEach(w => w.process.kill("SIGINT"));
 
+  // @ts-ignore
   web3.eth.clearSubscriptions();
   try {
     web3.currentProvider.connection.close();
   } catch {
+    // @ts-ignore
     web3.currentProvider.connection.destroy();
   }
   database.stop();

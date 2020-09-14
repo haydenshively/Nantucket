@@ -1,8 +1,8 @@
-class TableUsers {
+export default class TableUsers {
 
-  pool: any;
-  tableCTokens: any;
-  tablePaySeizePairs: any;
+  private pool: any;
+  private tableCTokens: any;
+  private tablePaySeizePairs: any;
 
   constructor(pool, tableCTokens, tablePaySeizePairs) {
     this.pool = pool;
@@ -206,5 +206,3 @@ class TableUsers {
     ).rows[0];
   }
 }
-
-module.exports = TableUsers;

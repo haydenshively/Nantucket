@@ -1,8 +1,12 @@
 import nfetch from "node-fetch";
+import Transport from "winston-transport";
 
-const Transport = require("winston-transport");
+export default class SlackHook extends Transport {
 
-class SlackHook extends Transport {
+  public webhookUrl: string;
+  public formatter: any;
+  public mrkdwn: any;
+
   constructor(opts) {
     super(opts);
 
@@ -40,5 +44,3 @@ class SlackHook extends Transport {
     nfetch(this.webhookUrl, params).then(callback());
   }
 }
-
-module.exports = SlackHook;

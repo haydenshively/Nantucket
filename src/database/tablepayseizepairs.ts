@@ -1,7 +1,7 @@
-class TablePaySeizePairs {
+export default class TablePaySeizePairs {
 
-  pool: any;
-  tableCTokens: any;
+  private pool: any;
+  private tableCTokens: any;
 
   constructor(pool, tableCTokens) {
     this.pool = pool;

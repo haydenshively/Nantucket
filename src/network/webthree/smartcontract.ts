@@ -4,7 +4,7 @@ import Web3Utils from "web3-utils";
 
 import Big from "../../big";
 
-export default class SmartContract {
+export default abstract class SmartContract {
 
   public address: string;
   protected inner: Web3Contract;

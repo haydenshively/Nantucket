@@ -1,23 +1,29 @@
-const ABIUtils = require("web3-eth-abi");
-
-const Message = require("./message");
+import { AbiCoder } from "web3-eth-abi";
+import Message from "./message";
 
 export default class Oracle extends Message {
+
+  private symbols: any;
+
+  protected messages: any;
+  protected signatures: any;
+  protected prices: any;
+
   constructor(data) {
     super();
 
-    this._symbols = data.symbols;
-    this._messages = "messages" in data ? data.messages : null;
-    this._signatures = "signatures" in data ? data.signatures : null;
-    this._prices = "prices" in data ? data.prices : null;
+    this.symbols = data.symbols;
+    this.messages = "messages" in data ? data.messages : null;
+    this.signatures = "signatures" in data ? data.signatures : null;
+    this.prices = "prices" in data ? data.prices : null;
   }
 
   msg() {
-    super.__data = {
-      symbols: this._symbols,
-      messages: this._messages,
-      signatures: this._signatures,
-      prices: this._prices
+    this.data = {
+      symbols: this.symbols,
+      messages: this.messages,
+      signatures: this.signatures,
+      prices: this.prices
     };
     return this;
   }
@@ -28,7 +34,7 @@ export default class Oracle extends Message {
       1: timestamp,
       2: key,
       3: value
-    } = ABIUtils.decodeParameters(
+    } = new AbiCoder().decodeParameters(
       ["string", "uint64", "string", "uint64"],
       oracleEncodedMessage
     );
@@ -44,28 +50,26 @@ export default class Oracle extends Message {
     let messages = [];
     let signatures = [];
     let symbols = [];
-    for (let i = 0; i < this._messages.length; i++) {
-      const symbol = this._decode(this._messages[i]).key;
+    for (let i = 0; i < this.messages.length; i++) {
+      const symbol = this._decode(this.messages[i]).key;
       if (exclude.includes(symbol)) continue;
-      messages.push(this._messages[i]);
-      signatures.push(this._signatures[i]);
+      messages.push(this.messages[i]);
+      signatures.push(this.signatures[i]);
       symbols.push(symbol);
     }
     return [messages, signatures, symbols];
   }
 
   getPrice(tokenAddress) {
-    if (this._prices === null) return null;
+    if (this.prices === null) return null;
 
-    const symbol = this._symbols[tokenAddress];
-    return this._prices[symbol];
+    const symbol = this.symbols[tokenAddress];
+    return this.prices[symbol];
   }
 
   getPriceSymbol(tokenSymbol) {
-    if (this._prices === null) return null;
+    if (this.prices === null) return null;
 
-    return this._prices[tokenSymbol]
+    return this.prices[tokenSymbol]
   }
 }
-
-module.exports = Oracle;

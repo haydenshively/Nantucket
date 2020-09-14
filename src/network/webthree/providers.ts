@@ -20,7 +20,7 @@ const WSProvider = path => {
  *   envKeyID: "PROVIDER_INFURA_ID"
  * }
  */
-const ProviderFor = (chain, spec) => {
+export const ProviderFor = (chain, spec) => {
   switch (spec.type) {
     case "IPC":
       return IPCProvider(process.env[spec.envKeyPath]);
@@ -34,7 +34,6 @@ const ProviderFor = (chain, spec) => {
       );
   }
 };
-exports.ProviderFor = ProviderFor;
 
 /**
  *
@@ -58,7 +57,7 @@ const ProvidersFor = (chain, specs) => {
   return specs.map(spec => ProviderFor(chain, spec));
 };
 
-class MultiSendProvider {
+export class MultiSendProvider {
 
   public providers: any;
 
@@ -106,5 +105,3 @@ class MultiSendProvider {
     return { connection: { close: this.__close.bind(this) } };
   }
 }
-
-exports.MultiSendProvider = MultiSendProvider;

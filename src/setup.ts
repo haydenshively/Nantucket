@@ -1,16 +1,21 @@
-require("dotenv").config();
-const config = require(process.argv[2]);
+import { config } from "dotenv";
+
+import { MultiSendProvider } from "./network/webthree/providers";
+import winston from "winston";
+import SlackHook from "../src/logging/slackhook";
+
+// Collect dotenv configuration data
+config();
+
+const localconfig = require(process.argv[2]);
 
 // configure web3
-const { MultiSendProvider } = require("./network/webthree/providers");
-global.web3 = new MultiSendProvider(
-  config.network.name,
-  config.network.providers
+export const web3 = new MultiSendProvider(
+  localconfig.network.name,
+  localconfig.network.providers
 );
 
 // configure winston
-const winston = require("winston");
-const SlackHook = require("../src/logging/slackhook");
 winston.configure({
   format: winston.format.combine(
     winston.format.splat(),

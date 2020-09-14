@@ -2,7 +2,8 @@ import Channel from "./channel";
 
 export default class Message {
 
-  private data: any;
+  protected data: any;
+
   private channel: any;
 
   constructor(data = {}) {

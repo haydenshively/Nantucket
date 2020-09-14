@@ -1,7 +1,7 @@
 import nfetch from "node-fetch";
 import Fetchable from "../fetchable";
 
-class CToken {
+export class CToken {
   json: any;
   constructor(json) {
     this.json = json;
@@ -80,8 +80,7 @@ class CToken {
   }
 }
 
-class CTokens extends Fetchable {
-  // @ts-ignore
+export default class CTokens implements Fetchable {
   async fetch(withConfig) {
     const params = {
       method: "GET",
@@ -111,5 +110,3 @@ class CTokens extends Fetchable {
     }
   }
 }
-
-module.exports = CTokens;
