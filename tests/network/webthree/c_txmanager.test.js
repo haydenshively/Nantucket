@@ -23,12 +23,7 @@ describe("network/webthree || TxManager Test", () => {
   });
 
   it("should get gas price", () => {
-<<<<<<< HEAD
-    txManager._revenue = 0.01;
-    return txManager._getInitialGasPrice(Big(2000000)).then(gasPrice => {
-=======
     return txManager._getInitialGasPrice().then(gasPrice => {
->>>>>>> Configurable smart contract revenue recipient (#68)
       assert(gasPrice.div(1e9).gt(0));
     });
   });
