@@ -21,7 +21,7 @@ module.exports = {
           "https://mainnet.infura.io/v3/" + process.env.PROVIDER_INFURA_ID
         ),
       gas: 4000000,
-      gasPrice: 100e9,
+      gasPrice: 124e9,
       networkId: "*"
     }
   }

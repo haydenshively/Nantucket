@@ -9,9 +9,16 @@
         "bytecodeHash": "2236bd01dfe2ac22e73b8d5094b92abdff97c3b7841016cb766deb04d55dcc30"
       },
       {
-        "address": "0x7Ed10F0403F60991E9aA2d29E610eA871eF29e95",
+        "address": "0x7c432107Fbf4a88fF8630Fcd2A6384826718a0E7",
         "kind": "NonProxy",
-        "bytecodeHash": "e282ba9bfedf27ff82c2f158a59b32d3ade17482b4e892ab1a7d1c03bfe76580"
+        "bytecodeHash": "f565f7b1a78df97bbd1da7f004fa5285fd4c8cdc54f969b144174dc52648536d"
+      }
+    ],
+    "Flash Loan Liquidation/Split5050": [
+      {
+        "address": "0x586Cd920793429980e84fB09C9C8230a1822f1F9",
+        "kind": "NonProxy",
+        "bytecodeHash": "1f7b1bd83af51609351b127cae8780fb08fbdd4b1cbcef109b658aa6ffec3ea8"
       }
     ]
   },
