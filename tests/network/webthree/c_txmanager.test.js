@@ -24,8 +24,7 @@ describe("network/webthree || TxManager Test", () => {
 
   it("should get gas price", () => {
     return txManager._getInitialGasPrice().then(gasPrice => {
-      assert(gasPrice.div(1e9).gt(1));
-      assert(gasPrice.div(1e9).lt(100));
+      assert(gasPrice.div(1e9).gt(0));
     });
   });
 
@@ -45,7 +44,7 @@ describe("network/webthree || TxManager Test", () => {
       address: "0x7e3A0C2300175FF712742c21F36216e9fb63b487",
       ctokenidpay: "0x0000000000000000000000000000000000000000",
       ctokenidseize: "0x0000000000000000000000000000000000000000",
-      profitability: 0.001
+      profitability: 0
     });
     return txManager._cacheTransaction().then(() => {
       txManager._sendIfProfitable(txManager._tx);
@@ -65,7 +64,7 @@ describe("network/webthree || TxManager Test", () => {
       address: "0x7e3A0C2300175FF712742c21F36216e9fb63b487",
       ctokenidpay: "0x0000000000000000000000000000000000000000",
       ctokenidseize: "0x0000000000000000000000000000000000000000",
-      profitability: 0.05
+      profitability: 0.01
     });
     return txManager._cacheTransaction().then(() => {
       let gasPrice = txManager._tx.gasPrice;
