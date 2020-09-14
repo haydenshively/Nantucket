@@ -61,14 +61,14 @@ export default class Oracle extends Message {
   }
 
   getPrice(tokenAddress) {
-    if (this.prices === null) return null;
+    if (!this.prices) return null;
 
     const symbol = this.symbols[tokenAddress];
     return this.prices[symbol];
   }
 
   getPriceSymbol(tokenSymbol) {
-    if (this.prices === null) return null;
+    if (!this.prices) return null;
 
     return this.prices[tokenSymbol]
   }

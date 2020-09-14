@@ -4,10 +4,10 @@ import { Transaction as Tx } from "ethereumjs-tx";
 
 export default class Wallet {
 
-  private _provider: any;
-  private _envKeyAddress: any;
-  private _envKeySecret: any;
-  private _net: any;
+  private provider: any;
+  private envKeyAddress: any;
+  private envKeySecret: any;
+  private net: any;
   private gasPrices: any;
   public label: any;
   public emptyTx: any;
@@ -20,11 +20,11 @@ export default class Wallet {
    * @param {String} envKeySecret name of env variable containing private key
    */
   constructor(provider, envKeyAddress, envKeySecret) {
-    this._provider = provider;
-    this._envKeyAddress = envKeyAddress;
-    this._envKeySecret = envKeySecret;
+    this.provider = provider;
+    this.envKeyAddress = envKeyAddress;
+    this.envKeySecret = envKeySecret;
 
-    this._net = undefined;
+    this.net = undefined;
     // Nothing is ever deleted from _gasPrices. If this code were
     // to run forever, this would cause memory to grow forever (very slowly).
     this.gasPrices = {};
@@ -38,13 +38,13 @@ export default class Wallet {
   }
 
   async init() {
-    const chainID = await this._provider.eth.getChainId();
+    const chainID = await this.provider.eth.getChainId();
     switch (chainID) {
       case 1:
-        this._net = { chain: "mainnet", hardfork: "petersburg" };
+        this.net = { chain: "mainnet", hardfork: "petersburg" };
         break;
       case 3:
-        this._net = { chain: "ropsten", hardfork: "petersburg" };
+        this.net = { chain: "ropsten", hardfork: "petersburg" };
         break;
     }
   }
@@ -113,9 +113,9 @@ export default class Wallet {
   _sign(tx) {
     // Set tx.from here since it must be signed by its sender.
     // i.e. this is the only valid value for tx.from
-    tx.from = process.env[this._envKeyAddress];
-    tx = new Tx(tx, this._net);
-    tx.sign(Buffer.from(process.env[this._envKeySecret], "hex"));
+    tx.from = process.env[this.envKeyAddress];
+    tx = new Tx(tx, this.net);
+    tx.sign(Buffer.from(process.env[this.envKeySecret], "hex"));
     return "0x" + tx.serialize().toString("hex");
   }
 
@@ -127,7 +127,7 @@ export default class Wallet {
    * @returns {PromiEvent} See [here](https://web3js.readthedocs.io/en/v1.2.0/callbacks-promises-events.html#promievent)
    */
   _send(signedTx) {
-    return this._provider.eth.sendSignedTransaction(signedTx);
+    return this.provider.eth.sendSignedTransaction(signedTx);
   }
 
   /**
@@ -136,8 +136,8 @@ export default class Wallet {
    * @returns {Promise} the next unconfirmed (possibly pending) nonce (base 10)
    */
   async getLowestLiquidNonce() {
-    return this._provider.eth.getTransactionCount(
-      process.env[this._envKeyAddress]
+    return this.provider.eth.getTransactionCount(
+      process.env[this.envKeyAddress]
     );
   }
 }
