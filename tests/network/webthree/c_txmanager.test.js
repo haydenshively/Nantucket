@@ -58,7 +58,10 @@ describe("network/webthree || TxManager Test", () => {
     assert(txManager._tx === null);
   });
 
-  it("should raise minimally and stop bidding eventually", () => {
+  // Must skip this test when it's running on Ropsten because
+  // the gas price is so low that we end up raising bid many many
+  // times and hit rate limit on Infura
+  xit("should raise minimally and stop bidding eventually", () => {
     txManager._storeCandidate({
       label: "0x7e3A",
       address: "0x7e3A0C2300175FF712742c21F36216e9fb63b487",
