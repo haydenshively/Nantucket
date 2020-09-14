@@ -2,7 +2,7 @@ import { config } from "dotenv";
 
 import { MultiSendProvider } from "./network/webthree/providers";
 import winston from "winston";
-import SlackHook from "../src/logging/slackhook";
+import SlackHook from "./logging/slackhook";
 
 // Collect dotenv configuration data
 config();

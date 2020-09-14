@@ -47,7 +47,7 @@ for (let key in config.txManagers) {
       config.logging.ipc["Candidates>LiquidateWithPriceUpdate"],
       config.logging.ipc["Messages>CheckCandidatesLiquidityComplete"]
     ],
-    { cwd: "src" }
+    { cwd: "build" }
   );
 }
 
@@ -73,7 +73,7 @@ for (let liquidator of config.liquidators) {
       config.logging.ipc["Messages>CheckCandidatesLiquidity"],
       config.logging.ipc["Messages>MissedOpportunity"]
     ],
-    { cwd: "src" }
+    { cwd: "build" }
   );
   const txManager = txManagers[liquidator.txManager];
   passthrough(Candidate, "Liquidate", worker, txManager);

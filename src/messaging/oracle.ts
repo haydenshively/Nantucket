@@ -9,7 +9,7 @@ export default class Oracle extends Message {
   protected signatures: any;
   protected prices: any;
 
-  constructor(data) {
+  constructor(data: any) {
     super();
 
     this.symbols = data.symbols;

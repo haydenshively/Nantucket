@@ -29,7 +29,6 @@ export default class Candidate extends Message {
   }
 
   msg() {
-    // This refers to data field of the superclass, Message
     this.data = {
       address: this.address,
       ctokenidpay: this.ctokenidpay,

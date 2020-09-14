@@ -10,6 +10,7 @@
     "@tensorflow/tfjs": "2.0.1",
     "@types/web3-eth-abi": "^1.2.2",
     "big.js": "^5.2.2",
+    "copyfiles": "^2.3.0",
     "dotenv": "^8.2.0",
     "ethereumjs-tx": "^2.1.2",
     "ethers": "^5.0.8",
@@ -38,7 +39,7 @@
     "@tensorflow/tfjs-node-gpu": "^2.0.1"
   },
   "scripts": {
-    "nantucket": "node './src/start' '../config.json'",
+    "nantucket": "node './build/start' '../config.json'",
     "nantucket-test": "node './src/start' '../config.test.json'",
     "db-create": "createdb FlashLoanLiquidation",
     "db-initialize": "psql --echo-errors -f './scripts/database/initialize.sql' FlashLoanLiquidation",
@@ -49,7 +50,9 @@
     "test-logging": "mocha --file './tests/setup.js' 'tests/logging/**/*.test.js' --recursive",
     "test-messaging": "mocha --file './tests/setup.js' 'tests/messaging/**/*.test.js' --recursive",
     "test-network": "mocha --file './tests/setup.js' 'tests/network/**/*.test.js' --recursive",
-    "compile": "npx tsc -p .",
+    "compile": "npx tsc -p . && yarn copy-files",
+    "copy-files": "npx copyfiles -u 1 src/**/*.json build",
+    "clean": "rm -rf build",
     "prettier": "npx prettier --write '**/*.js'"
   },
   "repository": {

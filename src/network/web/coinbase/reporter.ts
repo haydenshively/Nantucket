@@ -20,7 +20,7 @@ class Reporter extends Oracle {
     const timestamp = Date.now() / 1000;
     const prehash = timestamp + method.toUpperCase() + path + body;
     const hash = crypto
-      .createHmac("sha256", new Buffer(process.env.CB_ACCESS_SECRET, "base64"))
+      .createHmac("sha256", Buffer.from(process.env.CB_ACCESS_SECRET, "base64"))
       .update(prehash)
       .digest("base64");
 

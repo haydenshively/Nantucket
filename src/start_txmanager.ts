@@ -6,6 +6,8 @@ import Channel from "./messaging/channel";
 import Message from "./messaging/message";
 import Oracle from "./messaging/oracle";
 
+import TxManager from "./network/webthree/txmanager";
+
 // Run the setup script
 import { web3 } from "./setup";
 
@@ -14,8 +16,6 @@ if (process.argv.length < 7) {
   process.exit();
 }
 console.log(`TxManager ${process.pid} is running`);
-
-const TxManager = require("./network/webthree/txmanager");
 const txManager = new TxManager(
   web3,
   String(process.argv[3]),
