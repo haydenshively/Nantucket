@@ -2,6 +2,7 @@
   "compilerOptions": {
     "experimentalDecorators": true,
     "esModuleInterop": true,
+    "moduleResolution": "node",
     "noImplicitAny": false,
     "removeComments": true,
     "preserveConstEnums": true,
@@ -9,7 +10,7 @@
     "rootDir": "src",
     "outDir": "build",
     "allowJs": true,
-    "target": "ES5"
+    "target": "ES2020"
   },
   "include": ["src/**/*"]
 }
