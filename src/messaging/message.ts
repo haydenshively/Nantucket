@@ -1,9 +1,14 @@
-const Channel = require("./channel");
+import Channel from "./channel";
 
-class Message {
+export default class Message {
+
+  protected data: any;
+
+  private channel: any;
+
   constructor(data = {}) {
-    this.__data = data;
-    this.__channel = Channel(Object.getPrototypeOf(this).constructor);
+    this.data = data;
+    this.channel = Channel.for(Object.getPrototypeOf(this).constructor);
   }
 
   msg() {
@@ -11,8 +16,6 @@ class Message {
   }
 
   broadcast(withAction, target = null) {
-    this.__channel.broadcast(withAction, this, target);
+    this.channel.broadcast(withAction, this, target);
   }
 }
-
-module.exports = Message;
