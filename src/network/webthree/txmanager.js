@@ -266,6 +266,20 @@ class TxManager {
     }
 
     return maxGasPrice.div(Math.pow(1.12, n));
+    /*
+    TODO
+    
+    Note that this will only force the exponential thing for the _first_ candidate
+    that gets sent off to the smart contract. If more candidates are added to
+    later bids, the condition no longer necessarily holds.
+
+    To make it apply to those cases as well, (1) the logic would have to be moved
+    elsewhere (probably to the `cacheTransaction` function) and (2) upon addition of
+    a new candidate, check whether that new candidate is the most profitable
+    (idx 0 in the `borrowers` array). If it is, then have some logic that decides
+    whether hopping up to a new exponential curve makes sense given how close/far
+    we are from `maxFee`
+    */
   }
 
   /**
