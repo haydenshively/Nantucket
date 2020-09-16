@@ -141,7 +141,7 @@ class TxManager {
     const initialGasPrice =
       this._tx !== null
         ? this._tx.gasPrice
-        : (await this._getInitialGasPrice()).times(0.9);
+        : await this._getInitialGasPrice(gasLimit);
 
     if (!needPriceUpdate) {
       this._tx = FlashLiquidator.mainnet.liquidateMany(
@@ -242,13 +242,44 @@ class TxManager {
   }
 
   /**
-   * Gets the current market-rate gas price from the Web3 provider
+   * Gets the current market-rate gas price from the Web3 provider,
+   * then adjusts it so that it lies on the exponential curve that
+   * leads to the maximum possible gas price (assuming constant 12%
+   * bid raises)
    * @private
    *
+   * @param gasLimit {Big} the gas limit of the proposed transaction
    * @returns {Big} the gas price in Wei
    */
-  async _getInitialGasPrice() {
-    return Big(await this._queue._wallet._provider.eth.getGasPrice());
+  async _getInitialGasPrice(gasLimit) {
+    const maxGasPrice = Big(Math.min(this._revenue, this.maxFee_Eth))
+      .times(1e18)
+      .div(gasLimit);
+
+    let gasPrice = Big(await this._queue._wallet._provider.eth.getGasPrice());
+    if (gasPrice.gte(maxGasPrice)) return gasPrice;
+
+    let n = 0;
+    while (gasPrice.lt(maxGasPrice)) {
+      gasPrice = gasPrice.times(1.12);
+      n++;
+    }
+
+    return maxGasPrice.div(Math.pow(1.12, n));
+    /*
+    TODO
+    
+    Note that this will only force the exponential thing for the _first_ candidate
+    that gets sent off to the smart contract. If more candidates are added to
+    later bids, the condition no longer necessarily holds.
+
+    To make it apply to those cases as well, (1) the logic would have to be moved
+    elsewhere (probably to the `cacheTransaction` function) and (2) upon addition of
+    a new candidate, check whether that new candidate is the most profitable
+    (idx 0 in the `borrowers` array). If it is, then have some logic that decides
+    whether hopping up to a new exponential curve makes sense given how close/far
+    we are from `maxFee`
+    */
   }
 
   /**
