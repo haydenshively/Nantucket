@@ -23,7 +23,8 @@ describe("network/webthree || TxManager Test", () => {
   });
 
   it("should get gas price", () => {
-    return txManager._getInitialGasPrice().then(gasPrice => {
+    txManager._revenue = 0.01;
+    return txManager._getInitialGasPrice(Big(2000000)).then(gasPrice => {
       assert(gasPrice.div(1e9).gt(0));
     });
   });
