@@ -4,13 +4,13 @@
       "envKeyAddress": "ACCOUNT_ADDRESS_TEST",
       "envKeySecret": "ACCOUNT_SECRET_TEST",
       "interval": 200,
-      "maxFee_Eth": 1.175
+      "maxFee_Eth": 1.0
     }
   },
   "liquidators": [
     {
-      "minRevenue": 1.0,
-      "maxRevenue": null,
+      "minRevenue": 0.2,
+      "maxRevenue": 1.0,
       "maxHealth": null,
       "numCandidates": 50,
       "txManager": "TEST"
@@ -20,18 +20,18 @@
     "name": "mainnet",
     "providers": [
       {
-        "type": "IPC",
-        "envKeyPath": "PROVIDER_IPC_PATH"
-      },
-      {
         "type": "WS_Infura",
         "envKeyID": "PROVIDER_INFURA_ID"
+      },
+      {
+        "type": "WS_Alchemy",
+        "envKeyKey": "PROVIDER_ALCHEMY_KEY"
       }
     ]
   },
   "fetching": {
-    "cTokenServiceInterval": 1200000,
-    "accountServiceInterval": 480000,
+    "cTokenServiceInterval": 0,
+    "accountServiceInterval": 0,
     "coinbaseReporter": 1200
   },
   "logging": {
