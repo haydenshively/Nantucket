@@ -112,49 +112,54 @@ class TxManager {
     let revenue = 0;
     let needPriceUpdate = false;
 
-    let idxBest = 0;
-    let best = 0;
+    let candidates = Object.entries(this._candidates);
+    candidates = candidates.sort((a, b) => b[1].revenue - a[1].revenue);
 
-    for (let addr in this._candidates) {
-      const c = this._candidates[addr];
+    for (let entry of candidates) {
+      const c = entry[1];
 
-      borrowers.push(addr);
+      borrowers.push(entry[0]);
       repayCTokens.push(c.repayCToken);
       seizeCTokens.push(c.seizeCToken);
       revenue += c.revenue;
       needPriceUpdate |= c.needsPriceUpdate;
-
-      if (c.revenue > best) {
-        idxBest = borrowers.length - 1;
-        best = c.revenue;
-      }
     }
-
-    // this._revenue = revenue;
-    this._revenue = best;
 
     if (borrowers.length === 0) {
       this._tx = null;
       return;
     }
+    // Set expected revenue to the max of the candidate revenues
+    this._revenue = candidates[0][1].revenue;
+    // To simplify things, we assume that only 1 borrower will be
+    // liquidated (the first one in the list) and set the gas limit
+    // accordingly. If that borrower can't be liquidated for some
+    // reason, the smart contract will handle fallback options, so
+    // we don't have to worry about that here.
+    const gasLimit = Big(2000000);
+
     const initialGasPrice =
       this._tx !== null
         ? this._tx.gasPrice
-        : (await this._getInitialGasPrice()).times(0.9);
+        : await this._getInitialGasPrice(gasLimit);
 
     if (!needPriceUpdate) {
       this._tx = FlashLiquidator.mainnet.liquidateMany(
-        [borrowers[idxBest]],
-        [repayCTokens[idxBest]],
-        [seizeCTokens[idxBest]],
+        borrowers,
+        repayCTokens,
+        seizeCTokens,
         initialGasPrice
       );
+      // Override gas limit
+      this._tx.gasLimit = gasLimit;
       return;
     }
 
-    // TODO if oracle is null and some (but not all) candidates
-    // need price updates, we should do the above code with filtered
-    // versions of the lists, rather than just returning like the code below
+    // Technically, if oracle is null and some (but not all) candidates
+    // need price updates, we should filter out candidates that need price
+    // updates and send the rest using the function above. However, that
+    // shoudn't happen very often (`_oracle` is only null on code startup),
+    // so it's safe to ignore that case.
     if (this._oracle === null) {
       this._tx = null;
       return;
@@ -165,11 +170,13 @@ class TxManager {
       postable[0],
       postable[1],
       postable[2],
-      [borrowers[idxBest]],
-      [repayCTokens[idxBest]],
-      [seizeCTokens[idxBest]],
+      borrowers,
+      repayCTokens,
+      seizeCTokens,
       initialGasPrice
     );
+    // Override gas limit
+    this._tx.gasLimit = gasLimit;
   }
 
   /**
@@ -235,13 +242,44 @@ class TxManager {
   }
 
   /**
-   * Gets the current market-rate gas price from the Web3 provider
+   * Gets the current market-rate gas price from the Web3 provider,
+   * then adjusts it so that it lies on the exponential curve that
+   * leads to the maximum possible gas price (assuming constant 12%
+   * bid raises)
    * @private
    *
+   * @param gasLimit {Big} the gas limit of the proposed transaction
    * @returns {Big} the gas price in Wei
    */
-  async _getInitialGasPrice() {
-    return Big(await this._queue._wallet._provider.eth.getGasPrice());
+  async _getInitialGasPrice(gasLimit) {
+    const maxGasPrice = Big(Math.min(this._revenue, this.maxFee_Eth))
+      .times(1e18)
+      .div(gasLimit);
+
+    let gasPrice = Big(await this._queue._wallet._provider.eth.getGasPrice());
+    if (gasPrice.gte(maxGasPrice)) return gasPrice;
+
+    let n = 0;
+    while (gasPrice.lt(maxGasPrice)) {
+      gasPrice = gasPrice.times(1.12);
+      n++;
+    }
+
+    return maxGasPrice.div(Math.pow(1.12, n));
+    /*
+    TODO
+    
+    Note that this will only force the exponential thing for the _first_ candidate
+    that gets sent off to the smart contract. If more candidates are added to
+    later bids, the condition no longer necessarily holds.
+
+    To make it apply to those cases as well, (1) the logic would have to be moved
+    elsewhere (probably to the `cacheTransaction` function) and (2) upon addition of
+    a new candidate, check whether that new candidate is the most profitable
+    (idx 0 in the `borrowers` array). If it is, then have some logic that decides
+    whether hopping up to a new exponential curve makes sense given how close/far
+    we are from `maxFee`
+    */
   }
 
   /**

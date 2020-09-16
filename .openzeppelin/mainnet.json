@@ -27,6 +27,18 @@
         "address": "0x82c539c060E28B667B43ecBE0B12011e9b617b5e",
         "kind": "NonProxy",
         "bytecodeHash": ""
+      },
+      {
+        "address": "0xbd08B0A4A6e591a7705238c5b3cC9fc5382fbB30",
+        "kind": "NonProxy",
+        "bytecodeHash": "e282ba9bfedf27ff82c2f158a59b32d3ade17482b4e892ab1a7d1c03bfe76580"
+      }
+    ],
+    "Flash Loan Liquidation/Split5050": [
+      {
+        "address": "0xf81F70CeC4c4c1d6Aa5038ED3e7CCd0228b05F09",
+        "kind": "NonProxy",
+        "bytecodeHash": "1f7b1bd83af51609351b127cae8780fb08fbdd4b1cbcef109b658aa6ffec3ea8"
       }
     ]
   },

@@ -64,9 +64,9 @@ class FlashLiquidator extends SmartContract {
       borrowers,
       cTokens
     );
-    const gasLimit = String(20 * borrowers.length) + "00000";
+    const gasLimit = Big(1600000).times(borrowers.length);
 
-    return this._txFor(method, Big(gasLimit).plus(400000), gasPrice);
+    return this._txFor(method, gasLimit.plus(400000), gasPrice);
   }
 
   _combineTokens(repayList, seizeList) {
@@ -78,8 +78,8 @@ class FlashLiquidator extends SmartContract {
 }
 
 const addresses = {
-  mainnet: "0x82c539c060E28B667B43ecBE0B12011e9b617b5e",
-  ropsten: "0x2ab4C66757a9934b3a0dBD91f94bE830855839cd"
+  mainnet: "0xbd08B0A4A6e591a7705238c5b3cC9fc5382fbB30",
+  ropsten: "0x7c432107Fbf4a88fF8630Fcd2A6384826718a0E7"
 };
 
 for (let net in addresses) {
