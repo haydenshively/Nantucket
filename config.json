@@ -1,20 +1,13 @@
 {
   "txManagers": {
     "A": {
-      "envKeyAddress": "ACCOUNT_ADDRESS_A",
-      "envKeySecret": "ACCOUNT_SECRET_A",
+      "envKeyAddress": "ACCOUNT_ADDRESS_TEST",
+      "envKeySecret": "ACCOUNT_SECRET_TEST",
       "interval": 200,
       "maxFee_Eth": 1.175
     }
   },
   "liquidators": [
-    {
-      "minRevenue": 0.2,
-      "maxRevenue": 1.0,
-      "maxHealth": null,
-      "numCandidates": 50,
-      "txManager": "A"
-    },
     {
       "minRevenue": 1.0,
       "maxRevenue": 10.0,
@@ -24,6 +17,13 @@
     },
     {
       "minRevenue": 10.0,
+      "maxRevenue": 20.0,
+      "maxHealth": null,
+      "numCandidates": 50,
+      "txManager": "A"
+    },
+    {
+      "minRevenue": 20.0,
       "maxRevenue": null,
       "maxHealth": null,
       "numCandidates": 50,
