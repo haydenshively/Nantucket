@@ -33,15 +33,30 @@ class Candidate extends Message {
     let markets = [];
 
     const addrs = await comptroller.marketsEnteredBy(this.address)(web3);
-    for (let addr of addrs) {
+
+    let borrow_uUnitsArr = [];
+    let supply_uUnitsArr = [];
+    let collatArr = [];
+
+    addrs.forEach((addr, i) => {
       const token = tokens[addr.toLowerCase()];
+      borrow_uUnitsArr.push(token.uUnitsBorrowedBy(this.address)(web3));
+      supply_uUnitsArr.push(token.uUnitsSuppliedBy(this.address)(web3));
+      collatArr.push(comptroller.collateralFactorFor(token)(web3));
+    });
+
+    [borrow_uUnitsArr, supply_uUnitsArr, collatArr] = await Promise.all([
+      Promise.all(borrow_uUnitsArr), Promise.all(supply_uUnitsArr), Promise.all(collatArr)
+    ]);
+
+    addrs.forEach((addr, i) => {
       markets.push({
         address: addr,
-        borrow_uUnits: Number(await token.uUnitsBorrowedBy(this.address)(web3)),
-        supply_uUnits: Number(await token.uUnitsSuppliedBy(this.address)(web3)),
-        collat: Number(await comptroller.collateralFactorFor(token)(web3))
+        borrow_uUnits: Number(borrow_uUnitsArr[i]),
+        supply_uUnits: Number(supply_uUnitsArr[i]),
+        collat: Number(collatArr[i])
       });
-    }
+    });
 
     this._markets = markets;
   }
