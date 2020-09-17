@@ -39,9 +39,11 @@ class Database {
     }
 
     const tokens = res.tokens;
-    await this._tUTokens.upsertCTokenService(tokens);
-    await this._tCTokens.upsertCTokenService(tokens);
-    await this._tPairs.insertCTokenService(tokens);
+    await Promise.all([
+      this._tUTokens.upsertCTokenService(tokens),
+      this._tCTokens.upsertCTokenService(tokens),
+      this._tPairs.insertCTokenService(tokens)
+    ]);
   }
 
   async pullFromAccountService() {

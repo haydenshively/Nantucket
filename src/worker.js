@@ -83,41 +83,48 @@ class Worker extends Database {
   async checkCandidatesLiquidity() {
     const timestampStart = Date.now();
 
+    let candidatePromises = [];
+
     for (let i = 0; i < this._candidates.length; i++) {
-      const c = this._candidates[i];
-      // this is pairID DAI and SAI. There's no AAVE pool for it.
-      if (c.ctokenidpay == 2 || (c.ctokenidpay == 6 && c.ctokenidseize == 2))
-        continue;
+      candidatePromises.push(new Promise((async resolve => {
+        const c = this._candidates[i];
+        // this is pairID DAI and SAI. There's no AAVE pool for it.
+        if (c.ctokenidpay == 2 || (c.ctokenidpay == 6 && c.ctokenidseize == 2))
+          resolve();
 
-      // TODO instead of this (which won't work with any Web3 provider except
-      // the local Geth node due to latency issues) just subscribe to Compound
-      // events for "borrow" and "supply" and update based on that.
-      await c.refreshBalances(web3, Comptroller.mainnet, CTokens.mainnet);
+        // TODO instead of this (which won't work with any Web3 provider except
+        // the local Geth node due to latency issues) just subscribe to Compound
+        // events for "borrow" and "supply" and update based on that.
+        await c.refreshBalances(web3, Comptroller.mainnet, CTokens.mainnet);
 
-      // TODO TxManager isn't hooked into the Database logic, so we have
-      // to pass along the repay and seize addresses here
-      // (ctokenidpay and ctokenidseize are normally Ints, but here
-      // they change to Strings)
-      if (!String(c.ctokenidpay).startsWith("0x")) {
-        const repay = `0x${await this._tCTokens.getAddress(c.ctokenidpay)}`;
-        this._candidates[i].ctokenidpay = repay;
-      }
-      if (!String(c.ctokenidseize).startsWith("0x")) {
-        const seize = `0x${await this._tCTokens.getAddress(c.ctokenidseize)}`;
-        this._candidates[i].ctokenidseize = seize;
-      }
+        // TODO TxManager isn't hooked into the Database logic, so we have
+        // to pass along the repay and seize addresses here
+        // (ctokenidpay and ctokenidseize are normally Ints, but here
+        // they change to Strings)
+        if (!String(c.ctokenidpay).startsWith("0x")) {
+          const repay = `0x${await this._tCTokens.getAddress(c.ctokenidpay)}`;
+          this._candidates[i].ctokenidpay = repay;
+        }
+        if (!String(c.ctokenidseize).startsWith("0x")) {
+          const seize = `0x${await this._tCTokens.getAddress(c.ctokenidseize)}`;
+          this._candidates[i].ctokenidseize = seize;
+        }
 
-      if (
-        this._oracle !== null &&
-        (await c.isLiquidatableWithPriceFrom(this._oracle))
-      ) {
-        this._candidates[i].msg().broadcast("LiquidateWithPriceUpdate");
-        continue;
-      }
-      if (await c.isLiquidatable(web3, Comptroller.mainnet)) {
-        this._candidates[i].msg().broadcast("Liquidate");
-      }
+        if (
+          this._oracle !== null &&
+          (await c.isLiquidatableWithPriceFrom(this._oracle))
+        ) {
+          this._candidates[i].msg().broadcast("LiquidateWithPriceUpdate");
+          resolve();
+        }
+        if (await c.isLiquidatable(web3, Comptroller.mainnet)) {
+          this._candidates[i].msg().broadcast("Liquidate");
+        }
+        resolve();
+      })));
     }
+
+    await Promise.all(candidatePromises);
 
     const liquidityCheckTime = Date.now() - timestampStart;
     new Message({ time: liquidityCheckTime }).broadcast(
