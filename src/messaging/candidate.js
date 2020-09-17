@@ -40,9 +40,9 @@ class Candidate extends Message {
 
     addrs.forEach((addr, i) => {
       const token = tokens[addr.toLowerCase()];
-      borrow_uUnitsArr.push(token.uUnitsBorrowedBy(this.address));
-      supply_uUnitsArr.push(token.uUnitsSuppliedBy(this.address));
-      collatArr.push(comptroller.collateralFactorFor(token));
+      borrow_uUnitsArr.push(token.uUnitsBorrowedBy(this.address)(web3));
+      supply_uUnitsArr.push(token.uUnitsSuppliedBy(this.address)(web3));
+      collatArr.push(comptroller.collateralFactorFor(token)(web3));
     });
 
     [borrow_uUnitsArr, supply_uUnitsArr, collatArr] = await Promise.all([
@@ -52,9 +52,9 @@ class Candidate extends Message {
     addrs.forEach((addr, i) => {
       markets.push({
         address: addr,
-        borrow_uUnits: Number(borrow_uUnitsArr[i](web3)),
-        supply_uUnits: Number(supply_uUnitsArr[i](web3)),
-        collat: Number(collatArr[i](web3))
+        borrow_uUnits: Number(borrow_uUnitsArr[i]),
+        supply_uUnits: Number(supply_uUnitsArr[i]),
+        collat: Number(collatArr[i])
       });
     });
 
