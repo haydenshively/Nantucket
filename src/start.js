@@ -141,10 +141,12 @@ const handle1 = setInterval(
   database.pullFromCTokenService.bind(database),
   config.fetching.cTokenServiceInterval
 );
+if (config.fetching.cTokenServiceInterval === 0) clearInterval(handle1);
 const handle2 = setInterval(async () => {
   await database.pullFromAccountService.bind(database)();
   updateCandidates();
 }, config.fetching.accountServiceInterval);
+if (config.fetching.accountServiceInterval === 0) clearInterval(handle2);
 
 // pull from Coinbase reporter
 const reporter = Reporter.mainnet;

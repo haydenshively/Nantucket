@@ -1,38 +1,32 @@
 {
   "txManagers": {
     "A": {
-      "envKeyAddress": "ACCOUNT_ADDRESS_A",
-      "envKeySecret": "ACCOUNT_SECRET_A",
-      "interval": 300,
-      "maxFee_Eth": 0.5
-    },
-    "B": {
-      "envKeyAddress": "ACCOUNT_ADDRESS_B",
-      "envKeySecret": "ACCOUNT_SECRET_B",
-      "interval": 300,
-      "maxFee_Eth": 0.5
+      "envKeyAddress": "ACCOUNT_ADDRESS_TEST",
+      "envKeySecret": "ACCOUNT_SECRET_TEST",
+      "interval": 200,
+      "maxFee_Eth": 1.175
     }
   },
   "liquidators": [
     {
-      "minRevenue": 9,
-      "maxRevenue": 20,
+      "minRevenue": 1.0,
+      "maxRevenue": 10.0,
       "maxHealth": null,
       "numCandidates": 50,
       "txManager": "A"
     },
     {
-      "minRevenue": 20,
-      "maxRevenue": 50,
+      "minRevenue": 10.0,
+      "maxRevenue": 20.0,
       "maxHealth": null,
-      "numCandidates": 60,
+      "numCandidates": 50,
       "txManager": "A"
     },
     {
-      "minRevenue": 50,
+      "minRevenue": 20.0,
       "maxRevenue": null,
       "maxHealth": null,
-      "numCandidates": 100,
+      "numCandidates": 50,
       "txManager": "A"
     }
   ],
@@ -46,10 +40,6 @@
       {
         "type": "WS_Infura",
         "envKeyID": "PROVIDER_INFURA_ID"
-      },
-      {
-        "type": "WS_Alchemy",
-        "envKeyKey": "PROVIDER_ALCHEMY_KEY"
       }
     ]
   },
@@ -65,8 +55,8 @@
       "Messages>CheckCandidatesLiquidityComplete": false,
       "Messages>UpdateCandidates": false,
       "Messages>MissedOpportunity": false,
-      "Candidates>Liquidate": false,
-      "Candidates>LiquidateWithPriceUpdate": false
+      "Candidates>Liquidate": true,
+      "Candidates>LiquidateWithPriceUpdate": true
     }
   }
 }
