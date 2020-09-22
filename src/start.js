@@ -210,10 +210,3 @@ process.on("SIGINT", () => {
   database.stop();
   process.exit();
 });
-
-// winston.log(
-//   "info",
-//   `🐳 *Proposal ${i.label}* | Liquidating for $${profit.toFixed(
-//     2
-//   )} profit at block ${blockNumber}`
-// );
