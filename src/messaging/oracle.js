@@ -40,13 +40,13 @@ class Oracle extends Message {
     };
   }
 
-  postableData(exclude = ["XTZ", "LINK", "KNC", "COMP"]) {
+  postableData(include = ["BTC", "ETH", "DAI", "REP", "ZRX", "BAT"]) {
     let messages = [];
     let signatures = [];
     let symbols = [];
     for (let i = 0; i < this._messages.length; i++) {
       const symbol = this._decode(this._messages[i]).key;
-      if (exclude.includes(symbol)) continue;
+      if (!include.includes(symbol)) continue;
       messages.push(this._messages[i]);
       signatures.push(this._signatures[i]);
       symbols.push(symbol);
