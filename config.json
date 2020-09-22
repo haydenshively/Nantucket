@@ -4,29 +4,22 @@
       "envKeyAddress": "ACCOUNT_ADDRESS_TEST",
       "envKeySecret": "ACCOUNT_SECRET_TEST",
       "interval": 200,
-      "maxFee_Eth": 1.175
+      "maxFee_Eth": 4
     }
   },
   "liquidators": [
     {
-      "minRevenue": 1.0,
-      "maxRevenue": 10.0,
+      "minRevenue": 0.2,
+      "maxRevenue": 5.0,
       "maxHealth": null,
-      "numCandidates": 50,
+      "numCandidates": 500,
       "txManager": "A"
     },
     {
-      "minRevenue": 10.0,
-      "maxRevenue": 20.0,
-      "maxHealth": null,
-      "numCandidates": 50,
-      "txManager": "A"
-    },
-    {
-      "minRevenue": 20.0,
+      "minRevenue": 5.0,
       "maxRevenue": null,
       "maxHealth": null,
-      "numCandidates": 50,
+      "numCandidates": 500,
       "txManager": "A"
     }
   ],
