@@ -5,14 +5,13 @@ Big.RM = 0;
 const assert = require("assert");
 const Web3Utils = require("web3-utils");
 
+const Wallet = require("../../../src/network/webthree/wallet");
 const TxQueue = require("../../../src/network/webthree/txqueue");
 
 describe("network/webthree || TxQueue Test", () => {
   const chain = web3.ropsten;
   const txQueue = new TxQueue(
-    chain,
-    "ACCOUNT_ADDRESS_TEST",
-    "ACCOUNT_SECRET_TEST"
+    new Wallet(chain, "ACCOUNT_ADDRESS_TEST", "ACCOUNT_SECRET_TEST")
   );
 
   it("should initialize with correct chain", () => {
