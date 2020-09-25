@@ -264,6 +264,9 @@ class TxManager {
       gasPrice = gasPrice.times(1.12);
       n++;
     }
+    // log base 1.12 of 2 is 6.11625. If it's profitable to start bidding at
+    // twice the market rate, this'll do that
+    if (n > 6.11625) n -= 6.11625;
 
     return maxGasPrice.div(Math.pow(1.12, n));
     /*
