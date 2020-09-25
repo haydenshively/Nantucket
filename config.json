@@ -4,12 +4,12 @@
       "envKeyAddress": "ACCOUNT_ADDRESS_TEST",
       "envKeySecret": "ACCOUNT_SECRET_TEST",
       "interval": 200,
-      "maxFee_Eth": 4
+      "maxFee_Eth": 4.5
     }
   },
   "liquidators": [
     {
-      "minRevenue": 0.2,
+      "minRevenue": 0.1,
       "maxRevenue": 5.0,
       "maxHealth": null,
       "numCandidates": 500,
@@ -31,7 +31,7 @@
         "envKeyPath": "PROVIDER_IPC_PATH"
       },
       {
-        "type": "WS_Infura",
+        "type": "HTTP_Infura",
         "envKeyID": "PROVIDER_INFURA_ID"
       }
     ]

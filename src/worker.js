@@ -133,8 +133,9 @@ class Worker extends Database {
   }
 
   _removeCandidate(address) {
+    console.log(`Removing candidate ${address}`);
     for (let i = 0; i < this._candidates.length; i++) {
-      if (this._candidates[i].address !== address) continue;
+      if (this._candidates[i].address !== address.toLowerCase()) continue;
       this._candidates.splice(i, 1);
       console.log(`Candidate ${address} was being watched`);
       break;

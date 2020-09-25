@@ -7,6 +7,9 @@ const IPCProvider = path => {
 const WSProvider = path => {
   return new Web3(path);
 };
+const HTTPProvider = path => {
+  return new Web3(path);
+};
 
 /**
  *
@@ -31,6 +34,14 @@ const ProviderFor = (chain, spec) => {
     case "WS_Alchemy":
       return WSProvider(
         `wss://eth-${chain}.ws.alchemyapi.io/v2/` + process.env[spec.envKeyKey]
+      );
+    case "HTTP_Infura":
+      return HTTPProvider(
+        `https://${chain}.infura.io/v3/` + process.env[spec.envKeyID]
+      );
+    case "HTTP_Alchemy":
+      return HTTPProvider(
+        `https://eth-${chain}.alchemyapi.io/v2/` + process.env[spec.envKeyKey]
       );
   }
 };
