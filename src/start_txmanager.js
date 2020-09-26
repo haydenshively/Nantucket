@@ -13,15 +13,22 @@ if (process.argv.length < 7) {
 }
 console.log(`TxManager ${process.pid} is running`);
 
+// src.network.webthree
+const Wallet = require("./network/webthree/wallet");
+const TxQueue = require("./network/webthree/txqueue");
 const TxManager = require("./network/webthree/txmanager");
-const txManager = new TxManager(
+
+const wallet = new Wallet(
   web3,
   String(process.argv[3]),
-  String(process.argv[4]),
+  String(process.argv[4])
+);
+const txQueue = new TxQueue(wallet);
+const txManager = new TxManager(
+  txQueue,
   Number(process.argv[5]),
   Number(process.argv[6])
 );
-
 txManager.init();
 
 // Add logging handlers *after* initializing the txManager so that they don't

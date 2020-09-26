@@ -4,14 +4,16 @@ Big.RM = 0;
 
 const assert = require("assert");
 
+const Wallet = require("../../../src/network/webthree/wallet");
+const TxQueue = require("../../../src/network/webthree/txqueue");
 const TxManager = require("../../../src/network/webthree/txmanager");
 
 describe("network/webthree || TxManager Test", () => {
   const chain = web3.ropsten;
   const txManager = new TxManager(
-    chain,
-    "ACCOUNT_ADDRESS_TEST",
-    "ACCOUNT_SECRET_TEST",
+    new TxQueue(
+      new Wallet(chain, "ACCOUNT_ADDRESS_TEST", "ACCOUNT_SECRET_TEST")
+    ),
     500,
     0.1
   );

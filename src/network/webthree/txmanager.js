@@ -9,7 +9,6 @@ const Channel = require("../../messaging/channel");
 const Message = require("../../messaging/message");
 const Oracle = require("../../messaging/oracle");
 // src.network.webthree
-const TxQueue = require("./txqueue");
 const FlashLiquidator = require("./goldenage/flashliquidator");
 
 /**
@@ -32,16 +31,12 @@ const FlashLiquidator = require("./goldenage/flashliquidator");
  */
 class TxManager {
   /**
-   * @param {Provider} provider the Web3 provider to use for transactions
-   * @param {String} envKeyAddress Name of the environment variable containing
-   *    the wallet's address
-   * @param {String} envKeySecret Name of the environment variable containing
-   *    the wallet's private key
+   * @param {TxQueue} queue The TxQueue to use
    * @param {Number} interval Time between bids (milliseconds)
    * @param {Number} maxFee_Eth The maximum possible tx fee in Eth
    */
-  constructor(provider, envKeyAddress, envKeySecret, interval, maxFee_Eth) {
-    this._queue = new TxQueue(provider, envKeyAddress, envKeySecret);
+  constructor(queue, interval, maxFee_Eth) {
+    this._queue = queue;
     this._oracle = null;
 
     this._candidates = {};
