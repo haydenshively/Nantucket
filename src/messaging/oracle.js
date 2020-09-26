@@ -10,6 +10,7 @@ class Oracle extends Message {
     this._messages = "messages" in data ? data.messages : null;
     this._signatures = "signatures" in data ? data.signatures : null;
     this._prices = "prices" in data ? data.prices : null;
+    this._timestamp = "timestamp" in data ? data.timestamp : null;
   }
 
   msg() {
@@ -17,7 +18,8 @@ class Oracle extends Message {
       symbols: this._symbols,
       messages: this._messages,
       signatures: this._signatures,
-      prices: this._prices
+      prices: this._prices,
+      timestamp: this._timestamp
     };
     return this;
   }
