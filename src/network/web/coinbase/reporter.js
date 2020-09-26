@@ -56,6 +56,7 @@ class Reporter extends Oracle {
       this._messages = json.messages;
       this._signatures = json.signatures;
       this._prices = json.prices;
+      this._timestamp = json.timestamp;
 
       this._setStablecoins();
     } catch {

@@ -151,13 +151,9 @@ if (config.fetching.accountServiceInterval === 0) clearInterval(handle2);
 // pull from Coinbase reporter
 const reporter = Reporter.mainnet;
 const handle3 = setInterval(async () => {
-  // assume that if any prices change, they all change
-  // (as such it doesn't matter which token we check)
-  // --> randomly select from a subset of tokens
-  const symToCheck = ["ETH", "BTC", "BAT", "DAI"][(4 * Math.random()) << 0];
-  const before = reporter.getPriceSymbol(symToCheck);
+  const timestamp = reporter._timestamp;
   await reporter.fetch.bind(reporter)();
-  if (reporter.getPriceSymbol(symToCheck) === before) return;
+  if (reporter._timestamp <= timestamp) return;
 
   setOracles();
   checkLiquidities();
