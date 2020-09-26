@@ -105,7 +105,11 @@ class MultiSendProvider {
       try {
         p.currentProvider.connection.close();
       } catch {
-        p.currentProvider.connection.destroy();
+        try {
+          p.currentProvider.connection.destroy();
+        } catch {
+          console.log("Cannot close HTTP provider's connection");
+        }
       }
     });
   }
