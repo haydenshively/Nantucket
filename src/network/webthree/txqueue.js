@@ -3,11 +3,9 @@ Big.DP = 40;
 Big.RM = 0;
 const winston = require("winston");
 
-const Wallet = require("./wallet");
-
 class TxQueue {
-  constructor(provider, envKeyAddress, envKeySecret) {
-    this._wallet = new Wallet(provider, envKeyAddress, envKeySecret);
+  constructor(wallet) {
+    this._wallet = wallet;
 
     this._lowestLiquidNonce = 0;
     this._queue = [];
