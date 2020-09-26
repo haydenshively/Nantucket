@@ -4,7 +4,7 @@
       "envKeyAddress": "ACCOUNT_ADDRESS_TEST",
       "envKeySecret": "ACCOUNT_SECRET_TEST",
       "interval": 200,
-      "maxFee_Eth": 4.5
+      "maxFee_Eth": 3.25
     }
   },
   "liquidators": [
@@ -39,7 +39,7 @@
   "fetching": {
     "cTokenServiceInterval": 1200000,
     "accountServiceInterval": 480000,
-    "coinbaseReporter": 1200
+    "coinbaseReporter": 1500
   },
   "logging": {
     "ipc": {
