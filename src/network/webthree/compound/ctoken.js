@@ -130,7 +130,7 @@ const addresses = {
     cUSDT: "0x135669c2dcbd63f639582b313883f101a4497f76",
     cWBTC: "0x58145bc5407d63daf226e4870beeb744c588f149",
     cZRX: "0x00e02a5200ce3d5b5743f5369deb897946c88121",
-    cUNI: "0x35a18000230da775cac24873d00ff85bccded550"
+    cUNI: "0x22531f0f3a9c36bfc3b04c4c60df5168a1cfcec3"
   }
 };
 
