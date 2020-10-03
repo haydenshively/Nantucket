@@ -46,12 +46,12 @@ class Reporter extends Oracle {
       "CB-ACCESS-PASSPHRASE": process.env.CB_ACCESS_PASSPHRASE
     };
 
-    const res = await nfetch(process.env.COINBASE_ENDPOINT + "/oracle", {
-      method: "GET",
-      headers: headers
-    });
-
     try {
+      const res = await nfetch(process.env.COINBASE_ENDPOINT + "/oracle", {
+        method: "GET",
+        headers: headers
+      });
+
       const json = await res.json();
       this._messages = json.messages;
       this._signatures = json.signatures;
@@ -59,8 +59,10 @@ class Reporter extends Oracle {
       this._timestamp = json.timestamp;
 
       this._setStablecoins();
-    } catch {
-      console.log("Coinbase fetch failed. Error converting to JSON");
+    } catch (e) {
+      if (e instanceof nfetch.FetchError)
+        console.log("Coinbase fetch failed. Connection probably timed out");
+      else console.log("Coinbase fetch failed. Error converting to JSON");
     }
   }
 }
