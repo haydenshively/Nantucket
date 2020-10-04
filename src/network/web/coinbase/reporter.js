@@ -78,6 +78,7 @@ exports.mainnet = new Reporter({
     "0x39aa39c021dfbae8fac545936693ac917d5e7563": "USDC",
     "0xf650c3d88d12db855b8bf7d11be6c55a4e07dcc9": "USDT",
     "0xc11b1268c1a384e55c48c2391d8d480264a3a7f4": "BTC",
-    "0xb3319f5d18bc0d84dd1b4825dcde5d5f7266d407": "ZRX"
+    "0xb3319f5d18bc0d84dd1b4825dcde5d5f7266d407": "ZRX",
+    "0x1f9840a85d5af5bf1d1762f925bdaddc4201f984": "UNI"
   }
 });

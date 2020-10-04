@@ -42,7 +42,7 @@ class Oracle extends Message {
     };
   }
 
-  postableData(include = ["BTC", "ETH", "DAI", "REP", "ZRX", "BAT"]) {
+  postableData(include = ["BTC", "ETH", "DAI", "REP", "ZRX", "BAT", "UNI"]) {
     let messages = [];
     let signatures = [];
     let symbols = [];
