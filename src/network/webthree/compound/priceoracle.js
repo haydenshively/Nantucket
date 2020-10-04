@@ -14,8 +14,8 @@ class PriceOracle extends SmartContract {
 }
 
 const addresses = {
-  mainnet: "0x9B8Eb8b3d6e2e0Db36F41455185FEF7049a35CaE",
-  ropsten: "0xe23874df0276AdA49D58751E8d6E088581121f1B"
+  mainnet: "0x922018674c12a7F0D394ebEEf9B58F186CdE13c1",
+  ropsten: "0xb2b3d5B4E35881D518fa2062325F118A6Ebb6C4A"
 };
 
 for (let net in addresses) {
