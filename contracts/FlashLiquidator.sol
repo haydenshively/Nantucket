@@ -62,7 +62,7 @@ contract FlashLiquidator is FlashLoanReceiverBase {
         recipient = msg.sender;
         router = IUniswapV2Router02(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
         comptroller = Comptroller(0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B);
-        priceOracle = PriceOracle(0x9B8Eb8b3d6e2e0Db36F41455185FEF7049a35CaE);
+        priceOracle = PriceOracle(0x922018674c12a7F0D394ebEEf9B58F186CdE13c1);
     }
 
     function kill() public onlyRecipient {
