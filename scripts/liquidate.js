@@ -2,16 +2,25 @@ require("dotenv").config();
 const config = require("../config.json");
 
 const BORROWERS = [
-  "0xf5bbe12440308b20c16f0ace1c86c9109a397d8c",
-  "0x7ed66698739139c1a9e945c249dcff6431c2dccf"
+  "0xa8b941c709fdbc5ea9d2886158044e2b7f068ddb",
+  "0x7a2554c1cdcbb261ab529ae75e2ca9465240b894",
+  "0x77d8c672d9fc98e44a036b2b24f51a9613da7e41",
+  "0xf523efbb1150a9140f3aa964055517040881f949",
+  "0xd4f0814c33c49d1d01a6bd3ae79e01a309f5c257",
 ];
 const REPAY = [
-  "0x4ddc2d193948926d02f9b1fe9e1daa0718270ed5",
-  "0x5d3a536e4d6dbd6114cc1ead35777bab948e3643"
+  "0x39aa39c021dfbae8fac545936693ac917d5e7563",
+  "0x5d3a536e4d6dbd6114cc1ead35777bab948e3643",
+  "0x39aa39c021dfbae8fac545936693ac917d5e7563",
+  "0x5d3a536e4d6dbd6114cc1ead35777bab948e3643",
+  "0x5d3a536e4d6dbd6114cc1ead35777bab948e3643",
 ];
 const SEIZE = [
+  "0xb3319f5d18bc0d84dd1b4825dcde5d5f7266d407",
+  "0x39aa39c021dfbae8fac545936693ac917d5e7563",
   "0x6c8c6b02e7b2be14d4fa6022dfd6d75921d90e4e",
-  "0x4ddc2d193948926d02f9b1fe9e1daa0718270ed5"
+  "0x39aa39c021dfbae8fac545936693ac917d5e7563",
+  "0x4ddc2d193948926d02f9b1fe9e1daa0718270ed5",
 ];
 
 // configure web3
@@ -59,7 +68,7 @@ function askQuestion(query) {
     );
     tx.from = process.env.ACCOUNT_ADDRESS_TEST;
     tx.nonce = Web3Utils.toHex(nonce);
-    tx.gasLimit = Web3Utils.toHex(2100000 * BORROWERS.length);
+    tx.gasLimit = Web3Utils.toHex(700000 + 1400000 * BORROWERS.length);
     tx.gasPrice = Web3Utils.toHex(tx.gasPrice.toFixed(0));
 
     let signedTx = new Tx(tx);

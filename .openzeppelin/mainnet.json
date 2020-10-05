@@ -40,6 +40,13 @@
         "kind": "NonProxy",
         "bytecodeHash": "1f7b1bd83af51609351b127cae8780fb08fbdd4b1cbcef109b658aa6ffec3ea8"
       }
+    ],
+    "Flash Loan Liquidation/ChiWrapper": [
+      {
+        "address": "0x9D0De4e823e8B28Dba070f7e2C0CFD63a2016072",
+        "kind": "NonProxy",
+        "bytecodeHash": "34cc5a12d68e715aad70e2d4d9e0be450e4656f10a526ce6681440d0abc9cf78"
+      }
     ]
   },
   "manifestVersion": "2.2"
