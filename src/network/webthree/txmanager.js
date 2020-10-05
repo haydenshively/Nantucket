@@ -172,6 +172,13 @@ class TxManager {
     );
     // Override gas limit
     this._tx.gasLimit = gasLimit;
+    // Override target contract to use Chi wrapper if revenue is high
+    // This assumes we have enough Chi to fully payoff around half of
+    // the gas costs.
+    // TODO Don't hard code this
+    if (this._revenue > 1)
+      this._tx.to = "0x9D0De4e823e8B28Dba070f7e2C0CFD63a2016072";
+      this._tx.gasLimit = this._tx.gasLimit.div(1.95);
   }
 
   /**
