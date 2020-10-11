@@ -8,10 +8,10 @@ const Message = require("./messaging/message");
 const Oracle = require("./messaging/oracle");
 
 if (process.argv.length < 7) {
-  console.log("TxManager process requires config.json and 4 arguments");
+  winston.debug("TxManager process requires config.json and 4 arguments");
   process.exit();
 }
-console.log(`TxManager ${process.pid} is running`);
+winston.debug(`TxManager ${process.pid} is running`);
 
 // src.network.webthree
 const Wallet = require("./network/webthree/wallet");
@@ -65,6 +65,6 @@ process.on("SIGINT", code => {
   }
   txManager.stop();
 
-  console.log(`TxManager ${process.pid} has exited cleanly`);
+  winston.debug(`TxManager ${process.pid} has exited cleanly`);
   process.exit();
 });

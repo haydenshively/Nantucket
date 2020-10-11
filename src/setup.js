@@ -17,11 +17,22 @@ winston.configure({
     winston.format.simple()
   ),
   transports: [
-    new winston.transports.Console({ handleExceptions: true }),
+    new winston.transports.Console({
+      handleExceptions: true,
+      level: "debug"
+    }),
     new SlackHook({
       level: "info",
       webhookUrl: process.env.SLACK_WEBHOOK,
       mrkdwn: true
+    }),
+    new winston.transports.File({
+      level: 'debug',
+      filename: `tmp/logs/nantucket.log`,
+      handleExceptions: true,
+      json: true,
+      maxsize: 5242880, // 5MB
+      colorize: false,
     })
   ],
   exitOnError: false

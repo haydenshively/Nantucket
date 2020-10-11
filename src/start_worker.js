@@ -7,10 +7,10 @@ const Message = require("./messaging/message");
 const Oracle = require("./messaging/oracle");
 
 if (process.argv.length < 7) {
-  console.log("Worker process requires config.json and 4 arguments");
+  winston.debug("Worker process requires config.json and 4 arguments");
   process.exit();
 }
-console.log(`Worker ${process.pid} is running`);
+winston.debug(`Worker ${process.pid} is running`);
 
 const Worker = require("./worker");
 const worker = new Worker(
@@ -52,6 +52,6 @@ process.on("SIGINT", code => {
   }
   worker.stop();
 
-  console.log(`Worker ${process.pid} has exited cleanly`);
+  winston.debug(`Worker ${process.pid} has exited cleanly`);
   process.exit();
 });

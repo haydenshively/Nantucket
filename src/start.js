@@ -188,7 +188,7 @@ for (let symbol in Tokens.mainnet) {
 }
 
 process.on("SIGINT", () => {
-  console.log("\nCaught interrupt signal");
+  winston.debug("\nCaught interrupt signal");
 
   clearInterval(handle1);
   clearInterval(handle2);

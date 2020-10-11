@@ -1,5 +1,6 @@
 const Web3 = require("web3");
 const net = require("net");
+const winston = require("winston");
 
 const IPCProvider = path => {
   return new Web3(path, net);
@@ -110,7 +111,7 @@ class MultiSendProvider {
         try {
           p.currentProvider.connection.destroy();
         } catch {
-          console.log("Cannot close HTTP provider's connection");
+          winston.debug("Cannot close HTTP provider's connection");
         }
       }
     });

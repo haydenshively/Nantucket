@@ -1,5 +1,8 @@
+
+
 const crypto = require("crypto");
 const nfetch = require("node-fetch");
+const winston = require("winston");
 
 const Oracle = require("../../../messaging/oracle");
 
@@ -61,8 +64,8 @@ class Reporter extends Oracle {
       this._setStablecoins();
     } catch (e) {
       if (e instanceof nfetch.FetchError)
-        console.log("Coinbase fetch failed. Connection probably timed out");
-      else console.log("Coinbase fetch failed. Error converting to JSON");
+        winston.debug("Coinbase fetch failed. Connection probably timed out");
+      else winston.debug("Coinbase fetch failed. Error converting to JSON");
     }
   }
 }

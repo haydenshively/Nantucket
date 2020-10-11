@@ -1,4 +1,6 @@
 // src
+import * as winston from "winston";
+
 const Database = require("./database");
 // src.messaging
 const Candidate = require("./messaging/candidate");
@@ -133,11 +135,11 @@ class Worker extends Database {
   }
 
   _removeCandidate(address) {
-    console.log(`Removing candidate ${address}`);
+    winston.debug(`Removing candidate ${address}`);
     for (let i = 0; i < this._candidates.length; i++) {
       if (this._candidates[i].address !== address.toLowerCase()) continue;
       this._candidates.splice(i, 1);
-      console.log(`Candidate ${address} was being watched`);
+      winston.debug(`Candidate ${address} was being watched`);
       break;
     }
   }
