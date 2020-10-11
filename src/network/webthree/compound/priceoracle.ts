@@ -16,7 +16,7 @@ for (let network in addresses) {
 }
 
 @staticImplements<MultiEthNet>()
-class PriceOracle extends SmartContract {
+export default class PriceOracle extends SmartContract {
 
   /**
    * Factory method for constructing an instance of PriceOracle on a given

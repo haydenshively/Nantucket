@@ -1,9 +1,9 @@
-const assert = require("assert");
+import assert from "assert";
 
-const { forAllProviders } = require("../utils");
-
-const Comptroller = require("../../../../src/network/webthree/compound/comptroller");
-const Tokens = require("../../../../src/network/webthree/compound/ctoken");
+// @ts-ignore
+import { forAllProviders } from "../utils";
+import Comptroller from "../../../../src/network/webthree/compound/comptroller";
+import Tokens from "../../../../src/network/webthree/compound/ctoken";
 
 describe("network/webthree/compound || Comptroller Test", () => {
   it("should retrieve liquidation incentive", () => {
@@ -22,13 +22,15 @@ describe("network/webthree/compound || Comptroller Test", () => {
   });
 
   it("should retrieve collateral factors", async () => {
-    for (let chain in web3) {
+    // @ts-ignore
+    for (let chain in global.web3) {
       for (let symbol in Tokens[chain]) {
         if (!symbol.startsWith("c")) continue;
 
         const token = Tokens[chain][symbol];
         const caller = Comptroller[chain].collateralFactorFor(token);
-        assert((await caller(web3[chain])).lt(1.0));
+        // @ts-ignore
+        assert((await caller(global.web3[chain])).lt(1.0));
       }
     }
   }).timeout(10000);

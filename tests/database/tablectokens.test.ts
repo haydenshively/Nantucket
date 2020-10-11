@@ -1,9 +1,9 @@
-const assert = require("assert");
-
-const TableCTokens = require("../../src/database/tablectokens");
+import assert from "assert";
+import TableCTokens from "../../src/database/tablectokens";
 
 describe("database || Table CTokens Test", () => {
-  const table = new TableCTokens(pool, null);
+  // @ts-ignore
+  const table = new TableCTokens(global.pool, null);
 
   it("should retrieve id -> address -> id", async function() {
     const id = 1;

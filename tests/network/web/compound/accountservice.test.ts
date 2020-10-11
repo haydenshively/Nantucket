@@ -1,6 +1,6 @@
-const assert = require("assert");
+import assert from "assert";
+import AccountService from "../../../../src/network/web/compound/accountservice";
 
-const AccountService = require("../../../../src/network/web/compound/accountservice");
 const service = new AccountService();
 
 describe("network/web/compound || Account Service Test", () => {

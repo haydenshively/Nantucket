@@ -1,14 +1,12 @@
-const Big = require("big.js");
-Big.DP = 40;
-Big.RM = 0;
+import Big from "../../../src/big";
 
-const assert = require("assert");
-const Web3Utils = require("web3-utils");
-
-const TxQueue = require("../../../src/network/webthree/txqueue");
+import assert from "assert";
+import Web3Utils from "web3-utils";
+import TxQueue from "../../../src/network/webthree/txqueue";
 
 describe("network/webthree || TxQueue Test", () => {
-  const chain = web3.ropsten;
+  // @ts-ignore
+  const chain = global.web3.ropsten;
   const txQueue = new TxQueue(
     chain,
     "ACCOUNT_ADDRESS_TEST",

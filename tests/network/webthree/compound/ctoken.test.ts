@@ -1,8 +1,7 @@
-const assert = require("assert");
-
-const { forAllTokens } = require("../utils");
-
-const Tokens = require("../../../../src/network/webthree/compound/ctoken");
+import assert from "assert";
+// @ts-ignore
+import { forAllTokens } from "../utils";
+import Tokens from "../../../../src/network/webthree/compound/ctoken";
 
 describe("network/webthree/compound || cToken Test", () => {
   it("should retrieve exchange rates", () => {

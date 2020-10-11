@@ -1,15 +1,13 @@
-const Big = require("big.js");
-Big.DP = 40;
-Big.RM = 0;
+import Big from "../../../src/big"
 
-const assert = require("assert");
-const Web3Utils = require("web3-utils");
-
-const Wallet = require("../../../src/network/webthree/wallet");
+import assert from "assert";
+import Web3Utils from "web3-utils";
+import Wallet from "../../../src/network/webthree/wallet";
 
 describe("network/webthree || Wallet Test", () => {
   const wallet = new Wallet(
-    web3.ropsten,
+    // @ts-ignore
+    global.web3.ropsten,
     "ACCOUNT_ADDRESS_TEST",
     "ACCOUNT_SECRET_TEST"
   );
@@ -21,7 +19,8 @@ describe("network/webthree || Wallet Test", () => {
   });
 
   it("should initialize with correct chain", () => {
-    return wallet.init().then(() => assert(wallet._net.chain === "ropsten"));
+    // @ts-ignore
+    return wallet.init().then(() => assert(wallet.net.chain === "ropsten"));
   });
 
   it("should sign transactions", () => {
@@ -34,6 +33,7 @@ describe("network/webthree || Wallet Test", () => {
     };
 
     assert(typeof wallet._sign(tx) === "string");
+    // @ts-ignore
     tx.data = Web3Utils.toHex("Hello World");
     assert(typeof wallet._sign(tx) === "string");
     delete tx.value;
@@ -42,12 +42,14 @@ describe("network/webthree || Wallet Test", () => {
 
   it("should send a transaction", async () => {
     const nonce = await wallet.getLowestLiquidNonce();
-    wallet.emptyTx.gasPrice = Big(await web3.ropsten.eth.getGasPrice());
-    const sentTx = wallet.signAndSend(wallet.emptyTx, nonce, true);
+    // @ts-ignore
+    wallet.emptyTx.gasPrice = Big(await global.web3.ropsten.eth.getGasPrice());
+    const sentTx = wallet.signAndSend(wallet.emptyTx, nonce);
 
     return sentTx.then(receipt => {
       assert(receipt.status === true);
-      assert(receipt.to === process.env[wallet._envKeyAddress].toLowerCase());
+      // @ts-ignore
+      assert(receipt.to === process.env[wallet.envKeyAddress].toLowerCase());
       assert(receipt.to === receipt.from);
       assert(receipt.gasUsed === 21000);
     });

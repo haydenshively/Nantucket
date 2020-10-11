@@ -1,6 +1,6 @@
-const assert = require("assert");
+import assert from "assert";
+import CTokenService from "../../../../src/network/web/compound/ctokenservice";
 
-const CTokenService = require("../../../../src/network/web/compound/ctokenservice");
 const service = new CTokenService();
 
 describe("network/web/compound || cToken Service Test", () => {

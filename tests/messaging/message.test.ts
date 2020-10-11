@@ -4,6 +4,7 @@ const Message = require("../../src/messaging/message");
 
 describe("messaging || Message Test", () => {
   // process.send only exists in child processes
+  // @ts-ignore
   process.send = msg => process.emit("message", msg);
 
   it("should send and receive an empty message", () => {

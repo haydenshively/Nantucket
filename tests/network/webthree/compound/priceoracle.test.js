@@ -1,7 +1,7 @@
-const assert = require("assert");
+import assert from "assert";
 
-const PriceOracle = require("../../../../src/network/webthree/compound/priceoracle");
-const Tokens = require("../../../../src/network/webthree/compound/ctoken");
+import PriceOracle from "../../../../src/network/webthree/compound/priceoracle";
+import Tokens from "../../../../src/network/webthree/compound/ctoken";
 
 describe("network/webthree/compound || PriceOracle Test", () => {
   it("should retrieve prices", async () => {

@@ -1,13 +1,11 @@
-const Big = require("big.js");
-Big.DP = 40;
-Big.RM = 0;
+import Big from "../../../src/big";
 
-const assert = require("assert");
-
-const TxManager = require("../../../src/network/webthree/txmanager");
+import assert from "assert";
+import TxManager from "../../../src/network/webthree/txmanager";
 
 describe("network/webthree || TxManager Test", () => {
-  const chain = web3.ropsten;
+  // @ts-ignore
+  const chain = global.web3.ropsten;
   const txManager = new TxManager(
     chain,
     "ACCOUNT_ADDRESS_TEST",
@@ -19,7 +17,8 @@ describe("network/webthree || TxManager Test", () => {
   it("should initialize with correct chain", () => {
     return txManager
       .init()
-      .then(() => assert(txManager._queue._wallet._net.chain === "ropsten"));
+      // @ts-ignore
+      .then(() => assert(txManager.queue.wallet.net.chain === "ropsten"));
   });
 
   it("should get gas price", () => {
@@ -47,15 +46,19 @@ describe("network/webthree || TxManager Test", () => {
       profitability: 0
     });
     return txManager._cacheTransaction().then(() => {
-      txManager._sendIfProfitable(txManager._tx);
-      assert(txManager._queue.length === 0);
+      // @ts-ignore
+      txManager._sendIfProfitable(txManager.tx);
+      // @ts-ignore
+      assert(txManager.queue.length === 0);
     });
   });
 
   it("should stop cleanly", () => {
     txManager.stop();
-    assert(txManager._revenue === 0.0);
-    assert(txManager._tx === null);
+    // @ts-ignore
+    assert(txManager.revenue === 0.0);
+    // @ts-ignore
+    assert(txManager.tx === null);
   });
 
   // Must skip this test when it's running on Ropsten because
@@ -70,24 +73,33 @@ describe("network/webthree || TxManager Test", () => {
       profitability: 0.01
     });
     return txManager._cacheTransaction().then(() => {
-      let gasPrice = txManager._tx.gasPrice;
+      // @ts-ignore
+      let gasPrice = txManager.tx.gasPrice;
       for (let i = 0; i < 100; i++) {
-        txManager._sendIfProfitable(txManager._tx);
+        // @ts-ignore
+        txManager._sendIfProfitable(txManager.tx);
         assert(
-          txManager._tx.gasPrice.eq(gasPrice) ||
-            txManager._tx.gasPrice.eq(gasPrice.times(1.12))
+          // @ts-ignore
+          txManager.tx.gasPrice.eq(gasPrice) ||
+          // @ts-ignore
+            txManager.tx.gasPrice.eq(gasPrice.times(1.12))
         );
-        gasPrice = txManager._tx.gasPrice;
+        // @ts-ignore
+        gasPrice = txManager.tx.gasPrice;
       }
-      assert(txManager._queue.length === 1);
-      assert(TxManager._estimateFee(txManager._tx).lte("0.05"));
+      // @ts-ignore
+      assert(txManager.queue.length === 1);
+      // @ts-ignore
+      assert(TxManager._estimateFee(txManager.tx).lte("0.05"));
     });
   });
 
   it("should remove candidates", () => {
     txManager._removeStaleCandidates(0);
-    assert(Object.keys(txManager._candidates).length === 0);
+    // @ts-ignore
+    assert(Object.keys(txManager.candidates).length === 0);
     txManager._cacheTransaction();
-    assert(txManager._tx === null);
+    // @ts-ignore
+    assert(txManager.tx === null);
   });
 });

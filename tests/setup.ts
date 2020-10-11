@@ -1,8 +1,10 @@
 require("dotenv").config();
 
+// @ts-ignore
 global.inCI = process.env.CI;
 
 const { Pool } = require("pg");
+// @ts-ignore
 global.pool = new Pool({
   max: 20,
   idleTimeoutMillis: 30000,
@@ -10,6 +12,7 @@ global.pool = new Pool({
 });
 
 // configure web3
+// @ts-ignore
 global.web3 = {};
 const {
   MultiSendProvider,
@@ -23,8 +26,10 @@ const alchemy = {
   type: "WS_Alchemy",
   envKeyKey: "PROVIDER_ALCHEMY_KEY"
 };
-web3.mainnet = new MultiSendProvider("mainnet", [infura, alchemy]);
-web3.ropsten = ProviderFor("ropsten", infura);
+// @ts-ignore
+global.web3.mainnet = new MultiSendProvider("mainnet", [infura, alchemy]);
+// @ts-ignore
+global.web3.ropsten = ProviderFor("ropsten", infura);
 
 // configure winston
 const winston = require("winston");
@@ -41,13 +46,18 @@ winston.configure({
 });
 
 after(() => {
-  for (let chain in web3) {
-    web3[chain].eth.clearSubscriptions();
+  // @ts-ignore
+  for (let chain in global.web3) {
+    // @ts-ignore
+    global.web3[chain].eth.clearSubscriptions();
     try {
-      web3[chain].currentProvider.connection.close();
+      // @ts-ignore
+      global.web3[chain].currentProvider.connection.close();
     } catch {
-      web3[chain].currentProvider.connection.destroy();
+      // @ts-ignore
+      global.web3[chain].currentProvider.connection.destroy();
     }
   }
-  pool.end();
+  // @ts-ignore
+  global.pool.end();
 });

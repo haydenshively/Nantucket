@@ -1,7 +1,7 @@
 import nfetch from "node-fetch";
 import Fetchable from "../fetchable";
 
-class GasPrice implements Fetchable {
+export default class GasPrice implements Fetchable {
   async fetch() {
     const res = await nfetch(process.env.GAS_STATION_ENDPOINT, {
       method: "GET"
@@ -16,5 +16,3 @@ class GasPrice implements Fetchable {
     };
   }
 }
-
-module.exports = GasPrice;

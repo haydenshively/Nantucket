@@ -4,10 +4,12 @@ const Channel = require("../../src/messaging/channel");
 
 describe("messaging || Channel Test", () => {
   // process.send only exists in child processes
+  // @ts-ignore
   process.send = msg => process.emit("message", msg);
 
   it("should base itself on message class", () => {
     class Foo {
+      baz: number;
       constructor() {
         this.baz = 42;
       }
