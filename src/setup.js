@@ -28,10 +28,10 @@ winston.configure({
     }),
     new winston.transports.File({
       level: 'debug',
-      filename: `tmp/logs/nantucket.log`,
+      filename: `./logs/nantucket.log`,
       handleExceptions: true,
       json: true,
-      maxsize: 5242880, // 5MB
+      maxsize: 2242880, // ~2MB
       colorize: false,
     })
   ],
