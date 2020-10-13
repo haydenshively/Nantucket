@@ -35,6 +35,21 @@ library UniswapV2Library {
         (reserveA, reserveB) = tokenA == token0 ? (reserve0, reserve1) : (reserve1, reserve0);
     }
 
+    function getReservesWithPair(address factory, address tokenA, address tokenB) internal view returns (uint reserveA, uint reserveB, address pair) {
+        (address token0,) = sortTokens(tokenA, tokenB);
+        pair = pairFor(factory, tokenA, tokenB);
+
+        // check that pair exists
+        uint32 size;
+        assembly {
+            size := extcodesize(pair)
+        }
+        if (size == 0) return (0, 0, pair);
+
+        (uint reserve0, uint reserve1,) = IUniswapV2Pair(pair).getReserves();
+        (reserveA, reserveB) = tokenA == token0 ? (reserve0, reserve1) : (reserve1, reserve0);
+    }
+
     // given some amount of an asset and pair reserves, returns an equivalent amount of the other asset
     function quote(uint amountA, uint reserveA, uint reserveB) internal pure returns (uint amountB) {
         require(amountA > 0, 'UniswapV2Library: INSUFFICIENT_AMOUNT');

@@ -37,13 +37,13 @@ contract Liquidator is IUniswapV2Callee {
     address constant private ETHER = address(0);
     address constant private CETH = 0xBe839b6D93E3eA47eFFcCA1F27841C917a8794f3;
     address constant private WETH = 0xc778417E063141139Fce010982780140Aa0cD5Ab;
+    address constant private ROUTER = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
     address constant private FACTORY = 0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f;
     uint constant private RECIP_CHANGE_WAIT_PERIOD = 24 hours;
 
     address payable private recipient;
     RecipientChange public recipientChange;
 
-    IUniswapV2Router02 public router;
     Comptroller public comptroller;
     PriceOracle public priceOracle;
 
@@ -66,7 +66,6 @@ contract Liquidator is IUniswapV2Callee {
 
     constructor() public {
         recipient = msg.sender;
-        router = IUniswapV2Router02(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D);
         comptroller = Comptroller(0x54188bBeDD7b68228fa89CbDDa5e3e930459C6c6);
         priceOracle = PriceOracle(0xb2b3d5B4E35881D518fa2062325F118A6Ebb6C4A);
     }
@@ -92,10 +91,6 @@ contract Liquidator is IUniswapV2Callee {
 
         // Clear the recipientChange struct. Equivalent to re-declaring it without initialization
         delete recipientChange;
-    }
-
-    function setRouter(address _routerAddress) public onlyRecipient {
-        router = IUniswapV2Router02(_routerAddress);
     }
 
     function setComptroller(address _comptrollerAddress) public onlyRecipient {
@@ -134,7 +129,6 @@ contract Liquidator is IUniswapV2Callee {
             address seizeCToken = _cTokens[i * 2 + 1];
 
             uint256 uPriceRepay = priceOracle.getUnderlyingPrice(repayCToken);
-            uint256 uPriceSeize = priceOracle.getUnderlyingPrice(seizeCToken);
 
             // uint256(10**18) adjustments ensure that all place values are dedicated
             // to repay and seize precision rather than unnecessary closeFact and liqIncent decimals
@@ -142,12 +136,11 @@ contract Liquidator is IUniswapV2Callee {
             uint256 seizeMax = CErc20(seizeCToken).balanceOfUnderlying(borrower) * uint256(10**18) / liqIncent;
 
             uint256 repayMax_Eth = repayMax * uPriceRepay;
-            uint256 seizeMax_Eth = seizeMax * uPriceSeize;
+            uint256 seizeMax_Eth = seizeMax * priceOracle.getUnderlyingPrice(seizeCToken);
 
             uint256 repay_Eth = (repayMax_Eth < seizeMax_Eth) ? repayMax_Eth : seizeMax_Eth;
             uint256 repay = repay_Eth / uPriceRepay;
 
-            if ((i != 0) && (tx.gasprice * 1500000 > repay_Eth * (liqIncent - uint256(10**18)))) break;
             liquidate(borrower, repayCToken, seizeCToken, repay);
             if (gasleft() < 2000000) break;
         }
@@ -162,36 +155,32 @@ contract Liquidator is IUniswapV2Callee {
      * @param _amount (uint256): the amount (specified in units of _repayCToken.underlying) to flash loan and pay off
      */
     function liquidate(address _borrower, address _repayCToken, address _seizeCToken, uint256 _amount) public {
-        address tokenA;
-        address tokenB;
+        address pair;
+        address r;
 
-        if (_repayCToken == _seizeCToken) {
-            tokenA = CErc20Storage(_repayCToken).underlying();
-            tokenB = WETH;
+        if (_repayCToken == _seizeCToken || _seizeCToken == CETH) {
+            r = CErc20Storage(_repayCToken).underlying();
+            pair = UniswapV2Library.pairFor(FACTORY, r, WETH);
         }
         else if (_repayCToken == CETH) {
-            tokenA = WETH;
-            tokenB = CErc20Storage(_seizeCToken).underlying();
-        }
-        else if (_seizeCToken == CETH) {
-            tokenA = CErc20Storage(_repayCToken).underlying();
-            tokenB = WETH;
+            r = WETH;
+            pair = UniswapV2Library.pairFor(FACTORY, WETH, CErc20Storage(_seizeCToken).underlying());
         }
         else {
-            tokenA = CErc20Storage(_repayCToken).underlying();
-            tokenB = WETH;
-            // TODO if liquidity is high enough, we could set tokenB to be the seizeCToken underlying
-            // --> (would require some modifications to the uniswapV2Call function)
+            r = CErc20Storage(_repayCToken).underlying();
+            address s = CErc20Storage(_seizeCToken).underlying();
+            uint maxBorrow;
+            (maxBorrow, , pair) = UniswapV2Library.getReservesWithPair(FACTORY, r, s);
+
+            if (_amount >= maxBorrow) pair = IUniswapV2Factory(FACTORY).getPair(r, WETH);
         }
 
-        // Retrieve the Uniswap pair
-        IUniswapV2Pair pair = IUniswapV2Pair(IUniswapV2Factory(FACTORY).getPair(tokenA, tokenB));
         // Initiate flash swap
         bytes memory data = abi.encode(_borrower, _repayCToken, _seizeCToken);
-        uint amount0 = pair.token0() == tokenA ? _amount : 0;
-        uint amount1 = pair.token1() == tokenA ? _amount : 0;
+        uint amount0 = IUniswapV2Pair(pair).token0() == r ? _amount : 0;
+        uint amount1 = IUniswapV2Pair(pair).token1() == r ? _amount : 0;
 
-        pair.swap(amount0, amount1, address(this), data);
+        IUniswapV2Pair(pair).swap(amount0, amount1, address(this), data);
     }
 
     /**
@@ -211,90 +200,102 @@ contract Liquidator is IUniswapV2Callee {
         address token1 = IUniswapV2Pair(msg.sender).token1();
         require(msg.sender == IUniswapV2Factory(FACTORY).getPair(token0, token1));
 
-        address estuary;
-        uint debt;
+        if (repayCToken == seizeCToken) {
+            uint amount = amount0 != 0 ? amount0 : amount1;
+            address estuary = amount0 != 0 ? token0 : token1;
+
+            // Perform the liquidation
+            approve(estuary, repayCToken, amount);
+            CErc20(repayCToken).liquidateBorrow(borrower, amount, seizeCToken);
+
+            // Redeem cTokens for underlying ERC20 or ETH
+            CErc20(seizeCToken).redeem(IERC20(seizeCToken).balanceOf(address(this)));
+
+            // Compute debt and pay back pair
+            IERC20(estuary).transfer(msg.sender, amount.mul(1000).div(997).add(1));
+            return;
+        }
 
         if (repayCToken == CETH) {
+            uint amount = amount0 != 0 ? amount0 : amount1;
+            address estuary = amount0 != 0 ? token1 : token0;
+
             // Convert WETH to ETH
-            uint amount = token0 == WETH ? amount0 : amount1;
             IWETH(WETH).withdraw(amount);
 
             // Perform the liquidation
             CEther(repayCToken).liquidateBorrow{value: amount}(borrower, seizeCToken);
 
             // Redeem cTokens for underlying ERC20
-            uint reward_cUnits = IERC20(seizeCToken).balanceOf(address(this));
-            // uint reward_uUnits = CErc20(seizeCToken).balanceOfUnderlying(address(this));
-            require(CErc20(seizeCToken).redeem(reward_cUnits) == 0, "Unable to redeem collateral reward.");
+            CErc20(seizeCToken).redeem(IERC20(seizeCToken).balanceOf(address(this)));
 
-            // *Assume* that when Eth is being repaid, the other token in the Uniswap pair
-            // is the one being seized
-            estuary = token0 == WETH ? token1 : token0;
-            // address seizeUToken = CErc20Storage(seizeCToken).underlying();
-            // require(seizeUToken == neededToken, "Expected seized token to be in Uniswap pair");
-
+            // Compute debt and pay back pair
             (uint reserveOut, uint reserveIn) = UniswapV2Library.getReserves(FACTORY, WETH, estuary);
-            debt = UniswapV2Library.getAmountIn(amount, reserveIn, reserveOut);
+            IERC20(estuary).transfer(msg.sender, UniswapV2Library.getAmountIn(amount, reserveIn, reserveOut));
+            return;
+        }
 
+        if (seizeCToken == CETH) {
+            uint amount = amount0 != 0 ? amount0 : amount1;
+            address source = amount0 != 0 ? token0 : token1;
+
+            // Perform the liquidation
+            approve(source, repayCToken, amount);
+            CErc20(repayCToken).liquidateBorrow(borrower, amount, seizeCToken);
+
+            // Redeem cTokens for underlying ERC20 or ETH
+            CErc20(seizeCToken).redeem(IERC20(seizeCToken).balanceOf(address(this)));
+
+            // Convert ETH to WETH
+            IWETH(WETH).deposit{value: address(this).balance}();
+
+            // Compute debt and pay back pair
+            (uint reserveOut, uint reserveIn) = UniswapV2Library.getReserves(FACTORY, source, WETH);
+            IERC20(WETH).transfer(msg.sender, UniswapV2Library.getAmountIn(amount, reserveIn, reserveOut));
+            return;
+        }
+
+        uint amount;
+        address source;
+        address estuary;
+        if (amount0 != 0) {
+            amount = amount0;
+            source = token0;
+            estuary = token1;
+        } else {
+            amount = amount1;
+            source = token1;
+            estuary = token0;
+        }
+
+        // Perform the liquidation
+        approve(source, repayCToken, amount);
+        CErc20(repayCToken).liquidateBorrow(borrower, amount, seizeCToken);
+
+        // Redeem cTokens for underlying ERC20 or ETH
+        uint seized_uUnits = CErc20(seizeCToken).balanceOfUnderlying(address(this));
+        CErc20(seizeCToken).redeem(IERC20(seizeCToken).balanceOf(address(this)));
+        address seizeUToken = CErc20Storage(seizeCToken).underlying();
+
+        // Compute debt
+        (uint reserveOut, uint reserveIn) = UniswapV2Library.getReserves(FACTORY, source, estuary);
+        uint debt = UniswapV2Library.getAmountIn(amount, reserveIn, reserveOut);
+
+        if (seizeUToken == estuary) {
+            // Pay back pair
             IERC20(estuary).transfer(msg.sender, debt);
             return;
         }
 
-        // address repayUToken = CErc20Storage(repayCToken).underlying();
-        // uint amount = token0 == repayUToken ? amount0 : amount1;
+        IERC20(seizeUToken).safeApprove(ROUTER, 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF);
+        // Define swapping path
+        address[] memory path = new address[](2);
+        path[0] = seizeUToken;
+        path[1] = estuary;
+        //                                                  desired, max sent,   path, recipient,     deadline
+        IUniswapV2Router02(ROUTER).swapTokensForExactTokens(debt, seized_uUnits, path, address(this), now + 1 minutes);
 
-        address repayUToken;
-        uint amount;
-        if (amount0 != 0) {
-            repayUToken = token0;
-            amount = amount0;
-        } else {
-            repayUToken = token1;
-            amount = amount1;
-        }
-
-        // The borrower took out a loan from CToken contract X. Before we can liquidate them,
-        // we must approve contract X to take our money.
-        approve(repayUToken, repayCToken, amount);
-        // Perform the liquidation. If all goes well, we receive an amount of seizeCTokens
-        // equivalent to the amount we repaid, multiplied by the liquidation incentive.
-        CErc20(repayCToken).liquidateBorrow(borrower, amount, seizeCToken);
-
-        // Redeem cTokens for underlying ERC20 or ETH
-        uint reward_uUnits = CErc20(seizeCToken).balanceOfUnderlying(address(this));
-        require(CErc20(seizeCToken).redeemUnderlying(reward_uUnits) == 0, "Unable to redeem collateral reward.");
-
-        if (repayCToken == seizeCToken) {
-            estuary = repayUToken;
-            debt = amount.mul(1000).div(997).add(1);
-        }
-        else if (seizeCToken == CETH) {
-            estuary = WETH;
-            (uint reserveOut, uint reserveIn) = UniswapV2Library.getReserves(FACTORY, repayUToken, estuary);
-            debt = UniswapV2Library.getAmountIn(amount, reserveIn, reserveOut);
-
-            IWETH(estuary).deposit{value: reward_uUnits}();
-            require(debt < reward_uUnits, "Debt too large");
-        }
-        else {
-            estuary = WETH;
-            (uint reserveOut, uint reserveIn) = UniswapV2Library.getReserves(FACTORY, repayUToken, estuary);
-            debt = UniswapV2Library.getAmountIn(amount, reserveIn, reserveOut);
-
-            // Set deadline for swap transaction, which shouldn't matter since it's atomic.
-            uint256 deadline = now + 1 minutes;
-            // In this case, we have to figure out what token corresponds to reward_uUnits.
-            // Then we tell the router it's approved to swap that amount.
-            address seizeUToken = CErc20Storage(seizeCToken).underlying();
-            IERC20(seizeUToken).safeApprove(address(router), reward_uUnits);
-            // Define swapping path
-            address[] memory path = new address[](2);
-            path[0] = seizeUToken;
-            path[1] = WETH;
-            //                              desired,   amount traded, path, recipient,     deadline
-            router.swapTokensForExactTokens(debt, reward_uUnits, path, address(this), deadline);
-        }
-
+        // Pay back pair
         IERC20(estuary).transfer(msg.sender, debt);
     }
 
