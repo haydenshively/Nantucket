@@ -2,25 +2,37 @@ require("dotenv").config();
 const config = require("../config.json");
 
 const BORROWERS = [
-  "0xa8b941c709fdbc5ea9d2886158044e2b7f068ddb",
-  "0x7a2554c1cdcbb261ab529ae75e2ca9465240b894",
-  "0x77d8c672d9fc98e44a036b2b24f51a9613da7e41",
-  "0xf523efbb1150a9140f3aa964055517040881f949",
-  "0xd4f0814c33c49d1d01a6bd3ae79e01a309f5c257",
+  // Working
+  "0x6e197190de43166839665157274ee695456259f7",
+  "0x08ed3c17e5df89297402b717d1257fb125d7156e",
+  "0x3c894879e16a2c442ccafbbe487568b41fed299f",
+  "0x5761ab177fc7d38dcce87950111b34825217b54b",
+  "0xc78f3ea41dd17d51113045c343e3a3ac5ae895ba",
+  "0xbca105cbe6dab19664ac23d9e155be4da24ffc4a",
+  // Broken
+  "0xd6fb45d90ce9f0fdd655c2b2257172a2b088ef2b",
 ];
 const REPAY = [
-  "0x39aa39c021dfbae8fac545936693ac917d5e7563",
+  // Working
+  "0xf5dce57282a584d2746faf1593d3121fcac444dc",
+  "0x4ddc2d193948926d02f9b1fe9e1daa0718270ed5",
+  "0xf650c3d88d12db855b8bf7d11be6c55a4e07dcc9",
   "0x5d3a536e4d6dbd6114cc1ead35777bab948e3643",
-  "0x39aa39c021dfbae8fac545936693ac917d5e7563",
-  "0x5d3a536e4d6dbd6114cc1ead35777bab948e3643",
-  "0x5d3a536e4d6dbd6114cc1ead35777bab948e3643",
+  "0xc11b1268c1a384e55c48c2391d8d480264a3a7f4",
+  "0xf650c3d88d12db855b8bf7d11be6c55a4e07dcc9",
+  // Broken
+  "0xf650c3d88d12db855b8bf7d11be6c55a4e07dcc9"
 ];
 const SEIZE = [
-  "0xb3319f5d18bc0d84dd1b4825dcde5d5f7266d407",
-  "0x39aa39c021dfbae8fac545936693ac917d5e7563",
-  "0x6c8c6b02e7b2be14d4fa6022dfd6d75921d90e4e",
-  "0x39aa39c021dfbae8fac545936693ac917d5e7563",
+  // Working
   "0x4ddc2d193948926d02f9b1fe9e1daa0718270ed5",
+  "0x6c8c6b02e7b2be14d4fa6022dfd6d75921d90e4e",
+  "0x4ddc2d193948926d02f9b1fe9e1daa0718270ed5",
+  "0x6c8c6b02e7b2be14d4fa6022dfd6d75921d90e4e",
+  "0x6c8c6b02e7b2be14d4fa6022dfd6d75921d90e4e",
+  "0x6c8c6b02e7b2be14d4fa6022dfd6d75921d90e4e",
+  // Broken
+  "0x5d3a536e4d6dbd6114cc1ead35777bab948e3643"
 ];
 
 // configure web3
@@ -30,10 +42,10 @@ const web3 = new MultiSendProvider(
   config.network.providers
 );
 
-// configure FlashLiquidator stuff
+// configure Liquidator stuff
 const Tx = require("ethereumjs-tx").Transaction;
 const Web3Utils = require("web3-utils");
-const FlashLiquidator = require("../src/network/webthree/goldenage/flashliquidator");
+const Liquidator = require("../src/network/webthree/goldenage/liquidator");
 const Big = require("big.js");
 Big.DP = 40;
 Big.RM = 0;
@@ -60,7 +72,7 @@ function askQuestion(query) {
     const nonce = await web3.eth.getTransactionCount(
       process.env.ACCOUNT_ADDRESS_TEST
     );
-    const tx = FlashLiquidator.mainnet.liquidateMany(
+    const tx = Liquidator.mainnet.liquidateMany(
       BORROWERS,
       REPAY,
       SEIZE,
@@ -68,7 +80,7 @@ function askQuestion(query) {
     );
     tx.from = process.env.ACCOUNT_ADDRESS_TEST;
     tx.nonce = Web3Utils.toHex(nonce);
-    tx.gasLimit = Web3Utils.toHex(700000 + 1400000 * BORROWERS.length);
+    tx.gasLimit = Web3Utils.toHex(1500000 * BORROWERS.length);
     tx.gasPrice = Web3Utils.toHex(tx.gasPrice.toFixed(0));
 
     let signedTx = new Tx(tx);

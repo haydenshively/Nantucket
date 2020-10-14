@@ -5,7 +5,7 @@ Big.RM = 0;
 const Tx = require("ethereumjs-tx").Transaction;
 const Web3Utils = require("web3-utils");
 
-const FlashLiquidator = require("../../../../src/network/webthree/goldenage/flashliquidator");
+const Liquidator = require("../../../../src/network/webthree/goldenage/liquidator");
 const Reporter = require("../../../../src/network/web/coinbase/reporter");
 
 describe("network/webthree/goldenage || FlashLiquidator Test", () => {
@@ -16,7 +16,7 @@ describe("network/webthree/goldenage || FlashLiquidator Test", () => {
       return web3.ropsten.eth
         .getTransactionCount(process.env.ACCOUNT_ADDRESS_TEST)
         .then(nonce => {
-          const tx = FlashLiquidator.ropsten.liquidateMany(
+          const tx = Liquidator.ropsten.liquidateMany(
             [],
             [],
             [],
@@ -48,7 +48,7 @@ describe("network/webthree/goldenage || FlashLiquidator Test", () => {
         .then(nonce => {
           return Reporter.mainnet.fetch().then(() => {
             const postableData = Reporter.mainnet.postableData();
-            const tx = FlashLiquidator.ropsten.liquidateManyWithPriceUpdate(
+            const tx = Liquidator.ropsten.liquidateManyWithPriceUpdate(
               postableData[0],
               postableData[1],
               postableData[2],
