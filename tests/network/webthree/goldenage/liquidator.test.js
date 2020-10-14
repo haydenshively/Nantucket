@@ -8,8 +8,8 @@ const Web3Utils = require("web3-utils");
 const Liquidator = require("../../../../src/network/webthree/goldenage/liquidator");
 const Reporter = require("../../../../src/network/web/coinbase/reporter");
 
-describe("network/webthree/goldenage || FlashLiquidator Test", () => {
-  xit("should accept empty borrower list", () => {
+describe("network/webthree/goldenage || Liquidator Test", () => {
+  it("should accept empty borrower list", () => {
     return web3.ropsten.eth.getGasPrice().then(gasPrice => {
       gasPrice = Big(gasPrice).times(1.2);
 
@@ -39,7 +39,7 @@ describe("network/webthree/goldenage || FlashLiquidator Test", () => {
     });
   }).timeout(120000);
 
-  it("should update price", () => {
+  xit("should update price", () => {
     return web3.ropsten.eth.getGasPrice().then(gasPrice => {
       gasPrice = Big(gasPrice).times(2.0);
 
