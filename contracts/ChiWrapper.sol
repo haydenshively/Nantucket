@@ -37,18 +37,17 @@ contract ChiWrapper {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
-    Chi public chi;
-    IFlashLiquidator public liquidator;
+    address private constant CHI = 0x0000000000004946c0e9F43F4Dee607b0eF1fA1c;
+    IFlashLiquidator private immutable liquidator;
 
     modifier discountCHI {
         uint256 gasStart = gasleft();
         _;
         uint256 gasSpent = 21000 + gasStart - gasleft() + 16 * msg.data.length;
-        chi.freeFromUpTo(msg.sender, (gasSpent + 14154) / 41947);
+        Chi(CHI).freeFromUpTo(msg.sender, (gasSpent + 14154) / 41947);
     }
 
     constructor(address _flashLiquidator) public {
-        chi = Chi(0x0000000000004946c0e9F43F4Dee607b0eF1fA1c);
         liquidator = IFlashLiquidator(_flashLiquidator);
     }
 

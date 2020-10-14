@@ -35,8 +35,8 @@ contract Liquidator is IUniswapV2Callee {
     using SafeMath for uint256;
 
     address constant private ETHER = address(0);
-    address constant private CETH = 0xBe839b6D93E3eA47eFFcCA1F27841C917a8794f3;
-    address constant private WETH = 0xc778417E063141139Fce010982780140Aa0cD5Ab;
+    address constant private CETH = 0x4Ddc2D193948926D02f9B1fE9e1daa0718270ED5;
+    address constant private WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address constant private ROUTER = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
     address constant private FACTORY = 0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f;
     uint constant private RECIP_CHANGE_WAIT_PERIOD = 24 hours;
@@ -66,8 +66,8 @@ contract Liquidator is IUniswapV2Callee {
 
     constructor() public {
         recipient = msg.sender;
-        comptroller = Comptroller(0x54188bBeDD7b68228fa89CbDDa5e3e930459C6c6);
-        priceOracle = PriceOracle(0xb2b3d5B4E35881D518fa2062325F118A6Ebb6C4A);
+        comptroller = Comptroller(0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B);
+        priceOracle = PriceOracle(0x922018674c12a7F0D394ebEEf9B58F186CdE13c1);
     }
 
     receive() external payable {}
@@ -287,7 +287,7 @@ contract Liquidator is IUniswapV2Callee {
             return;
         }
 
-        IERC20(seizeUToken).safeApprove(ROUTER, 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF);
+        IERC20(seizeUToken).safeApprove(ROUTER, seized_uUnits);
         // Define swapping path
         address[] memory path = new address[](2);
         path[0] = seizeUToken;
