@@ -74,9 +74,10 @@ contract Liquidator is IUniswapV2Callee {
     }
 
     modifier discountCHI {
-        uint gasStart = gasleft();
+        uint256 gasStart = gasleft();
         _;
-        Chi(CHI).freeFromUpTo(msg.sender, (35154 + gasStart - gasleft() + 16 * msg.data.length) / 41947);
+        uint256 gasSpent = 21000 + gasStart - gasleft() + 16 * msg.data.length;
+        Chi(CHI).freeFromUpTo(msg.sender, (gasSpent + 14154) / 41947);
     }
 
     constructor() public {
@@ -135,12 +136,9 @@ contract Liquidator is IUniswapV2Callee {
 
     function liquidateSN(address[] calldata _borrowers, address[] calldata _cTokens) public {
         uint i;
-        uint liquidity;
 
         while (true) {
-            ( , liquidity, ) = comptroller.getAccountLiquidity(_borrowers[i]);
-            if (liquidity == 0) liquidateS(_borrowers[i], _cTokens[i * 2], _cTokens[i * 2 + 1]);
-
+            liquidateS(_borrowers[i], _cTokens[i * 2], _cTokens[i * 2 + 1]);
             if (gasleft() < gasThreshold || i + 1 == _borrowers.length) break;
             i++;
         }
@@ -166,6 +164,8 @@ contract Liquidator is IUniswapV2Callee {
      * @param _seizeCToken (address): a CToken for which the user has a supply balance
      */
     function liquidateS(address _borrower, address _repayCToken, address _seizeCToken) public {
+        ( , uint liquidity, ) = comptroller.getAccountLiquidity(_borrower);
+        if (liquidity != 0) return;
         // uint(10**18) adjustments ensure that all place values are dedicated
         // to repay and seize precision rather than unnecessary closeFact and liqIncent decimals
         uint repayMax = CErc20(_repayCToken).borrowBalanceCurrent(_borrower) * closeFact / uint(10**18);
@@ -328,6 +328,7 @@ contract Liquidator is IUniswapV2Callee {
         path[1] = estuary;
         //                                                  desired, max sent,   path, recipient,     deadline
         IUniswapV2Router02(ROUTER).swapTokensForExactTokens(debt, seized_uUnits, path, address(this), now + 1 minutes);
+        IERC20(seizeUToken).safeApprove(ROUTER, 0);
 
         // Pay back pair
         IERC20(estuary).transfer(msg.sender, debt);
@@ -364,15 +365,15 @@ contract Liquidator is IUniswapV2Callee {
         address _repayCToken,
         address _seizeCToken
     ) external {
-        uint gasStart = gasleft();
-        // MARK - actual operation
+        uint gasStart1 = gasleft();
         priceOracle.postPrices(_messages, _signatures, _symbols);
-        Chi(CHI).freeFromUpTo(msg.sender, (35154 + gasStart - gasleft() + 16 * msg.data.length) / 41947);
 
-        gasStart = gasleft();
-        // MARK - actual operation
+        uint gasStart2 = gasleft();
+        Chi(CHI).freeFromUpTo(msg.sender, (gasStart1 - gasleft()) / 41947);
         liquidateS(_borrower, _repayCToken, _seizeCToken);
-        Chi(CHI).freeFromUpTo(msg.sender, (14154 + gasStart - gasleft()) / 41947);
+        
+        uint gasSpent = 21000 + gasStart2 - gasleft() + 16 * msg.data.length;
+        Chi(CHI).freeFromUpTo(msg.sender, (gasSpent + 14154) / 41947);
     }
 
     function liquidateSNWithPriceChi(
@@ -382,14 +383,14 @@ contract Liquidator is IUniswapV2Callee {
         address[] calldata _borrowers,
         address[] calldata _cTokens
     ) external {
-        uint gasStart = gasleft();
-        // MARK - actual operation
+        uint gasStart1 = gasleft();
         priceOracle.postPrices(_messages, _signatures, _symbols);
-        Chi(CHI).freeFromUpTo(msg.sender, (35154 + gasStart - gasleft() + 16 * msg.data.length) / 41947);
 
-        gasStart = gasleft();
-        // MARK - actual operation
+        uint gasStart2 = gasleft();
+        Chi(CHI).freeFromUpTo(msg.sender, (gasStart1 - gasleft()) / 41947);
         liquidateSN(_borrowers, _cTokens);
-        Chi(CHI).freeFromUpTo(msg.sender, (14154 + gasStart - gasleft()) / 41947);
+        
+        uint gasSpent = 21000 + gasStart2 - gasleft() + 16 * msg.data.length;
+        Chi(CHI).freeFromUpTo(msg.sender, (gasSpent + 14154) / 41947);
     }
 }
