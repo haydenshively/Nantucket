@@ -3,11 +3,6 @@ pragma solidity ^0.6.10;
 // For PriceOracle postPrices()
 pragma experimental ABIEncoderV2;
 
-// Import AAVE components
-import "./aave/FlashLoanReceiverBase.sol";
-import "./aave/ILendingPoolAddressesProvider.sol";
-import "./aave/ILendingPool.sol";
-
 // Import Compound components
 import "./compound/CErc20.sol";
 import "./compound/CEther.sol";
@@ -23,6 +18,14 @@ import "./uniswap/IUniswapV2Pair.sol";
 import "./uniswap/IWETH.sol";
 
 
+interface Chi {
+    function free(uint value) external returns (uint);
+    function freeUpTo(uint value) external returns (uint);
+    function freeFrom(address from, uint value) external returns (uint);
+    function freeFromUpTo(address from, uint value) external returns (uint);
+}
+
+
 contract Liquidator is IUniswapV2Callee {
 
     struct RecipientChange {
@@ -32,20 +35,26 @@ contract Liquidator is IUniswapV2Callee {
     }
 
     using SafeERC20 for IERC20;
-    using SafeMath for uint256;
 
+    address private constant CHI = 0x0000000000004946c0e9F43F4Dee607b0eF1fA1c;
     address constant private ETHER = address(0);
     address constant private CETH = 0x4Ddc2D193948926D02f9B1fE9e1daa0718270ED5;
     address constant private WETH = 0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2;
     address constant private ROUTER = 0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D;
     address constant private FACTORY = 0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f;
     uint constant private RECIP_CHANGE_WAIT_PERIOD = 24 hours;
+    // Coefficient = (1 - 1/sqrt(1.02)) for 2% slippage. Multiply by 100000 to get integer
+    uint constant private SLIPPAGE_THRESHOLD_FACT = 985;
 
     address payable private recipient;
     RecipientChange public recipientChange;
 
     Comptroller public comptroller;
     PriceOracle public priceOracle;
+
+    uint private closeFact;
+    uint private liqIncent;
+    uint private gasThreshold = 2000000;
 
     event RevenueWithdrawn(
         address recipient,
@@ -59,32 +68,41 @@ contract Liquidator is IUniswapV2Callee {
     modifier onlyRecipient() {
         require(
             msg.sender == recipient,
-            "Only recipient can call this function."
+            "Nantucket: Unauthorized"
         );
         _;
     }
 
+    modifier discountCHI {
+        uint gasStart = gasleft();
+        _;
+        Chi(CHI).freeFromUpTo(msg.sender, (35154 + gasStart - gasleft() + 16 * msg.data.length) / 41947);
+    }
+
     constructor() public {
         recipient = msg.sender;
+
         comptroller = Comptroller(0x3d9819210A31b4961b30EF54bE2aeD79B9c9Cd3B);
-        priceOracle = PriceOracle(0x922018674c12a7F0D394ebEEf9B58F186CdE13c1);
+        priceOracle = PriceOracle(comptroller.oracle());
+        closeFact = comptroller.closeFactorMantissa();
+        liqIncent = comptroller.liquidationIncentiveMantissa();
     }
 
     receive() external payable {}
 
-    function kill() public onlyRecipient {
-        // Delete the contract and send any remaining funds to recipient
+    function kill() external onlyRecipient {
+        // Delete the contract and send any available Eth to recipient
         selfdestruct(recipient);
     }
 
-    function initiateRecipientChange(address payable _recipient) public onlyRecipient returns (address) {
+    function initiateRecipientChange(address payable _recipient) external onlyRecipient returns (address) {
         recipientChange = RecipientChange(_recipient, now + RECIP_CHANGE_WAIT_PERIOD, true);
         return recipientChange.recipient;
     }
 
-    function confirmRecipientChange() public onlyRecipient {
-        require(recipientChange.pending, "There is no pending recipient change.");
-        require(now > recipientChange.waitingPeriodEnd, "The waiting period isn't over yet.");
+    function confirmRecipientChange() external onlyRecipient {
+        require(recipientChange.pending, "Nantucket: Initiate change first");
+        require(now > recipientChange.waitingPeriodEnd, "Nantucket: Wait longer");
         
         recipient = recipientChange.recipient;
         emit RecipientChanged(recipient);
@@ -93,68 +111,85 @@ contract Liquidator is IUniswapV2Callee {
         delete recipientChange;
     }
 
-    function setComptroller(address _comptrollerAddress) public onlyRecipient {
+    function setComptroller(address _comptrollerAddress) external onlyRecipient {
         comptroller = Comptroller(_comptrollerAddress);
+        priceOracle = PriceOracle(comptroller.oracle());
+        closeFact = comptroller.closeFactorMantissa();
+        liqIncent = comptroller.liquidationIncentiveMantissa();
     }
 
-    function setPriceOracle(address _oracleAddress) public onlyRecipient {
-        priceOracle = PriceOracle(_oracleAddress);
+    function setGasThreshold(uint _gasThreshold) external onlyRecipient {
+        gasThreshold = _gasThreshold;
     }
 
-    function approve(address _sender, address _receiver, uint256 _amount) internal {
-        IERC20(_sender).safeApprove(_receiver, _amount);
-    }
-
-    function liquidateManyWithPriceUpdate(
+    function liquidateSNWithPrice(
         bytes[] calldata _messages,
         bytes[] calldata _signatures,
         string[] calldata _symbols,
         address[] calldata _borrowers,
         address[] calldata _cTokens
-    ) public {
+    ) external {
         priceOracle.postPrices(_messages, _signatures, _symbols);
-        liquidateMany(_borrowers, _cTokens);
+        liquidateSN(_borrowers, _cTokens);
     }
 
-    function liquidateMany(address[] calldata _borrowers, address[] calldata _cTokens) public {
-        uint256 closeFact = comptroller.closeFactorMantissa();
-        uint256 liqIncent = comptroller.liquidationIncentiveMantissa();
+    function liquidateSN(address[] calldata _borrowers, address[] calldata _cTokens) public {
+        uint i;
+        uint liquidity;
 
-        for (uint8 i = 0; i < _borrowers.length; i++) {
-            address borrower = _borrowers[i];
-            ( , uint256 liquidity, ) = comptroller.getAccountLiquidity(borrower);
-            // `!=` uses less gas than `>`
-            if (liquidity != 0) continue;
-            address repayCToken = _cTokens[i * 2];
-            address seizeCToken = _cTokens[i * 2 + 1];
+        while (true) {
+            ( , liquidity, ) = comptroller.getAccountLiquidity(_borrowers[i]);
+            if (liquidity == 0) liquidateS(_borrowers[i], _cTokens[i * 2], _cTokens[i * 2 + 1]);
 
-            uint256 uPriceRepay = priceOracle.getUnderlyingPrice(repayCToken);
-
-            // uint256(10**18) adjustments ensure that all place values are dedicated
-            // to repay and seize precision rather than unnecessary closeFact and liqIncent decimals
-            uint256 repayMax = CErc20(repayCToken).borrowBalanceCurrent(borrower) * closeFact / uint256(10**18);
-            uint256 seizeMax = CErc20(seizeCToken).balanceOfUnderlying(borrower) * uint256(10**18) / liqIncent;
-
-            uint256 repayMax_Eth = repayMax * uPriceRepay;
-            uint256 seizeMax_Eth = seizeMax * priceOracle.getUnderlyingPrice(seizeCToken);
-
-            uint256 repay_Eth = (repayMax_Eth < seizeMax_Eth) ? repayMax_Eth : seizeMax_Eth;
-            uint256 repay = repay_Eth / uPriceRepay;
-
-            liquidate(borrower, repayCToken, seizeCToken, repay);
-            if (gasleft() < 2000000) break;
+            if (gasleft() < gasThreshold || i + 1 == _borrowers.length) break;
+            i++;
         }
     }
 
+    function liquidateSWithPrice(
+        bytes[] calldata _messages,
+        bytes[] calldata _signatures,
+        string[] calldata _symbols,
+        address _borrower,
+        address _repayCToken,
+        address _seizeCToken
+    ) external {
+        priceOracle.postPrices(_messages, _signatures, _symbols);
+        liquidateS(_borrower, _repayCToken, _seizeCToken);
+    }
+
     /**
-     * Liquidate a Compound user with a flash loan
+     * Liquidate a Compound user with a flash swap, auto-computing liquidation amount
      *
      * @param _borrower (address): the Compound user to liquidate
      * @param _repayCToken (address): a CToken for which the user is in debt
      * @param _seizeCToken (address): a CToken for which the user has a supply balance
-     * @param _amount (uint256): the amount (specified in units of _repayCToken.underlying) to flash loan and pay off
      */
-    function liquidate(address _borrower, address _repayCToken, address _seizeCToken, uint256 _amount) public {
+    function liquidateS(address _borrower, address _repayCToken, address _seizeCToken) public {
+        // uint(10**18) adjustments ensure that all place values are dedicated
+        // to repay and seize precision rather than unnecessary closeFact and liqIncent decimals
+        uint repayMax = CErc20(_repayCToken).borrowBalanceCurrent(_borrower) * closeFact / uint(10**18);
+        uint seizeMax = CErc20(_seizeCToken).balanceOfUnderlying(_borrower) * uint(10**18) / liqIncent;
+
+        uint uPriceRepay = priceOracle.getUnderlyingPrice(_repayCToken);
+        // Gas savings -- instead of making new vars `repayMax_Eth` and `seizeMax_Eth` just reassign
+        repayMax *= uPriceRepay;
+        seizeMax *= priceOracle.getUnderlyingPrice(_seizeCToken);
+
+        // Gas savings -- instead of creating new var `repay_Eth = repayMax < seizeMax ? ...` and then
+        // converting to underlying units by dividing by uPriceRepay, we can do it all in one step
+        liquidate(_borrower, _repayCToken, _seizeCToken, ((repayMax < seizeMax) ? repayMax : seizeMax) / uPriceRepay);
+    }
+
+    /**
+     * Liquidate a Compound user with a flash swap
+     *
+     * @param _borrower (address): the Compound user to liquidate
+     * @param _repayCToken (address): a CToken for which the user is in debt
+     * @param _seizeCToken (address): a CToken for which the user has a supply balance
+     * @param _amount (uint): the amount (specified in units of _repayCToken.underlying) to flash loan and pay off
+     */
+    function liquidate(address _borrower, address _repayCToken, address _seizeCToken, uint _amount) public {
         address pair;
         address r;
 
@@ -168,11 +203,10 @@ contract Liquidator is IUniswapV2Callee {
         }
         else {
             r = CErc20Storage(_repayCToken).underlying();
-            address s = CErc20Storage(_seizeCToken).underlying();
             uint maxBorrow;
-            (maxBorrow, , pair) = UniswapV2Library.getReservesWithPair(FACTORY, r, s);
+            (maxBorrow, , pair) = UniswapV2Library.getReservesWithPair(FACTORY, r, CErc20Storage(_seizeCToken).underlying());
 
-            if (_amount >= maxBorrow) pair = IUniswapV2Factory(FACTORY).getPair(r, WETH);
+            if (_amount * 100000 > maxBorrow * SLIPPAGE_THRESHOLD_FACT) pair = IUniswapV2Factory(FACTORY).getPair(r, WETH);
         }
 
         // Initiate flash swap
@@ -187,8 +221,8 @@ contract Liquidator is IUniswapV2Callee {
      * The function that gets called in the middle of a flash swap
      *
      * @param sender (address): the caller of `swap()`
-     * @param amount0 (uint256): the amount of token0 being borrowed
-     * @param amount1 (uint256): the amount of token1 being borrowed
+     * @param amount0 (uint): the amount of token0 being borrowed
+     * @param amount1 (uint): the amount of token1 being borrowed
      * @param data (bytes): data passed through from the caller
      */
     function uniswapV2Call(address sender, uint amount0, uint amount1, bytes calldata data) override external {
@@ -205,14 +239,14 @@ contract Liquidator is IUniswapV2Callee {
             address estuary = amount0 != 0 ? token0 : token1;
 
             // Perform the liquidation
-            approve(estuary, repayCToken, amount);
+            IERC20(estuary).safeApprove(repayCToken, amount);
             CErc20(repayCToken).liquidateBorrow(borrower, amount, seizeCToken);
 
-            // Redeem cTokens for underlying ERC20 or ETH
+            // Redeem cTokens for underlying ERC20
             CErc20(seizeCToken).redeem(IERC20(seizeCToken).balanceOf(address(this)));
 
             // Compute debt and pay back pair
-            IERC20(estuary).transfer(msg.sender, amount.mul(1000).div(997).add(1));
+            IERC20(estuary).transfer(msg.sender, (amount * 1000 / 997) + 1);
             return;
         }
 
@@ -240,7 +274,7 @@ contract Liquidator is IUniswapV2Callee {
             address source = amount0 != 0 ? token0 : token1;
 
             // Perform the liquidation
-            approve(source, repayCToken, amount);
+            IERC20(source).safeApprove(repayCToken, amount);
             CErc20(repayCToken).liquidateBorrow(borrower, amount, seizeCToken);
 
             // Redeem cTokens for underlying ERC20 or ETH
@@ -269,7 +303,7 @@ contract Liquidator is IUniswapV2Callee {
         }
 
         // Perform the liquidation
-        approve(source, repayCToken, amount);
+        IERC20(source).safeApprove(repayCToken, amount);
         CErc20(repayCToken).liquidateBorrow(borrower, amount, seizeCToken);
 
         // Redeem cTokens for underlying ERC20 or ETH
@@ -299,7 +333,7 @@ contract Liquidator is IUniswapV2Callee {
         IERC20(estuary).transfer(msg.sender, debt);
     }
 
-    function withdraw(address _assetAddress) public {
+    function withdraw(address _assetAddress) external {
         uint assetBalance;
         if (_assetAddress == ETHER) {
             address self = address(this); // workaround for a possible solidity bug
@@ -310,5 +344,52 @@ contract Liquidator is IUniswapV2Callee {
             IERC20(_assetAddress).safeTransfer(recipient, assetBalance);
         }
         emit RevenueWithdrawn(recipient, _assetAddress, assetBalance);
+    }
+
+    // MARK - Chi functions ------------------------------------------------------------------------
+
+    function liquidateSChi(address _borrower, address _repayCToken, address _seizeCToken) external discountCHI {
+        liquidateS(_borrower, _repayCToken, _seizeCToken);
+    }
+
+    function liquidateSNChi(address[] calldata _borrowers, address[] calldata _cTokens) external discountCHI {
+        liquidateSN(_borrowers, _cTokens);
+    }
+
+    function liquidateSWithPriceChi(
+        bytes[] calldata _messages,
+        bytes[] calldata _signatures,
+        string[] calldata _symbols,
+        address _borrower,
+        address _repayCToken,
+        address _seizeCToken
+    ) external {
+        uint gasStart = gasleft();
+        // MARK - actual operation
+        priceOracle.postPrices(_messages, _signatures, _symbols);
+        Chi(CHI).freeFromUpTo(msg.sender, (35154 + gasStart - gasleft() + 16 * msg.data.length) / 41947);
+
+        gasStart = gasleft();
+        // MARK - actual operation
+        liquidateS(_borrower, _repayCToken, _seizeCToken);
+        Chi(CHI).freeFromUpTo(msg.sender, (14154 + gasStart - gasleft()) / 41947);
+    }
+
+    function liquidateSNWithPriceChi(
+        bytes[] calldata _messages,
+        bytes[] calldata _signatures,
+        string[] calldata _symbols,
+        address[] calldata _borrowers,
+        address[] calldata _cTokens
+    ) external {
+        uint gasStart = gasleft();
+        // MARK - actual operation
+        priceOracle.postPrices(_messages, _signatures, _symbols);
+        Chi(CHI).freeFromUpTo(msg.sender, (35154 + gasStart - gasleft() + 16 * msg.data.length) / 41947);
+
+        gasStart = gasleft();
+        // MARK - actual operation
+        liquidateSN(_borrowers, _cTokens);
+        Chi(CHI).freeFromUpTo(msg.sender, (14154 + gasStart - gasleft()) / 41947);
     }
 }

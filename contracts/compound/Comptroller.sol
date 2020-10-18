@@ -9,4 +9,6 @@ interface Comptroller {
     function getAccountLiquidity(address account) external view returns (uint, uint, uint);
     function closeFactorMantissa() external view returns (uint);
     function liquidationIncentiveMantissa() external view returns (uint);
+
+    function oracle() external view returns (address);
 }
