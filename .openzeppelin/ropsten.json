@@ -18,9 +18,9 @@
     ],
     "Flash Loan Liquidation/Liquidator": [
       {
-        "address": "0x436E8869Ed1aC2e10E9860EF47479dAE66E2B6Ed",
+        "address": "0x1D04779c62BE3484e8005C532750EE475a35949e",
         "kind": "NonProxy",
-        "bytecodeHash": "f8b746d9582b54c3697e532d8ba6316c4fb278a2578aca26b066f76f6996aa18"
+        "bytecodeHash": "7d598e8f2090a2accc1182297fdcd7ff99c19e3b4220164518c95cc0909e68be"
       }
     ]
   },

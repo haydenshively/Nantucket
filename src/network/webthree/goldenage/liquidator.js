@@ -16,6 +16,82 @@ const GAS_CUSHION = 100000;
 const CETH = "0x4ddc2d193948926d02f9b1fe9e1daa0718270ed5";
 
 class Liquidator extends SmartContract {
+  liquidateSNWithPrice(
+    messages,
+    signatures,
+    symbols,
+    borrowers,
+    repayCTokens,
+    seizeCTokens,
+    gasPrice,
+    chi = false
+  ) {
+    const cTokens = this._combineTokens(repayCTokens, seizeCTokens);
+    let method = chi
+      ? this._inner.methods.liquidateSNWithPriceChi
+      : this._inner.methods.liquidateSNWithPrice;
+    method = method(messages, signatures, symbols, borrowers, cTokens);
+    // TODO we cheat here by just estimating gas for first candidate since
+    // that's all that TxManager cares about at the moment.
+    const gasLimit = this._estimateGas(repayCTokens[0], seizeCTokens[0], true);
+    return this._txFor(method, gasLimit, gasPrice);
+  }
+
+  /**
+   * Performs liquidation on multiple accounts (SEND -- uses gas)
+   *
+   * @param {Array<String>} borrowers addresses of users with negative liquidity
+   * @param {Array<String>} repayCTokens address of token to repay
+   * @param {Array<String>} seizeCTokens address of token to seize
+   * @param {Number} gasPrice the gas price to use, in gwei
+   * @return {Object} the transaction object
+   */
+  liquidateSN(borrowers, repayCTokens, seizeCTokens, gasPrice, chi = false) {
+    const cTokens = this._combineTokens(repayCTokens, seizeCTokens);
+    let method = chi
+      ? this._inner.methods.liquidateSNChi
+      : this._inner.methods.liquidateSN;
+    method = method(borrowers, cTokens);
+    // TODO we cheat here by just estimating gas for first candidate since
+    // that's all that TxManager cares about at the moment.
+    const gasLimit = this._estimateGas(repayCTokens[0], seizeCTokens[0]);
+    return this._txFor(method, gasLimit, gasPrice);
+  }
+
+  liquidateSWithPrice(
+    messages,
+    signatures,
+    symbols,
+    borrower,
+    repayCToken,
+    seizeCToken,
+    gasPrice,
+    chi = false
+  ) {
+    let method = chi
+      ? this._inner.methods.liquidateSWithPriceChi
+      : this._inner.methods.liquidateSWithPrice;
+    method = method(
+      messages,
+      signatures,
+      symbols,
+      borrower,
+      repayCToken,
+      seizeCToken
+    );
+    const gasLimit = this._estimateGas(repayCToken, seizeCToken, true);
+    return this._txFor(method, gasLimit, gasPrice);
+  }
+
+  liquidateS(borrower, repayCToken, seizeCToken, gasPrice, chi = false) {
+    let method = chi
+      ? this._inner.methods.liquidateSChi
+      : this._inner.methods.liquidateS;
+    method = method(borrower, repayCToken, seizeCToken);
+    const gasLimit = this._estimateGas(repayCToken, seizeCToken);
+    return this._txFor(method, gasLimit, gasPrice);
+  }
+
   /**
    * Performs liquidation (SEND -- uses gas)
    *
@@ -36,55 +112,6 @@ class Liquidator extends SmartContract {
     );
     const gasLimit = this._estimateGas(repayCToken, seizeCToken, false, false);
     return this.txFor(method, gasLimit, gasPrice);
-  }
-
-  /**
-   * Performs liquidation on multiple accounts (SEND -- uses gas)
-   *
-   * @param {Array<String>} borrowers addresses of users with negative liquidity
-   * @param {Array<String>} repayCTokens address of token to repay
-   * @param {Array<String>} seizeCTokens address of token to seize
-   * @param {Number} gasPrice the gas price to use, in gwei
-   * @return {Object} the transaction object
-   */
-  liquidateMany(borrowers, repayCTokens, seizeCTokens, gasPrice) {
-    const cTokens = this._combineTokens(repayCTokens, seizeCTokens);
-    const method = this._inner.methods.liquidateMany(borrowers, cTokens);
-    // TODO we cheat here by just estimating gas for first candidate since
-    // that's all that TxManager cares about at the moment.
-    const gasLimit =
-      cTokens.length >= 2
-        ? this._estimateGas(repayCTokens[0], seizeCTokens[0])
-        : Big(100000);
-
-    return this._txFor(method, gasLimit, gasPrice);
-  }
-
-  liquidateManyWithPriceUpdate(
-    messages,
-    signatures,
-    symbols,
-    borrowers,
-    repayCTokens,
-    seizeCTokens,
-    gasPrice
-  ) {
-    const cTokens = this._combineTokens(repayCTokens, seizeCTokens);
-    const method = this._inner.methods.liquidateManyWithPriceUpdate(
-      messages,
-      signatures,
-      symbols,
-      borrowers,
-      cTokens
-    );
-    // TODO we cheat here by just estimating gas for first candidate since
-    // that's all that TxManager cares about at the moment.
-    const gasLimit =
-      cTokens.length >= 2
-        ? this._estimateGas(repayCTokens[0], seizeCTokens[0], true)
-        : Big(100000);
-
-    return this._txFor(method, gasLimit, gasPrice);
   }
 
   _combineTokens(repayList, seizeList) {
@@ -119,8 +146,8 @@ class Liquidator extends SmartContract {
 }
 
 const addresses = {
-  mainnet: "0x5ea500b3909e29718D6DCa18f953e18fCB943767",
-  ropsten: "0x436E8869Ed1aC2e10E9860EF47479dAE66E2B6Ed"
+  mainnet: "0x5eA500DF65f2486655b57B691a626E6822A799e9",
+  ropsten: "0x1D04779c62BE3484e8005C532750EE475a35949e"
 };
 
 for (let net in addresses) {
