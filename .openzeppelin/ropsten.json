@@ -2,18 +2,6 @@
   "contracts": {},
   "solidityLibs": {},
   "proxies": {
-    "Flash Loan Liquidation/FlashLiquidator": [
-      {
-        "address": "0x2ab4C66757a9934b3a0dBD91f94bE830855839cd",
-        "kind": "NonProxy",
-        "bytecodeHash": "2236bd01dfe2ac22e73b8d5094b92abdff97c3b7841016cb766deb04d55dcc30"
-      },
-      {
-        "address": "0x7c432107Fbf4a88fF8630Fcd2A6384826718a0E7",
-        "kind": "NonProxy",
-        "bytecodeHash": "f565f7b1a78df97bbd1da7f004fa5285fd4c8cdc54f969b144174dc52648536d"
-      }
-    ],
     "Flash Loan Liquidation/Split5050": [
       {
         "address": "0x586Cd920793429980e84fB09C9C8230a1822f1F9",
@@ -23,9 +11,16 @@
     ],
     "Flash Loan Liquidation/ChiWrapper": [
       {
-        "address": "0x862c7DAD6e3976a36b461FAFAFa7D7751797d226",
+        "address": "0x234243B292f40cc712D7c976Aa5ED865f00Be6e8",
         "kind": "NonProxy",
-        "bytecodeHash": "34cc5a12d68e715aad70e2d4d9e0be450e4656f10a526ce6681440d0abc9cf78"
+        "bytecodeHash": "3c6df78d894a23351895e11614c7cff54a32fd6516162263cc68a744a06a2850"
+      }
+    ],
+    "Flash Loan Liquidation/Liquidator": [
+      {
+        "address": "0x1D04779c62BE3484e8005C532750EE475a35949e",
+        "kind": "NonProxy",
+        "bytecodeHash": "7d598e8f2090a2accc1182297fdcd7ff99c19e3b4220164518c95cc0909e68be"
       }
     ]
   },

@@ -9,7 +9,7 @@ const Channel = require("../../messaging/channel");
 const Message = require("../../messaging/message");
 const Oracle = require("../../messaging/oracle");
 // src.network.webthree
-const FlashLiquidator = require("./goldenage/flashliquidator");
+const Liquidator = require("./goldenage/liquidator");
 
 /**
  * Given a list of liquidatable candidates, TxManager will participate
@@ -126,27 +126,26 @@ class TxManager {
     }
     // Set expected revenue to the max of the candidate revenues
     this._revenue = candidates[0][1].revenue;
-    // To simplify things, we assume that only 1 borrower will be
-    // liquidated (the first one in the list) and set the gas limit
-    // accordingly. If that borrower can't be liquidated for some
-    // reason, the smart contract will handle fallback options, so
-    // we don't have to worry about that here.
-    const gasLimit = Big(2000000);
+    const initialGasPrice = this._tx !== null ? this._tx.gasPrice : null;
 
-    const initialGasPrice =
-      this._tx !== null
-        ? this._tx.gasPrice
-        : await this._getInitialGasPrice(gasLimit);
+    // NOTE: right now, we assume that only 1 borrower will be liquidated
+    // (the first one in the list). We let Liquidator.js set the gas limit
+    // accordingly. If that borrower can't be liquidated for some reason,
+    // the smart contract will handle fallback options, so we don't have to
+    // worry about that here
 
     if (!needPriceUpdate) {
-      this._tx = FlashLiquidator.mainnet.liquidateMany(
+      this._tx = Liquidator.mainnet.liquidateSN(
         borrowers,
         repayCTokens,
         seizeCTokens,
         initialGasPrice
       );
       // Override gas limit
-      this._tx.gasLimit = gasLimit;
+      this._tx.gasLimit = Big(await this._queue._wallet.estimateGas(this._tx));
+      // Override gas price
+      if (this._tx.gasPrice === null)
+        this._tx.gasPrice = await this._getInitialGasPrice(this._tx.gasLimit);
       return;
     }
 
@@ -161,7 +160,7 @@ class TxManager {
     }
 
     const postable = this._oracle.postableData();
-    this._tx = FlashLiquidator.mainnet.liquidateManyWithPriceUpdate(
+    this._tx = Liquidator.mainnet.liquidateSNWithPrice(
       postable[0],
       postable[1],
       postable[2],
@@ -171,14 +170,10 @@ class TxManager {
       initialGasPrice
     );
     // Override gas limit
-    this._tx.gasLimit = gasLimit;
-    // Override target contract to use Chi wrapper if revenue is high
-    // This assumes we have enough Chi to fully payoff around half of
-    // the gas costs.
-    // TODO Don't hard code this
-    if (this._revenue > 1)
-      this._tx.to = "0x9D0De4e823e8B28Dba070f7e2C0CFD63a2016072";
-      this._tx.gasLimit = this._tx.gasLimit.div(1.95);
+    this._tx.gasLimit = Big(await this._queue._wallet.estimateGas(this._tx));
+    // Override gas price
+    if (this._tx.gasPrice === null)
+      this._tx.gasPrice = await this._getInitialGasPrice(this._tx.gasLimit);
   }
 
   /**

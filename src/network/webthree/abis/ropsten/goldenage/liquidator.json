@@ -1,12 +1,6 @@
 [
   {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "_addressProvider",
-        "type": "address"
-      }
-    ],
+    "inputs": [],
     "stateMutability": "nonpayable",
     "type": "constructor"
   },
@@ -50,19 +44,6 @@
   },
   {
     "inputs": [],
-    "name": "addressesProvider",
-    "outputs": [
-      {
-        "internalType": "contract ILendingPoolAddressesProvider",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
     "name": "comptroller",
     "outputs": [
       {
@@ -77,34 +58,6 @@
   {
     "inputs": [],
     "name": "confirmRecipientChange",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "_reserve",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "_amount",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "_fee",
-        "type": "uint256"
-      },
-      {
-        "internalType": "bytes",
-        "name": "_params",
-        "type": "bytes"
-      }
-    ],
-    "name": "executeOperation",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -166,6 +119,52 @@
   {
     "inputs": [
       {
+        "internalType": "address",
+        "name": "_borrower",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_repayCToken",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_seizeCToken",
+        "type": "address"
+      }
+    ],
+    "name": "liquidateS",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_borrower",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_repayCToken",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_seizeCToken",
+        "type": "address"
+      }
+    ],
+    "name": "liquidateSChi",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "address[]",
         "name": "_borrowers",
         "type": "address[]"
@@ -176,7 +175,25 @@
         "type": "address[]"
       }
     ],
-    "name": "liquidateMany",
+    "name": "liquidateSN",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address[]",
+        "name": "_borrowers",
+        "type": "address[]"
+      },
+      {
+        "internalType": "address[]",
+        "name": "_cTokens",
+        "type": "address[]"
+      }
+    ],
+    "name": "liquidateSNChi",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -209,7 +226,116 @@
         "type": "address[]"
       }
     ],
-    "name": "liquidateManyWithPriceUpdate",
+    "name": "liquidateSNWithPrice",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes[]",
+        "name": "_messages",
+        "type": "bytes[]"
+      },
+      {
+        "internalType": "bytes[]",
+        "name": "_signatures",
+        "type": "bytes[]"
+      },
+      {
+        "internalType": "string[]",
+        "name": "_symbols",
+        "type": "string[]"
+      },
+      {
+        "internalType": "address[]",
+        "name": "_borrowers",
+        "type": "address[]"
+      },
+      {
+        "internalType": "address[]",
+        "name": "_cTokens",
+        "type": "address[]"
+      }
+    ],
+    "name": "liquidateSNWithPriceChi",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes[]",
+        "name": "_messages",
+        "type": "bytes[]"
+      },
+      {
+        "internalType": "bytes[]",
+        "name": "_signatures",
+        "type": "bytes[]"
+      },
+      {
+        "internalType": "string[]",
+        "name": "_symbols",
+        "type": "string[]"
+      },
+      {
+        "internalType": "address",
+        "name": "_borrower",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_repayCToken",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_seizeCToken",
+        "type": "address"
+      }
+    ],
+    "name": "liquidateSWithPrice",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes[]",
+        "name": "_messages",
+        "type": "bytes[]"
+      },
+      {
+        "internalType": "bytes[]",
+        "name": "_signatures",
+        "type": "bytes[]"
+      },
+      {
+        "internalType": "string[]",
+        "name": "_symbols",
+        "type": "string[]"
+      },
+      {
+        "internalType": "address",
+        "name": "_borrower",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_repayCToken",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_seizeCToken",
+        "type": "address"
+      }
+    ],
+    "name": "liquidateSWithPriceChi",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -251,19 +377,6 @@
     "type": "function"
   },
   {
-    "inputs": [],
-    "name": "router",
-    "outputs": [
-      {
-        "internalType": "contract IUniswapV2Router02",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
     "inputs": [
       {
         "internalType": "address",
@@ -279,12 +392,12 @@
   {
     "inputs": [
       {
-        "internalType": "address",
-        "name": "_oracleAddress",
-        "type": "address"
+        "internalType": "uint256",
+        "name": "_gasThreshold",
+        "type": "uint256"
       }
     ],
-    "name": "setPriceOracle",
+    "name": "setGasThreshold",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -293,11 +406,26 @@
     "inputs": [
       {
         "internalType": "address",
-        "name": "_routerAddress",
+        "name": "sender",
         "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amount0",
+        "type": "uint256"
+      },
+      {
+        "internalType": "uint256",
+        "name": "amount1",
+        "type": "uint256"
+      },
+      {
+        "internalType": "bytes",
+        "name": "data",
+        "type": "bytes"
       }
     ],
-    "name": "setRouter",
+    "name": "uniswapV2Call",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
