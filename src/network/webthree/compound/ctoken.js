@@ -104,7 +104,8 @@ const decimals = {
   cUSDT: 6,
   cWBTC: 8,
   cZRX: 18,
-  cUNI: 18
+  cUNI: 18,
+  cCOMP: 18,
 };
 
 const addresses = {
@@ -118,7 +119,8 @@ const addresses = {
     cUSDT: "0xf650c3d88d12db855b8bf7d11be6c55a4e07dcc9",
     cWBTC: "0xc11b1268c1a384e55c48c2391d8d480264a3a7f4",
     cZRX: "0xb3319f5d18bc0d84dd1b4825dcde5d5f7266d407",
-    cUNI: "0x35a18000230da775cac24873d00ff85bccded550"
+    cUNI: "0x35a18000230da775cac24873d00ff85bccded550",
+    cCOMP: "0x70e36f6bf80a52b3b46b3af8e106cc0ed743e8e4",
   },
   ropsten: {
     cBAT: "0x9e95c0b2412ce50c37a121622308e7a6177f819d",
@@ -130,7 +132,7 @@ const addresses = {
     cUSDT: "0x135669c2dcbd63f639582b313883f101a4497f76",
     cWBTC: "0x58145bc5407d63daf226e4870beeb744c588f149",
     cZRX: "0x00e02a5200ce3d5b5743f5369deb897946c88121",
-    cUNI: "0x22531f0f3a9c36bfc3b04c4c60df5168a1cfcec3"
+    cUNI: "0x22531f0f3a9c36bfc3b04c4c60df5168a1cfcec3",
   }
 };
 

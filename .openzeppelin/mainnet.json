@@ -2,38 +2,6 @@
   "contracts": {},
   "solidityLibs": {},
   "proxies": {
-    "Flash Loan Liquidation/FlashLiquidator": [
-      {
-        "address": "0x6bfdfCC0169C3cFd7b5DC51c8E563063Df059097",
-        "kind": "NonProxy",
-        "bytecodeHash": "035648513163a2332a32031d3330874a91808e702b90ba3238addd9985fce4e6"
-      },
-      {
-        "address": "0xFb3c1a8B2Baa50caF52093d7AF2450a143dbb212",
-        "kind": "NonProxy",
-        "bytecodeHash": "45d8971f50508013d14d058516ef41f3f4e5956c780497a10f6d83933f41ccbd"
-      },
-      {
-        "address": "0x0733691100483A1107b7fC156216525ECE2E5fc1",
-        "kind": "NonProxy",
-        "bytecodeHash": "78314b666beddcb285d7080ebce7e92f7f6ca2a73d7e643118dba189ee8c42f1"
-      },
-      {
-        "address": "0x3CEc62C15Ee7430f1D3EFc3F3c1B357691b01D61",
-        "kind": "NonProxy",
-        "bytecodeHash": ""
-      },
-      {
-        "address": "0x82c539c060E28B667B43ecBE0B12011e9b617b5e",
-        "kind": "NonProxy",
-        "bytecodeHash": ""
-      },
-      {
-        "address": "0xbd08B0A4A6e591a7705238c5b3cC9fc5382fbB30",
-        "kind": "NonProxy",
-        "bytecodeHash": "e282ba9bfedf27ff82c2f158a59b32d3ade17482b4e892ab1a7d1c03bfe76580"
-      }
-    ],
     "Flash Loan Liquidation/Split5050": [
       {
         "address": "0xf81F70CeC4c4c1d6Aa5038ED3e7CCd0228b05F09",
@@ -43,9 +11,16 @@
     ],
     "Flash Loan Liquidation/ChiWrapper": [
       {
-        "address": "0x9D0De4e823e8B28Dba070f7e2C0CFD63a2016072",
+        "address": "0x39A58Cc2eeA26df80822A1DB21820BA4403C9054",
         "kind": "NonProxy",
-        "bytecodeHash": "34cc5a12d68e715aad70e2d4d9e0be450e4656f10a526ce6681440d0abc9cf78"
+        "bytecodeHash": "102b9fab09a1c675b6b638aa595cf68fb6be63fe65f289141c78bcbd8f38eca0"
+      }
+    ],
+    "Flash Loan Liquidation/Liquidator": [
+      {
+        "address": "0x5eA500DF65f2486655b57B691a626E6822A799e9",
+        "kind": "NonProxy",
+        "bytecodeHash": "e8f4b4d90e79fa7b1452b4ab706b73cc5381b9678de04c99b2f1fa429ebbc72e"
       }
     ]
   },
