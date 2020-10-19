@@ -135,12 +135,14 @@ class TxManager {
     // worry about that here
 
     if (!needPriceUpdate) {
-      this._tx = Liquidator.mainnet.liquidateMany(
+      this._tx = Liquidator.mainnet.liquidateSN(
         borrowers,
         repayCTokens,
         seizeCTokens,
         initialGasPrice
       );
+      // Override gas limit
+      this._tx.gasLimit = Big(await this._queue._wallet.estimateGas(this._tx));
       // Override gas price
       if (this._tx.gasPrice === null)
         this._tx.gasPrice = await this._getInitialGasPrice(this._tx.gasLimit);
@@ -158,7 +160,7 @@ class TxManager {
     }
 
     const postable = this._oracle.postableData();
-    this._tx = Liquidator.mainnet.liquidateManyWithPriceUpdate(
+    this._tx = Liquidator.mainnet.liquidateSNWithPrice(
       postable[0],
       postable[1],
       postable[2],
@@ -167,15 +169,11 @@ class TxManager {
       seizeCTokens,
       initialGasPrice
     );
+    // Override gas limit
+    this._tx.gasLimit = Big(await this._queue._wallet.estimateGas(this._tx));
     // Override gas price
     if (this._tx.gasPrice === null)
       this._tx.gasPrice = await this._getInitialGasPrice(this._tx.gasLimit);
-    // Override target contract to use Chi wrapper if revenue is high
-    // This assumes we have enough Chi to fully payoff around half of
-    // the gas costs.
-    // TODO Don't hard code this
-    if (this._revenue > 1)
-      this._tx.to = "0x39A58Cc2eeA26df80822A1DB21820BA4403C9054";
   }
 
   /**
