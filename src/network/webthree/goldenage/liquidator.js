@@ -6,13 +6,20 @@ const Web3Utils = require("web3-utils");
 
 const SmartContract = require("../smartcontract");
 
-const GAS_ORACLE = 500000;
+const GAS_ORACLE = 600000;
 const GAS_COMPUTE_AMOUNT = 200000;
 const GAS_ETH2TOKEN = 600000;
-const GAS_TOKEN2ETH = 800000;
-const GAS_TOKEN2TOKEN = 1000000;
+const GAS_TOKEN2ETH = 700000;
+const GAS_TOKEN2TOKEN = 800000;
 const GAS_TOKEN2TOKEN2ETH = 1200000;
-const GAS_CUSHION = 100000;
+const GAS_CUSHION = 500000;
+const GAS_V2_PENALTY = 300000;
+const V2S = [
+  "0x5d3a536e4d6dbd6114cc1ead35777bab948e3643",
+  "0xf650c3d88d12db855b8bf7d11be6c55a4e07dcc9",
+  "0x35a18000230da775cac24873d00ff85bccded550",
+  "0x70e36f6bf80a52b3b46b3af8e106cc0ed743e8e4",
+];
 const CETH = "0x4ddc2d193948926d02f9b1fe9e1daa0718270ed5";
 
 class Liquidator extends SmartContract {
@@ -138,6 +145,7 @@ class Liquidator extends SmartContract {
     else if (repayCToken === seizeCToken) gas = gas.plus(GAS_TOKEN2TOKEN);
     else gas = gas.plus(GAS_TOKEN2TOKEN2ETH);
 
+    if (V2S.includes(repayCToken) || V2S.includes(seizeCToken)) gas = gas.plus(GAS_V2_PENALTY);
     if (postPrices) gas = gas.plus(GAS_ORACLE);
     if (solveAmount) gas = gas.plus(GAS_COMPUTE_AMOUNT);
 

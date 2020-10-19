@@ -14,7 +14,7 @@ describe("network/web/coinbase || Reporter Test", () => {
   it("should generate postable data", async () => {
     await Reporter.mainnet.fetch();
 
-    const included = ["BTC", "ETH", "DAI", "REP"];
+    const included = ["BTC", "ETH", "DAI", "REP", "ZRX", "BAT", "UNI", "COMP"];
     const postable = Reporter.mainnet.postableData(included);
     assert(postable[0].length === postable[1].length);
     included.forEach(ex => assert(postable[2].includes(ex)));

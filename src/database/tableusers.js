@@ -112,14 +112,14 @@ class TableUsers {
       let profitability = 0;
 
       if (top2AssetsToRepay[0] !== null && top2AssetsToSeize[0] !== null) {
-        // cDAI and cUSDT are "v2" tokens, meaning that they can be both
+        // [cDAI, cUSDT, cUNI, cCOMP] are "v2" tokens, meaning they can be both
         // repaid and seized in a single liquidation. Their IDs are 6 and 9
         // respectively. For all other tokens, the repaid type must be different
         // from the seize type. This is why we can't always blindly pick the
         // `topAssetToRepay` and `topAssetToSeize`
         const ableToPickBest =
           top2AssetsToRepay[0] !== top2AssetsToSeize[0] ||
-          ["6", "9"].includes(String(top2AssetsToRepay[0]));
+          ["4", "6", "9", "10"].includes(String(top2AssetsToRepay[0]));
 
         // If `ableToPickBest === true`, then the first clause will be false, and the statement
         // will evaluate to 0. This is what we want, because in this case, index 0 corresponds
