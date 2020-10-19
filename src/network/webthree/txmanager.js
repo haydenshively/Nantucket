@@ -25,7 +25,10 @@ const Liquidator = require("./goldenage/liquidator");
  * - Candidates>LiquidateWithPriceUpdate | Same idea, but will make sure
  *    to update Open Price Feed prices ✅
  * - Messages>CheckCandidatesLiquidityComplete | Removes stale candidates
- *    (those that were update more than `msg.__data.time` ms ago)
+ *    (those that were update more than `msg.__data.time` ms ago) ✅
+ * - Messages>MissedOpportunity | Not strictly necessary since the above
+ *    message would remove stale candidates eventually, but this will take
+ *    care of some of them faster ✅
  *
  * Please call `init()` as soon as possible. Bidding can't happen beforehand.
  */
@@ -65,6 +68,9 @@ class TxManager {
       this._removeStaleCandidates(msg.__data.time);
       this._cacheTransaction();
     });
+    Channel(Message).on("MissedOpportunity", msg =>
+      this._removeCandidate.bind(this)(msg.__data.address)
+    );
 
     this._intervalHandle = setInterval(
       this._periodic.bind(this),
@@ -89,14 +95,17 @@ class TxManager {
       );
   }
 
+  _removeCandidate(address) {
+    delete this._candidates[address.toLowerCase()];
+    winston.info(`🧮 *TxManager* | Removed ${address.slice(0, 6)}`);
+  }
+
   _removeStaleCandidates(updatePeriod) {
     const now = Date.now();
 
     for (let addr in this._candidates) {
       if (now - this._candidates[addr].lastSeen <= updatePeriod) continue;
-      delete this._candidates[addr];
-
-      winston.info(`🧮 *TxManager* | Removed ${addr.slice(0, 6)}`);
+      this._removeCandidate(addr);
     }
   }
 
