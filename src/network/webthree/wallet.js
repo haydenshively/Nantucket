@@ -40,6 +40,10 @@ class Wallet {
       case 3:
         this._net = { chain: "ropsten", hardfork: "petersburg" };
         break;
+      case 1337:
+        // Ganache
+        this._net = { chain: "mainnet", hardfork: "petersburg" };
+        break;
     }
   }
 

@@ -25,28 +25,38 @@ const alchemy = {
 };
 web3.mainnet = new MultiSendProvider("mainnet", [infura, alchemy]);
 web3.ropsten = ProviderFor("ropsten", infura);
+// configure ganache
+const Web3 = require("web3");
+const ganache = require("ganache-cli");
+// note that ganache does not currently support replacement transactions
+web3.mainnet = new Web3(
+  ganache.provider({
+    port: 8546,
+    fork: web3.mainnet.providers[0],
+  })
+);
 
 // configure winston
 const winston = require("winston");
-const SlackHook = require("../src/logging/slackhook");
 winston.configure({
   format: winston.format.combine(
     winston.format.splat(),
     winston.format.simple()
   ),
-  transports: [
-    new winston.transports.Console({ handleExceptions: true }),
-  ],
+  transports: [new winston.transports.Console({ handleExceptions: true })],
   exitOnError: false
 });
 
 after(() => {
   for (let chain in web3) {
     web3[chain].eth.clearSubscriptions();
+    if (chain === "ganache") continue;
     try {
       web3[chain].currentProvider.connection.close();
     } catch {
-      web3[chain].currentProvider.connection.destroy();
+      try {
+        web3[chain].currentProvider.connection.destroy();
+      } catch {}
     }
   }
   pool.end();
