@@ -131,11 +131,11 @@ class TxManager {
 
     if (borrowers.length === 0) {
       this._tx = null;
+      this._revenue = 0;
       return;
     }
     // Set expected revenue to the max of the candidate revenues
-    this._revenue = candidates[0][1].revenue;
-    const initialGasPrice = this._tx !== null ? this._tx.gasPrice : null;
+    revenue = candidates[0][1].revenue;
 
     // NOTE: right now, we assume that only 1 borrower will be liquidated
     // (the first one in the list). We let Liquidator.js set the gas limit
@@ -144,17 +144,21 @@ class TxManager {
     // worry about that here
 
     if (!needPriceUpdate) {
-      this._tx = Liquidator.mainnet.liquidateSN(
+      const tx = Liquidator.mainnet.liquidateSN(
         borrowers,
         repayCTokens,
-        seizeCTokens,
-        initialGasPrice
+        seizeCTokens
       );
       // Override gas limit
-      this._tx.gasLimit = Big(await this._queue._wallet.estimateGas(this._tx));
+      tx.gasLimit = Big(await this._queue._wallet.estimateGas(tx)).mul(1.05);
       // Override gas price
-      if (this._tx.gasPrice === null)
-        this._tx.gasPrice = await this._getInitialGasPrice(this._tx.gasLimit);
+      if (this._tx === null || this._tx.gasPrice === undefined)
+        tx.gasPrice = await this._getInitialGasPrice(tx.gasLimit);
+      else tx.gasPrice = this._tx.gasPrice;
+      // Save to cached tx. Must be done at the end like this so that
+      // tx is always null or fully defined, not partially defined
+      this._tx = tx;
+      this._revenue = revenue;
       return;
     }
 
@@ -165,24 +169,29 @@ class TxManager {
     // so it's safe to ignore that case.
     if (this._oracle === null) {
       this._tx = null;
+      this._revenue = 0;
       return;
     }
 
     const postable = this._oracle.postableData();
-    this._tx = Liquidator.mainnet.liquidateSNWithPrice(
+    const tx = Liquidator.mainnet.liquidateSNWithPrice(
       postable[0],
       postable[1],
       postable[2],
       borrowers,
       repayCTokens,
-      seizeCTokens,
-      initialGasPrice
+      seizeCTokens
     );
     // Override gas limit
-    this._tx.gasLimit = Big(await this._queue._wallet.estimateGas(this._tx));
+    tx.gasLimit = Big(await this._queue._wallet.estimateGas(tx)).mul(1.05);
     // Override gas price
-    if (this._tx.gasPrice === null)
-      this._tx.gasPrice = await this._getInitialGasPrice(this._tx.gasLimit);
+    if (this._tx === null || this._tx.gasPrice === undefined)
+      tx.gasPrice = await this._getInitialGasPrice(tx.gasLimit);
+    else tx.gasPrice = this._tx.gasPrice;
+    // Save to cached tx. Must be done at the end like this so that
+    // tx is always null or fully defined, not partially defined
+    this._tx = tx;
+    this._revenue = revenue;
   }
 
   /**
@@ -195,6 +204,8 @@ class TxManager {
       this.dumpAll();
       return;
     }
+    // This check is just an extra precaution
+    if (this._tx.gasPrice === undefined) return;
     this._sendIfProfitable(this._tx);
   }
 
@@ -209,7 +220,7 @@ class TxManager {
     // First, check that current gasPrice is profitable. If it's not (due
     // to network congestion or a recently-removed candidate), then replace
     // any pending transactions with empty ones.
-    let fee = TxManager._estimateFee(this._tx);
+    let fee = TxManager._estimateFee(tx);
     if (fee.gt(this.maxFee_Eth) || fee.gt(this._revenue)) {
       this.dumpAll();
       return;
@@ -225,7 +236,7 @@ class TxManager {
     // the gasPrice (re-bidding) results in a still-profitable tx. If it
     // does, go ahead and re-bid.
     const newTx = { ...tx };
-    // Pass by reference, so after dry run, tx.gasPrice will be updated...
+    // Pass by reference, so after dry run, newTx.gasPrice will be updated...
     this._queue.replace(0, newTx, "clip", /*dryRun*/ true);
 
     fee = TxManager._estimateFee(newTx);
@@ -255,7 +266,7 @@ class TxManager {
    * @private
    *
    * @param gasLimit {Big} the gas limit of the proposed transaction
-   * @returns {Big} the gas price in Wei
+   * @returns {Promise<Big>} the gas price in Wei
    */
   async _getInitialGasPrice(gasLimit) {
     const maxGasPrice = Big(Math.min(this._revenue, this.maxFee_Eth))
