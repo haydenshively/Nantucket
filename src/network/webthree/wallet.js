@@ -60,14 +60,16 @@ class Wallet {
 
   /**
    * Estimates the gas necessary to send a given transaction
-   * 
+   *
    * @param {Object} tx an object describing the transaction. See `signAndSend`
    * @returns {Promise<Number>} estimated amount of gas that the tx will require
-   * 
+   *
    */
   estimateGas(tx) {
     tx = { ...tx };
     tx.from = process.env[this._envKeyAddress];
+    delete tx["gasPrice"]
+    delete tx["gasLimit"]
     return this._provider.eth.estimateGas(tx);
   }
 

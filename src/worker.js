@@ -88,9 +88,6 @@ class Worker extends Database {
     for (let i = 0; i < this._candidates.length; i++) {
       candidatePromises.push(new Promise((async resolve => {
         const c = this._candidates[i];
-        // this is pairID DAI and SAI. There's no AAVE pool for it.
-        if (c.ctokenidpay == 2 || (c.ctokenidpay == 6 && c.ctokenidseize == 2))
-          resolve();
 
         // TODO instead of this (which won't work with any Web3 provider except
         // the local Geth node due to latency issues) just subscribe to Compound

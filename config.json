@@ -3,13 +3,13 @@
     "A": {
       "envKeyAddress": "ACCOUNT_ADDRESS_TEST",
       "envKeySecret": "ACCOUNT_SECRET_TEST",
-      "interval": 200,
-      "maxFee_Eth": 2.46
+      "interval": 100,
+      "maxFee_Eth": 2.62
     }
   },
   "liquidators": [
     {
-      "minRevenue": 0.1,
+      "minRevenue": 0.05,
       "maxRevenue": 5.0,
       "maxHealth": null,
       "numCandidates": 500,
@@ -38,7 +38,7 @@
   },
   "fetching": {
     "cTokenServiceInterval": 1200000,
-    "accountServiceInterval": 480000,
+    "accountServiceInterval": 600000,
     "coinbaseReporter": 2000
   },
   "logging": {

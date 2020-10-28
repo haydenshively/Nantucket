@@ -69,9 +69,6 @@ HTTPModules = ["net", "web3", "eth"]
 WSHost = ""
 WSPort = 8546
 WSModules = ["net", "web3", "eth"]
-GraphQLHost = ""
-GraphQLPort = 8547
-GraphQLVirtualHosts = ["localhost"]
 
 [Node.P2P]
 MaxPeers = 80
