@@ -7,8 +7,8 @@ class Reporter extends Oracle {
   constructor(data) {
     super(data);
 
-    this._USDC = "1.00"; // in USD
-    this._USDT = "1.00"; // in USD
+    this._USDC = "1000000"; // in USD
+    this._USDT = "1000000"; // in USD
     this._SAI_PER_ETH = 0.005285;
   }
 
@@ -124,7 +124,7 @@ exports.mainnet = new Reporter({
     "0xf650c3d88d12db855b8bf7d11be6c55a4e07dcc9": "USDT",
     "0xc11b1268c1a384e55c48c2391d8d480264a3a7f4": "BTC",
     "0xb3319f5d18bc0d84dd1b4825dcde5d5f7266d407": "ZRX",
-    "0x1f9840a85d5af5bf1d1762f925bdaddc4201f984": "UNI",
+    "0x35a18000230da775cac24873d00ff85bccded550": "UNI",
     "0x70e36f6bf80a52b3b46b3af8e106cc0ed743e8e4": "COMP"
   }
 });
