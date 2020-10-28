@@ -173,7 +173,7 @@ class TxManager {
       return;
     }
 
-    const postable = this._oracle.postableData();
+    const postable = this._oracle.postableDataFor(candidates[0][1].markets);
     const tx = Liquidator.mainnet.liquidateSNWithPrice(
       postable[0],
       postable[1],

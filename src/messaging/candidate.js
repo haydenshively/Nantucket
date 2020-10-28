@@ -46,7 +46,9 @@ class Candidate extends Message {
     });
 
     [borrow_uUnitsArr, supply_uUnitsArr, collatArr] = await Promise.all([
-      Promise.all(borrow_uUnitsArr), Promise.all(supply_uUnitsArr), Promise.all(collatArr)
+      Promise.all(borrow_uUnitsArr),
+      Promise.all(supply_uUnitsArr),
+      Promise.all(collatArr)
     ]);
 
     addrs.forEach((addr, i) => {
@@ -54,7 +56,9 @@ class Candidate extends Message {
         address: addr,
         borrow_uUnits: Number(borrow_uUnitsArr[i]),
         supply_uUnits: Number(supply_uUnitsArr[i]),
-        collat: Number(collatArr[i])
+        collat: Number(collatArr[i]),
+        symbol: null,
+        timestamp: null
       });
     });
 
@@ -67,12 +71,26 @@ class Candidate extends Message {
     let borrow = 0;
     let supply = 0;
 
-    for (let market of this._markets) {
-      const costInUSD = oracle.getPrice(market.address.toLowerCase());
+    for (let i = 0; i < this._markets.length; i++) {
+      // Populate symbol field if necessary
+      const market = this._markets[i];
+      if (market.symbol === null)
+        market.symbol = oracle.getSymbol(market.address);
+      // Figure out whether to use min or max price
+      const priceInfo = oracle.getPriceInfo(market.symbol);
+      let costInUSD;
+      if (market.supply_uUnits > 0) {
+        costInUSD = priceInfo.min;
+        market.timestamp = priceInfo.minTimestamp;
+      } else {
+        costInUSD = priceInfo.max;
+        market.timestamp = priceInfo.maxTimestamp;
+      }
+      // If price is null just abort mission :)
       if (costInUSD === null) return 0;
-
-      borrow += market.borrow_uUnits * costInUSD;
-      supply += market.supply_uUnits * costInUSD * market.collat;
+      // Otherwise update net borrow & supply amounts
+      borrow += market.borrow_uUnits * Number(costInUSD);
+      supply += market.supply_uUnits * Number(costInUSD) * market.collat;
     }
 
     // TODO: Note that this is in USD from the Coinbase reporter oracle,

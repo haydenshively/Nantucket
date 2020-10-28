@@ -27,12 +27,19 @@ class Reporter extends Oracle {
   }
 
   _setStablecoins() {
-    if (this._prices === null) return;
-    this._prices["USDC"] = this._USDC;
-    this._prices["USDT"] = this._USDT;
-    this._prices["SAI"] = (
-      this._SAI_PER_ETH * Number(this._prices.ETH)
-    ).toFixed(6);
+    this._prices.USDC.min = this._USDC;
+    this._prices.USDC.max = this._USDC;
+    this._prices.USDT.min = this._USDT;
+    this._prices.USDT.max = this._USDT;
+
+    if (this._prices.ETH.min !== null)
+      this._prices.SAI.min = (
+        this._SAI_PER_ETH * Number(this._prices.ETH.min)
+      ).toFixed(6);
+    if (this._prices.ETH.max !== null)
+      this._prices.SAI.max = (
+        this._SAI_PER_ETH * Number(this._prices.ETH.max)
+      ).toFixed(6);
   }
 
   async fetch() {
@@ -46,24 +53,62 @@ class Reporter extends Oracle {
       "CB-ACCESS-PASSPHRASE": process.env.CB_ACCESS_PASSPHRASE
     };
 
+    let didUpdate = false;
+
     try {
       const res = await nfetch(process.env.COINBASE_ENDPOINT + "/oracle", {
         method: "GET",
         headers: headers
       });
-
       const json = await res.json();
-      this._messages = json.messages;
-      this._signatures = json.signatures;
-      this._prices = json.prices;
-      this._timestamp = json.timestamp;
+
+      for (let i = 0; i < json.messages.length; i++) {
+        const message = json.messages[i];
+        // Decode message, just as the oracle would on-chain
+        const { timestamp, symbol, price } = this._decode(message);
+        if (!(symbol in this._messages)) continue;
+        // Save resulting components into their respective fields
+        this._messages[symbol][timestamp] = message;
+        this._signatures[symbol][timestamp] = json.signatures[i];
+        this._prices[symbol].history.push({
+          timestamp: timestamp,
+          price: price
+        });
+        // Update min/max price information if necessary. Note that JS Numbers are technically
+        // only good up to 2^53. Big.js would be ideal, but Number should be good enough
+        const priceInfo = this._prices[symbol];
+        const priceN = Number(price);
+        // Check min
+        let better = priceInfo.min === null || Number(priceInfo.min) >= priceN;
+        let allowed =
+          priceInfo.minConstraint === null ||
+          Number(priceInfo.minConstraint) < priceN;
+        if (better && allowed) {
+          this._prices[symbol].min = price;
+          this._prices[symbol].minTimestamp = timestamp;
+          didUpdate = true;
+        }
+        // Check max
+        better = priceInfo.max === null || Number(priceInfo.max) <= priceN;
+        allowed =
+          priceInfo.maxConstraint === null ||
+          Number(priceInfo.maxConstraint) > priceN;
+        if (better && allowed) {
+          this._prices[symbol].max = price;
+          this._prices[symbol].maxTimestamp = timestamp;
+          didUpdate = true;
+        }
+      }
 
       this._setStablecoins();
     } catch (e) {
       if (e instanceof nfetch.FetchError)
         console.log("Coinbase fetch failed. Connection probably timed out");
       else console.log("Coinbase fetch failed. Error converting to JSON");
+      console.log(e);
     }
+
+    return didUpdate;
   }
 }
 
@@ -79,6 +124,7 @@ exports.mainnet = new Reporter({
     "0xf650c3d88d12db855b8bf7d11be6c55a4e07dcc9": "USDT",
     "0xc11b1268c1a384e55c48c2391d8d480264a3a7f4": "BTC",
     "0xb3319f5d18bc0d84dd1b4825dcde5d5f7266d407": "ZRX",
-    "0x1f9840a85d5af5bf1d1762f925bdaddc4201f984": "UNI"
+    "0x1f9840a85d5af5bf1d1762f925bdaddc4201f984": "UNI",
+    "0x70e36f6bf80a52b3b46b3af8e106cc0ed743e8e4": "COMP"
   }
 });
