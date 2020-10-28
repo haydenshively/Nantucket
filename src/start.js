@@ -14,6 +14,7 @@ const Oracle = require("./messaging/oracle");
 const Reporter = require("./network/web/coinbase/reporter");
 // src.network.webthree
 const Tokens = require("./network/webthree/compound/ctoken");
+const PriceOracle = require("./network/webthree/compound/priceoracle");
 
 console.log(`Master ${process.pid} is running`);
 
@@ -129,6 +130,11 @@ function notifyMissedOpportunity(event) {
       w.process
     )
   );
+  for (let key in txManagers)
+    new Message({ address: event.borrower }).broadcast(
+      "MissedOpportunity",
+      txManagers[key]
+    );
 
   // logging
   if (config.logging.ipc["Messages>MissedOpportunity"])
@@ -186,6 +192,16 @@ for (let symbol in Tokens.mainnet) {
     );
   });
 }
+
+// watch for price updates
+PriceOracle.mainnet.subscribeToLogEvent(
+  web3,
+  "AnchorPriceUpdated",
+  (err, event) => {
+    if (err) return;
+    console.log(event);
+  }
+);
 
 process.on("SIGINT", () => {
   console.log("\nCaught interrupt signal");

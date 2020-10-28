@@ -30,7 +30,6 @@ class Liquidator extends SmartContract {
     borrowers,
     repayCTokens,
     seizeCTokens,
-    gasPrice,
     chi = false
   ) {
     const cTokens = this._combineTokens(repayCTokens, seizeCTokens);
@@ -41,7 +40,7 @@ class Liquidator extends SmartContract {
     // TODO we cheat here by just estimating gas for first candidate since
     // that's all that TxManager cares about at the moment.
     const gasLimit = this._estimateGas(repayCTokens[0], seizeCTokens[0], true);
-    return this._txFor(method, gasLimit, gasPrice);
+    return this._txFor(method, gasLimit);
   }
 
   /**
@@ -50,10 +49,9 @@ class Liquidator extends SmartContract {
    * @param {Array<String>} borrowers addresses of users with negative liquidity
    * @param {Array<String>} repayCTokens address of token to repay
    * @param {Array<String>} seizeCTokens address of token to seize
-   * @param {Number} gasPrice the gas price to use, in gwei
    * @return {Object} the transaction object
    */
-  liquidateSN(borrowers, repayCTokens, seizeCTokens, gasPrice, chi = false) {
+  liquidateSN(borrowers, repayCTokens, seizeCTokens, chi = false) {
     const cTokens = this._combineTokens(repayCTokens, seizeCTokens);
     let method = chi
       ? this._inner.methods.liquidateSNChi
@@ -62,7 +60,7 @@ class Liquidator extends SmartContract {
     // TODO we cheat here by just estimating gas for first candidate since
     // that's all that TxManager cares about at the moment.
     const gasLimit = this._estimateGas(repayCTokens[0], seizeCTokens[0]);
-    return this._txFor(method, gasLimit, gasPrice);
+    return this._txFor(method, gasLimit);
   }
 
   liquidateSWithPrice(
@@ -72,7 +70,6 @@ class Liquidator extends SmartContract {
     borrower,
     repayCToken,
     seizeCToken,
-    gasPrice,
     chi = false
   ) {
     let method = chi
@@ -87,16 +84,16 @@ class Liquidator extends SmartContract {
       seizeCToken
     );
     const gasLimit = this._estimateGas(repayCToken, seizeCToken, true);
-    return this._txFor(method, gasLimit, gasPrice);
+    return this._txFor(method, gasLimit);
   }
 
-  liquidateS(borrower, repayCToken, seizeCToken, gasPrice, chi = false) {
+  liquidateS(borrower, repayCToken, seizeCToken, chi = false) {
     let method = chi
       ? this._inner.methods.liquidateSChi
       : this._inner.methods.liquidateS;
     method = method(borrower, repayCToken, seizeCToken);
     const gasLimit = this._estimateGas(repayCToken, seizeCToken);
-    return this._txFor(method, gasLimit, gasPrice);
+    return this._txFor(method, gasLimit);
   }
 
   /**
@@ -106,10 +103,9 @@ class Liquidator extends SmartContract {
    * @param {string} repayCToken address of token to repay
    * @param {string} seizeCToken address of token to seize
    * @param {Big} amount debt to repay, in units of the ordinary asset
-   * @param {Number} gasPrice the gas price to use, in gwei
    * @return {Promise<Object>} the transaction object
    */
-  liquidate(borrower, repayCToken, seizeCToken, amount, gasPrice) {
+  liquidate(borrower, repayCToken, seizeCToken, amount) {
     const hexAmount = Web3Utils.toHex(amount.toFixed(0));
     const method = this._inner.methods.liquidate(
       borrower,
