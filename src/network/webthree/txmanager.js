@@ -68,9 +68,10 @@ class TxManager {
       this._removeStaleCandidates(msg.__data.time);
       this._cacheTransaction();
     });
-    Channel(Message).on("MissedOpportunity", msg =>
-      this._removeCandidate.bind(this)(msg.__data.address)
-    );
+    Channel(Message).on("MissedOpportunity", msg => {
+      this._removeCandidate.bind(this)(msg.__data.address);
+      this._cacheTransaction();
+    });
 
     this._intervalHandle = setInterval(
       this._periodic.bind(this),
@@ -92,7 +93,7 @@ class TxManager {
 
     if (isNew)
       winston.info(
-        `🧮 *TxManager* | Added ${c.label} for revenue of ${c.profitability} Eth`
+        `🐳 *TxManager* | Added ${c.label} for revenue of ${c.profitability} Eth`
       );
   }
 

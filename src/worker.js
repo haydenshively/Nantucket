@@ -36,6 +36,7 @@ const CTokens = require("./network/webthree/compound/ctoken");
  */
 class Worker extends Database {
   /**
+   * @param {Provider} provider the Web3 provider to use for ethCall's
    * @param {number} minRevenue Any user with potential revenue less
    *    than this number will be excluded when choosing candidates
    * @param {number} maxRevenue Any user with potential revenue greater
@@ -46,9 +47,10 @@ class Worker extends Database {
    *    (lowest to highest). This specifies how many candidates
    *    should be taken from the top of that list
    */
-  constructor(minRevenue, maxRevenue, maxHealth, numCandidates) {
+  constructor(provider, minRevenue, maxRevenue, maxHealth, numCandidates) {
     super();
 
+    this._provider = provider;
     this._minRevenue = minRevenue;
     this._maxRevenue = maxRevenue;
     this._maxHealth = maxHealth;
@@ -86,39 +88,48 @@ class Worker extends Database {
     let candidatePromises = [];
 
     for (let i = 0; i < this._candidates.length; i++) {
-      candidatePromises.push(new Promise((async resolve => {
-        const c = this._candidates[i];
+      candidatePromises.push(
+        new Promise(async resolve => {
+          const c = this._candidates[i];
 
-        // TODO instead of this (which won't work with any Web3 provider except
-        // the local Geth node due to latency issues) just subscribe to Compound
-        // events for "borrow" and "supply" and update based on that.
-        await c.refreshBalances(web3, Comptroller.mainnet, CTokens.mainnet);
+          // TODO instead of this (which won't work with any Web3 provider except
+          // the local Geth node due to latency issues) just subscribe to Compound
+          // events for "borrow" and "supply" and update based on that.
+          await c.refreshBalances(
+            this._provider,
+            Comptroller.mainnet,
+            CTokens.mainnet
+          );
 
-        // TODO TxManager isn't hooked into the Database logic, so we have
-        // to pass along the repay and seize addresses here
-        // (ctokenidpay and ctokenidseize are normally Ints, but here
-        // they change to Strings)
-        if (!String(c.ctokenidpay).startsWith("0x")) {
-          const repay = `0x${await this._tCTokens.getAddress(c.ctokenidpay)}`;
-          this._candidates[i].ctokenidpay = repay;
-        }
-        if (!String(c.ctokenidseize).startsWith("0x")) {
-          const seize = `0x${await this._tCTokens.getAddress(c.ctokenidseize)}`;
-          this._candidates[i].ctokenidseize = seize;
-        }
+          // TODO TxManager isn't hooked into the Database logic, so we have
+          // to pass along the repay and seize addresses here
+          // (ctokenidpay and ctokenidseize are normally Ints, but here
+          // they change to Strings)
+          if (!String(c.ctokenidpay).startsWith("0x")) {
+            const repay = `0x${await this._tCTokens.getAddress(c.ctokenidpay)}`;
+            this._candidates[i].ctokenidpay = repay;
+          }
+          if (!String(c.ctokenidseize).startsWith("0x")) {
+            const seize = `0x${await this._tCTokens.getAddress(
+              c.ctokenidseize
+            )}`;
+            this._candidates[i].ctokenidseize = seize;
+          }
 
-        if (
-          this._oracle !== null &&
-          (await c.isLiquidatableWithPriceFrom(this._oracle))
-        ) {
-          this._candidates[i].msg().broadcast("LiquidateWithPriceUpdate");
+          if (
+            this._oracle !== null &&
+            (await c.isLiquidatableWithPriceFrom(this._oracle))
+          ) {
+            this._candidates[i].msg().broadcast("LiquidateWithPriceUpdate");
+            resolve();
+            return;
+          }
+          if (await c.isLiquidatable(this._provider, Comptroller.mainnet)) {
+            this._candidates[i].msg().broadcast("Liquidate");
+          }
           resolve();
-        }
-        if (await c.isLiquidatable(web3, Comptroller.mainnet)) {
-          this._candidates[i].msg().broadcast("Liquidate");
-        }
-        resolve();
-      })));
+        })
+      );
     }
 
     await Promise.all(candidatePromises);

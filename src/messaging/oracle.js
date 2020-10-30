@@ -63,6 +63,7 @@ class Oracle extends Message {
   }
 
   respondToPost(event) {
+    if (!(event.symbol in this._prices)) return;
     this.becomeMinOrMax(event.symbol, event.price, null);
   }
 
@@ -138,6 +139,8 @@ class Oracle extends Message {
     let messages = [];
     let signatures = [];
     let symbols = [];
+
+    if (typeof markets[Symbol.iterator] !== 'function') console.log(markets);
 
     for (let market of markets) {
       const symbol = market.symbol;
