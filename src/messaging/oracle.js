@@ -34,8 +34,11 @@ class Oracle extends Message {
   }
 
   msg() {
-    const pricesNoHistory = { ...this._prices };
-    for (let symbol in pricesNoHistory) pricesNoHistory[symbol].history = [];
+    const pricesNoHistory = {};
+    for (let symbol in this._prices) {
+      pricesNoHistory[symbol] = { ...this._prices[symbol] };
+      pricesNoHistory[symbol].history = [];
+    }
 
     super.__data = {
       symbols: this._symbols,
@@ -46,45 +49,71 @@ class Oracle extends Message {
     return this;
   }
 
-  removeStaleTimestamps(postingEvent) {
-    const symbol = postingEvent.symbol;
-    const anchor = postingEvent.anchorPrice;
+  respondToNewAnchor(event) {
+    const symbol = event.symbol;
+    const anchor = event.anchorPrice;
+    if (!(symbol in this._prices)) return;
     // Update constraints based on anchor price
-    const minConstraint = Number(anchor) * 0.8;
-    const maxConstraint = Number(anchor) * 1.2;
-    this._prices[symbol].minConstraint = minConstraint.toFixed(0);
-    this._prices[symbol].maxConstraint = maxConstraint.toFixed(0);
+    this._prices[symbol].minConstraint = (Number(anchor) * 0.8).toFixed(0);
+    this._prices[symbol].maxConstraint = (Number(anchor) * 1.2).toFixed(0);
     // Delete stale entries from history, messages, and signatures
+    this.removeInfoUpToAndIncluding(symbol, event.newTimestamp);
+    // Update min and max
+    this.resetMinAndMax(symbol);
+  }
+
+  respondToPost(event) {
+    this.becomeMinOrMax(event.symbol, event.price, null);
+  }
+
+  removeInfoUpToAndIncluding(symbol, timestamp) {
     let i;
     for (i = 0; i < this._prices[symbol].history.length; i++) {
       const ts = this._prices[symbol].history[i].timestamp;
-      if (Number(ts) > Number(postingEvent.newTimestamp)) break;
+      if (Number(ts) > Number(timestamp)) break;
 
       delete this._messages[symbol][ts];
       delete this._signatures[symbol][ts];
     }
-    this._prices[symbol].splice(0, i);
-    // Update min and max
-    this._prices[symbol].min = anchor;
+    this._prices[symbol].history.splice(0, i);
+  }
+
+  resetMinAndMax(symbol) {
+    this._prices[symbol].min = null;
     this._prices[symbol].minTimestamp = null;
-    this._prices[symbol].max = anchor;
+    this._prices[symbol].max = null;
     this._prices[symbol].maxTimestamp = null;
-    for (let item of this._prices[symbol].history) {
-      // Check min
-      let better = Number(this._prices[symbol].min) >= Number(item.price);
-      let allowed = minConstraint < Number(item.price);
-      if (better && allowed) {
-        this._prices[symbol].min = item.price;
-        this._prices[symbol].minTimestamp = item.timestamp;
-      }
-      // Check max
-      better = Number(this._prices[symbol].max) <= Number(item.price);
-      allowed = maxConstraint > Number(item.price);
-      if (better && allowed) {
-        this._prices[symbol].max = item.price;
-        this._prices[symbol].maxTimestamp = item.timestamp;
-      }
+    this._prices[symbol].history.forEach(item =>
+      this.becomeMinOrMax(symbol, item.price, item.timestamp)
+    );
+  }
+
+  becomeMinOrMax(symbol, price, timestamp) {
+    const info = this._prices[symbol];
+    const priceN = Number(price);
+
+    let success = false;
+    let better;
+    let allow;
+
+    // Check min
+    better = info.min === null || Number(info.min) >= priceN;
+    allow = info.minConstraint === null || Number(info.minConstraint) < priceN;
+    if (better && allow) {
+      info.min = price;
+      info.minTimestamp = timestamp;
+      success = true;
     }
+    // Check max
+    better = info.max === null || Number(info.max) <= priceN;
+    allow = info.maxConstraint === null || Number(info.maxConstraint) > priceN;
+    if (better && allow) {
+      info.max = price;
+      info.maxTimestamp = timestamp;
+      success = true;
+    }
+
+    return success;
   }
 
   _decode(oracleEncodedMessage) {
@@ -105,22 +134,6 @@ class Oracle extends Message {
     };
   }
 
-  // postableData(
-  //   include = ["BTC", "ETH", "DAI", "REP", "ZRX", "BAT", "UNI", "COMP"]
-  // ) {
-  //   let messages = [];
-  //   let signatures = [];
-  //   let symbols = [];
-  //   for (let i = 0; i < this._messages.length; i++) {
-  //     const symbol = this._decode(this._messages[i]).key;
-  //     if (!include.includes(symbol)) continue;
-  //     messages.push(this._messages[i]);
-  //     signatures.push(this._signatures[i]);
-  //     symbols.push(symbol);
-  //   }
-  //   return [messages, signatures, symbols];
-  // }
-
   postableDataFor(markets) {
     let messages = [];
     let signatures = [];
@@ -128,7 +141,7 @@ class Oracle extends Message {
 
     for (let market of markets) {
       const symbol = market.symbol;
-      const timestamp = market.timestamp;
+      const timestamp = this._prices[symbol][market.limit + "Timestamp"];
       // symbol should never be null, but check just in case.
       // if timestamp is null, this must be a stablecoin for
       // which we don't need to post any data OR the currently
@@ -137,6 +150,12 @@ class Oracle extends Message {
 
       const message = this._messages[symbol][timestamp];
       const signature = this._signatures[symbol][timestamp];
+
+      // TODO this shouldn't be necessary but it is?
+      if (message === undefined || signature === undefined) {
+        console.error("Message or signature undefined in getPostableData");
+        continue;
+      }
 
       messages.push(message);
       signatures.push(signature);

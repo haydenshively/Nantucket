@@ -170,9 +170,17 @@ PriceOracle.mainnet.subscribeToLogEvent(
   "AnchorPriceUpdated",
   (err, event) => {
     if (err) return;
-    reporter.removeStaleTimestamps.bind(reporter)(event);
+    reporter.respondToNewAnchor.bind(reporter)(event);
   }
 );
+PriceOracle.mainnet.subscribeToLogEvent(
+  web3,
+  "PriceUpdated",
+  (err, event) => {
+    if (err) return;
+    reporter.respondToPost.bind(reporter)(event);
+  }
+)
 
 // watch for new blocks
 web3.eth.subscribe("newBlockHeaders", (err, block) => {

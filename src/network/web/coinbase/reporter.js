@@ -61,42 +61,41 @@ class Reporter extends Oracle {
         headers: headers
       });
       const json = await res.json();
-
       for (let i = 0; i < json.messages.length; i++) {
-        const message = json.messages[i];
         // Decode message, just as the oracle would on-chain
-        const { timestamp, symbol, price } = this._decode(message);
-        if (!(symbol in this._messages)) continue;
+        const { timestamp, symbol, price } = this._decode(json.messages[i]);
+        // Skip if symbol is unknown
+        if (!(symbol in this._prices)) continue;
+        // Skip if price has already been stored
+        const history_length = this._prices[symbol].history.length;
+        if (
+          history_length > 0 &&
+          this._prices[symbol].history[history_length - 1].timestamp ===
+            timestamp
+        )
+          continue;
+
         // Save resulting components into their respective fields
-        this._messages[symbol][timestamp] = message;
+        this._messages[symbol][timestamp] = json.messages[i];
         this._signatures[symbol][timestamp] = json.signatures[i];
         this._prices[symbol].history.push({
           timestamp: timestamp,
           price: price
         });
-        // Update min/max price information if necessary. Note that JS Numbers are technically
-        // only good up to 2^53. Big.js would be ideal, but Number should be good enough
-        const priceInfo = this._prices[symbol];
-        const priceN = Number(price);
-        // Check min
-        let better = priceInfo.min === null || Number(priceInfo.min) >= priceN;
-        let allowed =
-          priceInfo.minConstraint === null ||
-          Number(priceInfo.minConstraint) < priceN;
-        if (better && allowed) {
-          this._prices[symbol].min = price;
-          this._prices[symbol].minTimestamp = timestamp;
-          didUpdate = true;
-        }
-        // Check max
-        better = priceInfo.max === null || Number(priceInfo.max) <= priceN;
-        allowed =
-          priceInfo.maxConstraint === null ||
-          Number(priceInfo.maxConstraint) > priceN;
-        if (better && allowed) {
-          this._prices[symbol].max = price;
-          this._prices[symbol].maxTimestamp = timestamp;
-          didUpdate = true;
+
+        didUpdate = this.becomeMinOrMax(symbol, price, timestamp);
+        // This conditional just helps keep the history length
+        // to a minimum. Probably not strictly necessary
+        if (didUpdate) {
+          // Can't get any newer than the brand new timestamp,
+          // so if minTimestamp matches that, then maxTimestamp
+          // is the same or older. And vice versa
+          const oldest =
+            this._prices[symbol].minTimestamp === timestamp
+              ? this._prices[symbol].maxTimestamp
+              : this._prices[symbol].minTimestamp;
+          const justBeforeThis = (Number(oldest) - 2).toFixed(0);
+          this.removeInfoUpToAndIncluding(symbol, justBeforeThis);
         }
       }
 

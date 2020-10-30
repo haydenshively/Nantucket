@@ -11,7 +11,7 @@ class Candidate extends Message {
 
     if (this.address.length === 40) this.address = "0x" + this.address;
 
-    this._markets = "markets" in data ? data.markets : null;
+    this.markets = "markets" in data ? data.markets : null;
   }
 
   get label() {
@@ -24,7 +24,7 @@ class Candidate extends Message {
       ctokenidpay: this.ctokenidpay,
       ctokenidseize: this.ctokenidseize,
       profitability: this.profitability,
-      markets: this._markets
+      markets: this.markets
     };
     return this;
   }
@@ -58,22 +58,21 @@ class Candidate extends Message {
         supply_uUnits: Number(supply_uUnitsArr[i]),
         collat: Number(collatArr[i]),
         symbol: null,
-        timestamp: null
+        limit: null
       });
     });
 
-    this._markets = markets;
+    this.markets = markets;
   }
 
   liquidityOffChain(oracle) {
-    if (this._markets === null) return {};
+    if (this.markets === null) return {};
 
     let borrow = 0;
     let supply = 0;
 
-    for (let i = 0; i < this._markets.length; i++) {
+    for (let market of this.markets) {
       // Populate symbol field if necessary
-      const market = this._markets[i];
       if (market.symbol === null)
         market.symbol = oracle.getSymbol(market.address);
       // Figure out whether to use min or max price
@@ -81,13 +80,13 @@ class Candidate extends Message {
       let costInUSD;
       if (market.supply_uUnits > 0) {
         costInUSD = priceInfo.min;
-        market.timestamp = priceInfo.minTimestamp;
+        market.limit = "min";
       } else {
         costInUSD = priceInfo.max;
-        market.timestamp = priceInfo.maxTimestamp;
+        market.limit = "max";
       }
       // If price is null just abort mission :)
-      if (costInUSD === null) return 0;
+      if (costInUSD === null) return {};
       // Otherwise update net borrow & supply amounts
       borrow += market.borrow_uUnits * Number(costInUSD);
       supply += market.supply_uUnits * Number(costInUSD) * market.collat;
