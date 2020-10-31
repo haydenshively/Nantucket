@@ -49,11 +49,12 @@ if (process.argv.length === 11) {
       winston.info(`🐳 *Candidates* | ${pid} got 'Liquidate With Price Update'`)
     );
   if (process.argv[10] === "true")
-    Channel(Message).on("CheckCandidatesLiquidityComplete", msg =>
-      winston.info(
-        `📢 *Messages* | ${pid} got 'Check Candidates Liquidity Complete' (after ${msg.__data.time} ms)`
-      )
-    );
+    Channel(Message).on("CheckCandidatesLiquidityComplete", msg => {
+      if (msg.__data.time > 4000)
+        winston.info(
+          `📢 *Messages* | ${pid} got 'Check Candidates Liquidity Complete' (took ${msg.__data.time} ms)`
+        );
+    });
 }
 
 process.on("SIGINT", code => {

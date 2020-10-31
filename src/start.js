@@ -157,13 +157,30 @@ if (config.fetching.accountServiceInterval === 0) clearInterval(handle2);
 // pull from Coinbase reporter
 const reporter = Reporter.mainnet;
 const handle3 = setInterval(async () => {
-  const timestamp = reporter._timestamp;
-  await reporter.fetch.bind(reporter)();
-  if (reporter._timestamp <= timestamp) return;
+  const didUpdate = await reporter.fetch.bind(reporter)();
+  if (!didUpdate) return;
 
   setOracles();
   checkLiquidities();
 }, config.fetching.coinbaseReporter);
+
+// watch for on-chain price updates
+PriceOracle.mainnet.subscribeToLogEvent(
+  web3,
+  "AnchorPriceUpdated",
+  (err, event) => {
+    if (err) return;
+    reporter.respondToNewAnchor.bind(reporter)(event);
+  }
+);
+PriceOracle.mainnet.subscribeToLogEvent(
+  web3,
+  "PriceUpdated",
+  (err, event) => {
+    if (err) return;
+    reporter.respondToPost.bind(reporter)(event);
+  }
+)
 
 // watch for new blocks
 web3.eth.subscribe("newBlockHeaders", (err, block) => {
@@ -193,15 +210,6 @@ for (let symbol in Tokens.mainnet) {
   });
 }
 
-// watch for price updates
-PriceOracle.mainnet.subscribeToLogEvent(
-  web3,
-  "AnchorPriceUpdated",
-  (err, event) => {
-    if (err) return;
-    console.log(event);
-  }
-);
 
 process.on("SIGINT", () => {
   console.log("\nCaught interrupt signal");

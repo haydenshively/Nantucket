@@ -68,9 +68,10 @@ class TxManager {
       this._removeStaleCandidates(msg.__data.time);
       this._cacheTransaction();
     });
-    Channel(Message).on("MissedOpportunity", msg =>
-      this._removeCandidate.bind(this)(msg.__data.address)
-    );
+    Channel(Message).on("MissedOpportunity", msg => {
+      this._removeCandidate.bind(this)(msg.__data.address);
+      this._cacheTransaction();
+    });
 
     this._intervalHandle = setInterval(
       this._periodic.bind(this),
@@ -86,18 +87,21 @@ class TxManager {
       seizeCToken: c.ctokenidseize,
       needsPriceUpdate: needsPriceUpdate,
       revenue: Number(c.profitability),
+      markets: c.markets,
       lastSeen: Date.now()
     };
 
     if (isNew)
       winston.info(
-        `🧮 *TxManager* | Added ${c.label} for revenue of ${c.profitability} Eth`
+        `🐳 *TxManager* | Added ${c.label} for revenue of ${c.profitability} Eth`
       );
   }
 
   _removeCandidate(address) {
+    const isOld = address.toLowerCase() in this._candidates;
     delete this._candidates[address.toLowerCase()];
-    winston.info(`🧮 *TxManager* | Removed ${address.slice(0, 6)}`);
+
+    if (isOld) winston.info(`🧮 *TxManager* | Removed ${address.slice(0, 6)}`);
   }
 
   _removeStaleCandidates(updatePeriod) {
@@ -173,7 +177,7 @@ class TxManager {
       return;
     }
 
-    const postable = this._oracle.postableData();
+    const postable = this._oracle.postableDataFor(candidates[0][1].markets);
     const tx = Liquidator.mainnet.liquidateSNWithPrice(
       postable[0],
       postable[1],
@@ -204,8 +208,16 @@ class TxManager {
       this.dumpAll();
       return;
     }
-    // This check is just an extra precaution
-    if (this._tx.gasPrice === undefined) return;
+    // These checks are just an extra precaution
+    if (this._tx.gasPrice === undefined) {
+      console.error("TxManager's periodic function saw an undefined gas price");
+      return;
+    }
+    if (this._tx.gasLimit.lte("500000")) {
+      console.error("TxManager's periodic function saw a gas limit < 500000");
+      return;
+    }
+    // Go ahead and send!
     this._sendIfProfitable(this._tx);
   }
 

@@ -7,8 +7,8 @@ class Reporter extends Oracle {
   constructor(data) {
     super(data);
 
-    this._USDC = "1.00"; // in USD
-    this._USDT = "1.00"; // in USD
+    this._USDC = "1000000"; // in USD
+    this._USDT = "1000000"; // in USD
     this._SAI_PER_ETH = 0.005285;
   }
 
@@ -27,12 +27,19 @@ class Reporter extends Oracle {
   }
 
   _setStablecoins() {
-    if (this._prices === null) return;
-    this._prices["USDC"] = this._USDC;
-    this._prices["USDT"] = this._USDT;
-    this._prices["SAI"] = (
-      this._SAI_PER_ETH * Number(this._prices.ETH)
-    ).toFixed(6);
+    this._prices.USDC.min = this._USDC;
+    this._prices.USDC.max = this._USDC;
+    this._prices.USDT.min = this._USDT;
+    this._prices.USDT.max = this._USDT;
+
+    if (this._prices.ETH.min !== null)
+      this._prices.SAI.min = (
+        this._SAI_PER_ETH * Number(this._prices.ETH.min)
+      ).toFixed(6);
+    if (this._prices.ETH.max !== null)
+      this._prices.SAI.max = (
+        this._SAI_PER_ETH * Number(this._prices.ETH.max)
+      ).toFixed(6);
   }
 
   async fetch() {
@@ -46,24 +53,61 @@ class Reporter extends Oracle {
       "CB-ACCESS-PASSPHRASE": process.env.CB_ACCESS_PASSPHRASE
     };
 
+    let didUpdate = false;
+
     try {
       const res = await nfetch(process.env.COINBASE_ENDPOINT + "/oracle", {
         method: "GET",
         headers: headers
       });
-
       const json = await res.json();
-      this._messages = json.messages;
-      this._signatures = json.signatures;
-      this._prices = json.prices;
-      this._timestamp = json.timestamp;
+      for (let i = 0; i < json.messages.length; i++) {
+        // Decode message, just as the oracle would on-chain
+        const { timestamp, symbol, price } = this._decode(json.messages[i]);
+        // Skip if symbol is unknown
+        if (!(symbol in this._prices)) continue;
+        // Skip if price has already been stored
+        const history_length = this._prices[symbol].history.length;
+        if (
+          history_length > 0 &&
+          this._prices[symbol].history[history_length - 1].timestamp ===
+            timestamp
+        )
+          continue;
+
+        // Save resulting components into their respective fields
+        this._messages[symbol][timestamp] = json.messages[i];
+        this._signatures[symbol][timestamp] = json.signatures[i];
+        this._prices[symbol].history.push({
+          timestamp: timestamp,
+          price: price
+        });
+
+        didUpdate = this.becomeMinOrMax(symbol, price, timestamp);
+        // This conditional just helps keep the history length
+        // to a minimum. Probably not strictly necessary
+        if (didUpdate) {
+          // Can't get any newer than the brand new timestamp,
+          // so if minTimestamp matches that, then maxTimestamp
+          // is the same or older. And vice versa
+          const oldest =
+            this._prices[symbol].minTimestamp === timestamp
+              ? this._prices[symbol].maxTimestamp
+              : this._prices[symbol].minTimestamp;
+          const justBeforeThis = (Number(oldest) - 2).toFixed(0);
+          this.removeInfoUpToAndIncluding(symbol, justBeforeThis);
+        }
+      }
 
       this._setStablecoins();
     } catch (e) {
       if (e instanceof nfetch.FetchError)
         console.log("Coinbase fetch failed. Connection probably timed out");
       else console.log("Coinbase fetch failed. Error converting to JSON");
+      console.log(e);
     }
+
+    return didUpdate;
   }
 }
 
@@ -79,6 +123,7 @@ exports.mainnet = new Reporter({
     "0xf650c3d88d12db855b8bf7d11be6c55a4e07dcc9": "USDT",
     "0xc11b1268c1a384e55c48c2391d8d480264a3a7f4": "BTC",
     "0xb3319f5d18bc0d84dd1b4825dcde5d5f7266d407": "ZRX",
-    "0x1f9840a85d5af5bf1d1762f925bdaddc4201f984": "UNI"
+    "0x35a18000230da775cac24873d00ff85bccded550": "UNI",
+    "0x70e36f6bf80a52b3b46b3af8e106cc0ed743e8e4": "COMP"
   }
 });
