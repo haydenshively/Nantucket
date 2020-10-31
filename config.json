@@ -4,12 +4,12 @@
       "envKeyAddress": "ACCOUNT_ADDRESS_TEST",
       "envKeySecret": "ACCOUNT_SECRET_TEST",
       "interval": 100,
-      "maxFee_Eth": 2.62
+      "maxFee_Eth": 0.3
     }
   },
   "liquidators": [
     {
-      "minRevenue": 0.05,
+      "minRevenue": 0.01,
       "maxRevenue": 5.0,
       "maxHealth": null,
       "numCandidates": 500,
@@ -45,11 +45,11 @@
     "ipc": {
       "Oracles>Set": false,
       "Messages>CheckCandidatesLiquidity": false,
-      "Messages>CheckCandidatesLiquidityComplete": false,
+      "Messages>CheckCandidatesLiquidityComplete": true,
       "Messages>UpdateCandidates": false,
       "Messages>MissedOpportunity": false,
-      "Candidates>Liquidate": true,
-      "Candidates>LiquidateWithPriceUpdate": true
+      "Candidates>Liquidate": false,
+      "Candidates>LiquidateWithPriceUpdate": false
     }
   }
 }
