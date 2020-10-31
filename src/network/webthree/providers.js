@@ -93,7 +93,7 @@ class MultiSendProvider {
     for (let i = 1; i < this.providers.length; i++)
       this.providers[i].eth
         .sendSignedTransaction(signedTx)
-        .on("error", console.error);
+        .on("error", console.log);
     return sentTx;
   }
 
