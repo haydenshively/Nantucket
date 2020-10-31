@@ -174,7 +174,10 @@ class TxQueue {
         this.rebase();
         return;
       }
-      winston.error(label + "Off-chain " + String(err));
+      // Certain errors are expected (and handled naturally by structure
+      // of this queue) so we don't need to log them:
+      if (!String(err).includes("Transaction was not mined within "))
+        winston.error(label + "Off-chain " + String(err));
       sentTx.removeAllListeners();
     });
   }
