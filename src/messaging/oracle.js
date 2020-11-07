@@ -140,23 +140,50 @@ class Oracle extends Message {
     let signatures = [];
     let symbols = [];
 
-    if (typeof markets[Symbol.iterator] !== 'function') console.log(markets);
+    // TODO this caution shouldn't be necessary, but sometimes markets is null
+    if (markets === null) {
+      console.log("postableDataFor got null markets for some reason :(");
+      return null;
+    }
+    if (typeof markets[Symbol.iterator] !== "function") {
+      console.log("postableDataFor got non-array markets for some reason :(");
+      return null;
+    }
+
+    let foundEth = false;
 
     for (let market of markets) {
-      const symbol = market.symbol;
-      const timestamp = this._prices[symbol][market.limit + "Timestamp"];
-      // symbol should never be null, but check just in case.
-      // if timestamp is null, this must be a stablecoin for
+      let symbol = market.symbol;
+
+      // SAI price can only be updated vicariously through ETH:
+      if (symbol === "SAI") symbol = "ETH";
+      if (symbol === "ETH") {
+        if (foundEth) continue;
+        foundEth = true;
+      }
+
+      // TODO this check shouldn't be necessary
+      if (symbol === null) {
+        console.log("postableDataFor got market with null symbol");
+        continue;
+      }
+      // TODO this check shouldn't be necessary
+      if (market.limit === null) {
+        console.log(`postableDataFor got market ${symbol} with null limit`);
+        continue;
+      }
+      let timestamp = this._prices[symbol][market.limit + "Timestamp"];
+      // If timestamp is null, this must be a stablecoin for
       // which we don't need to post any data OR the currently
       // posted price is the best one to use
-      if (symbol === null || timestamp === null) continue;
+      if (timestamp === null) continue;
 
       const message = this._messages[symbol][timestamp];
       const signature = this._signatures[symbol][timestamp];
 
-      // TODO this shouldn't be necessary but it is?
+      // TODO this check shouldn't be necessary
       if (message === undefined || signature === undefined) {
-        console.error("Message or signature undefined in getPostableData");
+        console.error(`msg or sig undefined in getPostableData for ${symbol}`);
         continue;
       }
 

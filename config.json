@@ -4,7 +4,7 @@
       "envKeyAddress": "ACCOUNT_ADDRESS_TEST",
       "envKeySecret": "ACCOUNT_SECRET_TEST",
       "interval": 100,
-      "maxFee_Eth": 0.3
+      "maxFee_Eth": 0.5
     }
   },
   "liquidators": [

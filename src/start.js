@@ -184,14 +184,11 @@ PriceOracle.mainnet.subscribeToLogEvent(
 
 // watch for new blocks
 web3.eth.subscribe("newBlockHeaders", (err, block) => {
-  if (err) {
-    winston.error("🚨 *Block Headers* | " + String(err));
-    return;
-  }
+  if (err) return;
   notifyNewBlock();
   checkLiquidities();
-  if (!(block.number % 240))
-    winston.info(`☑️ *Block Headers* | ${block.number}`);
+  // if (!(block.number % 240))
+  //   winston.info(`☑️ *Block Headers* | ${block.number}`);
 });
 
 // watch for new liquidations

@@ -4,10 +4,12 @@ Big.RM = 0;
 const winston = require("winston");
 
 class TxQueue {
-  constructor(wallet) {
+  constructor(wallet, revertTolerance = 2) {
     this._wallet = wallet;
+    this._revertTolerance = 2;
 
     this._lowestLiquidNonce = 0;
+    this._revertCount = 0;
     this._queue = [];
   }
 
@@ -65,6 +67,18 @@ class TxQueue {
       (await this._wallet.getLowestLiquidNonce()) - this._lowestLiquidNonce;
     this._queue.splice(0, diff); // Could log confirmed txs via returned array slice
     this._lowestLiquidNonce += diff;
+  }
+
+  /**
+   * Estimates the gas necessary to send a given transaction
+   *
+   * @param {Object} tx an object describing the transaction
+   * @param {Number} idx a queue index, defaults to 0
+   * @returns {Promise<Number>} estimated amount of gas that the tx will require
+   *
+   */
+  estimateGas(tx, idx = 0) {
+    return this._wallet.estimateGas(tx, this.nonce(idx));
   }
 
   /**
@@ -161,24 +175,41 @@ class TxQueue {
     });
     // After receiving receipt, log success and rebase
     sentTx.on("receipt", receipt => {
+      sentTx.removeAllListeners();
       winston.info(`${label}Successful at block ${receipt.blockNumber}!`);
       this.rebase();
-      sentTx.removeAllListeners();
     });
     // After receiving an error, check if it occurred on or off chain
     sentTx.on("error", (err, receipt) => {
+      sentTx.removeAllListeners();
       // If it occurred on-chain, receipt will be defined.
       // Treat it the same as the successful receipt case.
       if (receipt !== undefined) {
         winston.info(label + "Reverted");
         this.rebase();
+
+        // Escape hatch
+        this._revertCount++;
+        if (this._revertCount >= this._revertTolerance) {
+          winston.info("TxQueue saw too many reverts. Shutting down.");
+          process.exit();
+        }
         return;
+      }
+      const errStr = String(err);
+      // Certain off-chain errors also indicate that we may need to rebase
+      // our nonce. Check those:
+      if (
+        errStr.includes("replacement transaction underpriced") ||
+        errStr.includes("already known")
+      ) {
+        winston.info(label + "Attempting rebase");
+        this.rebase();
       }
       // Certain errors are expected (and handled naturally by structure
       // of this queue) so we don't need to log them:
-      if (!String(err).includes("Transaction was not mined within "))
-        winston.error(label + "Off-chain " + String(err));
-      sentTx.removeAllListeners();
+      if (!errStr.includes("Transaction was not mined within "))
+        winston.error(label + "Off-chain " + errStr);
     });
   }
 }

@@ -1,3 +1,4 @@
+const winston = require("winston");
 // src
 const Database = require("./database");
 // src.messaging
@@ -88,6 +89,13 @@ class Worker extends Database {
     let candidatePromises = [];
 
     for (let i = 0; i < this._candidates.length; i++) {
+      // Skip pairs that contain SAI
+      if (
+        this._candidates[i].ctokenidpay == "1" ||
+        this._candidates[i].ctokenidseize == "1"
+      )
+        continue;
+
       candidatePromises.push(
         new Promise(async resolve => {
           const c = this._candidates[i];
@@ -119,14 +127,8 @@ class Worker extends Database {
           if (
             this._oracle !== null &&
             (await c.isLiquidatableWithPriceFrom(this._oracle))
-          ) {
+          )
             this._candidates[i].msg().broadcast("LiquidateWithPriceUpdate");
-            resolve();
-            return;
-          }
-          if (await c.isLiquidatable(this._provider, Comptroller.mainnet)) {
-            this._candidates[i].msg().broadcast("Liquidate");
-          }
           resolve();
         })
       );
@@ -141,11 +143,10 @@ class Worker extends Database {
   }
 
   _removeCandidate(address) {
-    console.log(`Removing candidate ${address}`);
     for (let i = 0; i < this._candidates.length; i++) {
       if (this._candidates[i].address !== address.toLowerCase()) continue;
       this._candidates.splice(i, 1);
-      console.log(`Candidate ${address} was being watched`);
+      winston.info(`🔍 *Worker* | Removed ${address.slice(0, 6)}`);
       break;
     }
   }

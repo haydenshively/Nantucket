@@ -57,9 +57,13 @@ class Accounts extends Fetchable {
       }
     };
 
-    const urlParams = Object.keys(withConfig)
-      .map(key => key + "=" + withConfig[key])
-      .join("&");
+    const urlParams =
+      Object.keys(withConfig)
+        .map(key => key + "=" + withConfig[key])
+        .join("&") + "&min_borrow_value_in_eth%5Bvalue%5D=0.1";
+    // TODO use uriencode to convert "min_borrow_value_in_eth[value]=0.1"
+    // into the thing with %5B and stuff. Same goes if we want to set
+    // max_health parameter in request.
 
     try {
       const res = await nfetch(
