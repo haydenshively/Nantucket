@@ -91,10 +91,13 @@ class TxManager {
       lastSeen: Date.now()
     };
 
-    if (isNew)
+    if (isNew) {
       winston.info(
         `🐳 *TxManager* | Added ${c.label} for revenue of ${c.profitability} Eth`
       );
+      if (Number(c.profitability) >= this._revenue)
+        winston.info(`✨ *TxManager* | ${c.label} will become primary target`);
+    }
   }
 
   _removeCandidate(address) {
@@ -178,7 +181,7 @@ class TxManager {
     // Override gas limit
     // Since estimation is made under the assumption that pending txns have gone
     // through, it may severely underestimate liquidation gas after an initial
-    // bid has been made. As such, only estimate if primary candidate changes.
+    // bid has been made. As such, only re-estimate if primary candidate changes.
 
     let estimated;
     try {
@@ -186,34 +189,26 @@ class TxManager {
     } catch (e) {
       console.error("Error: Revert during gas estimation:");
       console.log(e.name + " " + e.message);
+      this._removeCandidate(borrowers[0]);
       this._tx = null;
       this._revenue = 0;
       return;
     }
-    if (
-      this._tx === null ||
-      this._tx.gasLimit === undefined ||
-      this._tx.data !== tx.data
-    )
-      tx.gasLimit = estimated;
-    else
-      tx.gasLimit = estimated.gt(this._tx.gasLimit)
-        ? estimated
-        : this._tx.gasLimit;
+    tx.gasLimit = estimated.gt(tx.gasLimit) ? estimated : tx.gasLimit;
+
     // Override gas price
     if (
       this._tx === null ||
       this._tx.gasPrice === undefined ||
       this._tx.data !== tx.data
     )
-      tx.gasPrice = await this._getInitialGasPrice(tx.gasLimit, revenue);
+      tx.gasPrice = await this._getInitialGasPrice(tx.gasLimit.mul(0.75), revenue);
     else tx.gasPrice = this._tx.gasPrice;
 
     // Save to cached tx. Must be done at the end like this so that
     // tx is always null or fully defined, not partially defined
     this._tx = tx;
     this._revenue = revenue;
-    this._candidate0 = borrowers[0];
   }
 
   /**
@@ -235,6 +230,8 @@ class TxManager {
       console.error(
         `TxManager periodic got low gas limit ${this._tx.gasLimit.toFixed(0)}`
       );
+      this._tx = null;
+      this._revenue = 0;
       return;
     }
     // Go ahead and send!
@@ -252,9 +249,10 @@ class TxManager {
     // First, check that current gasPrice is profitable. If it's not (due
     // to network congestion or a recently-removed candidate), then replace
     // any pending transactions with empty ones.
-    let fee = TxManager._estimateFee(tx);
+    let fee = TxManager._estimateFee(tx).mul(0.75);
     if (fee.gt(this.maxFee_Eth) || fee.gt(this._revenue)) {
-      this.dumpAll();
+      winston.info("🧮 *TxManager* | Dumping (active tx no longer profitable)");
+      this._tx = null;
       return;
     }
 
@@ -272,7 +270,7 @@ class TxManager {
     // Pass by reference, so after dry run, tx.gasPrice will be updated...
     this._queue.replace(0, tx, "clip", /*dryRun*/ true);
 
-    fee = TxManager._estimateFee(tx);
+    fee = TxManager._estimateFee(tx).mul(0.75);
     if (fee.gt(this.maxFee_Eth) || fee.gt(this._revenue)) {
       tx.gasPrice = oldGasPrice;
       return;
@@ -310,8 +308,7 @@ class TxManager {
       .div(gasLimit);
 
     let gasPrice = Big(await this._queue._wallet._provider.eth.getGasPrice());
-    if (gasPrice.gte(maxGasPrice) || revenue < 0.1)
-      return maxGasPrice.mul(0.98);
+    if (gasPrice.gte(maxGasPrice)) gasPrice;
 
     let n = 0;
     while (gasPrice.lt(maxGasPrice)) {

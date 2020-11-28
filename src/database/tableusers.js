@@ -192,6 +192,12 @@ class TableUsers {
     );
   }
 
+  removeOlderThan(blockUpdated) {
+    return this._pool.query(
+      `DELETE FROM users WHERE blockupdated < ${blockUpdated};`
+    );
+  }
+
   async getCollatAndCost(cTokenID) {
     return (
       await this._pool.query(

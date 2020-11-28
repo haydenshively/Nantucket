@@ -64,6 +64,7 @@ class Database {
         liqIncent
       );
     });
+    this._tUsers.removeOlderThan(blockLabel.toFixed(0));
   }
 
   stop() {
