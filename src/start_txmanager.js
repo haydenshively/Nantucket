@@ -50,7 +50,7 @@ if (process.argv.length === 11) {
     );
   if (process.argv[10] === "true")
     Channel(Message).on("CheckCandidatesLiquidityComplete", msg => {
-      if (msg.__data.time > 4000)
+      if (msg.__data.time > 5000)
         winston.info(
           `📢 *Messages* | ${pid} got 'Check Candidates Liquidity Complete' (took ${msg.__data.time} ms)`
         );

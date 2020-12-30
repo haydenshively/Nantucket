@@ -3,13 +3,13 @@
     "A": {
       "envKeyAddress": "ACCOUNT_ADDRESS_TEST",
       "envKeySecret": "ACCOUNT_SECRET_TEST",
-      "interval": 100,
-      "maxFee_Eth": 0.3
+      "interval": 200,
+      "maxFee_Eth": 1.5
     }
   },
   "liquidators": [
     {
-      "minRevenue": 0.01,
+      "minRevenue": 0.1,
       "maxRevenue": 5.0,
       "maxHealth": null,
       "numCandidates": 500,

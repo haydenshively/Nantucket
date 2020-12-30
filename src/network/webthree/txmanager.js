@@ -69,7 +69,7 @@ class TxManager {
       this._cacheTransaction();
     });
     Channel(Message).on("MissedOpportunity", msg => {
-      this._removeCandidate.bind(this)(msg.__data.address);
+      this._removeCandidate(msg.__data.address);
       this._cacheTransaction();
     });
 
@@ -91,10 +91,13 @@ class TxManager {
       lastSeen: Date.now()
     };
 
-    if (isNew)
+    if (isNew) {
       winston.info(
         `🐳 *TxManager* | Added ${c.label} for revenue of ${c.profitability} Eth`
       );
+      if (Number(c.profitability) >= this._revenue)
+        winston.info(`✨ *TxManager* | ${c.label} will become primary target`);
+    }
   }
 
   _removeCandidate(address) {
@@ -118,7 +121,6 @@ class TxManager {
     let repayCTokens = [];
     let seizeCTokens = [];
     let revenue = 0;
-    let needPriceUpdate = false;
 
     let candidates = Object.entries(this._candidates);
     candidates = candidates.sort((a, b) => b[1].revenue - a[1].revenue);
@@ -130,68 +132,79 @@ class TxManager {
       repayCTokens.push(c.repayCToken);
       seizeCTokens.push(c.seizeCToken);
       revenue += c.revenue;
-      needPriceUpdate |= c.needsPriceUpdate;
     }
 
-    if (borrowers.length === 0) {
+    if (borrowers.length === 0 || this._oracle === null) {
       this._tx = null;
       this._revenue = 0;
       return;
     }
-    // Set expected revenue to the max of the candidate revenues
-    revenue = candidates[0][1].revenue;
 
     // NOTE: right now, we assume that only 1 borrower will be liquidated
     // (the first one in the list). We let Liquidator.js set the gas limit
     // accordingly. If that borrower can't be liquidated for some reason,
     // the smart contract will handle fallback options, so we don't have to
     // worry about that here
+    // Set expected revenue to the max of the candidate revenues
+    revenue = candidates[0][1].revenue;
 
-    if (!needPriceUpdate) {
-      const tx = Liquidator.mainnet.liquidateSN(
-        borrowers,
-        repayCTokens,
-        seizeCTokens
-      );
-      // Override gas limit
-      tx.gasLimit = Big(await this._queue._wallet.estimateGas(tx)).mul(1.05);
-      // Override gas price
-      if (this._tx === null || this._tx.gasPrice === undefined)
-        tx.gasPrice = await this._getInitialGasPrice(tx.gasLimit);
-      else tx.gasPrice = this._tx.gasPrice;
-      // Save to cached tx. Must be done at the end like this so that
-      // tx is always null or fully defined, not partially defined
-      this._tx = tx;
-      this._revenue = revenue;
-      return;
-    }
-
-    // Technically, if oracle is null and some (but not all) candidates
-    // need price updates, we should filter out candidates that need price
-    // updates and send the rest using the function above. However, that
-    // shoudn't happen very often (`_oracle` is only null on code startup),
-    // so it's safe to ignore that case.
-    if (this._oracle === null) {
+    const postable = this._oracle.postableDataFor(candidates[0][1].markets);
+    // TODO this check shouldn't be necessary (except for the null part)
+    if (
+      postable === null ||
+      postable[0].length !== postable[1].length ||
+      postable[1].length !== postable[2].length
+    ) {
+      console.error("Error: Postable=null or components have varying lengths");
       this._tx = null;
       this._revenue = 0;
       return;
     }
 
-    const postable = this._oracle.postableDataFor(candidates[0][1].markets);
-    const tx = Liquidator.mainnet.liquidateSNWithPrice(
-      postable[0],
-      postable[1],
-      postable[2],
-      borrowers,
-      repayCTokens,
-      seizeCTokens
-    );
+    let tx = null;
+    if (postable[0].length === 0)
+      tx = Liquidator.mainnet.liquidateS(
+        borrowers[0],
+        repayCTokens[0],
+        seizeCTokens[0]
+      );
+    else
+      tx = Liquidator.mainnet.liquidateSWithPrice(
+        postable[0],
+        postable[1],
+        postable[2],
+        borrowers[0],
+        repayCTokens[0],
+        seizeCTokens[0]
+      );
+
     // Override gas limit
-    tx.gasLimit = Big(await this._queue._wallet.estimateGas(tx)).mul(1.05);
+    // Since estimation is made under the assumption that pending txns have gone
+    // through, it may severely underestimate liquidation gas after an initial
+    // bid has been made. As such, only re-estimate if primary candidate changes.
+
+    let estimated;
+    try {
+      estimated = Big(await this._queue._wallet.estimateGas(tx)).mul(1.06);
+    } catch (e) {
+      console.error("Error: Revert during gas estimation:");
+      console.log(e.name + " " + e.message);
+      this._removeCandidate(borrowers[0]);
+      this._tx = null;
+      this._revenue = 0;
+      return;
+    }
+    tx.gasLimit = estimated.gt(tx.gasLimit) ? estimated : tx.gasLimit;
+
     // Override gas price
-    if (this._tx === null || this._tx.gasPrice === undefined)
-      tx.gasPrice = await this._getInitialGasPrice(tx.gasLimit);
+    if (
+      this._tx === null ||
+      this._tx.gasPrice === undefined ||
+      this._tx.data !== tx.data
+    )
+      tx.gasPrice = await this._getInitialGasPrice(tx.gasLimit.mul(0.75), revenue);
     else tx.gasPrice = this._tx.gasPrice;
+
     // Save to cached tx. Must be done at the end like this so that
     // tx is always null or fully defined, not partially defined
     this._tx = tx;
@@ -214,7 +227,11 @@ class TxManager {
       return;
     }
     if (this._tx.gasLimit.lte("500000")) {
-      console.error("TxManager's periodic function saw a gas limit < 500000");
+      console.error(
+        `TxManager periodic got low gas limit ${this._tx.gasLimit.toFixed(0)}`
+      );
+      this._tx = null;
+      this._revenue = 0;
       return;
     }
     // Go ahead and send!
@@ -232,9 +249,10 @@ class TxManager {
     // First, check that current gasPrice is profitable. If it's not (due
     // to network congestion or a recently-removed candidate), then replace
     // any pending transactions with empty ones.
-    let fee = TxManager._estimateFee(tx);
+    let fee = TxManager._estimateFee(tx).mul(0.75);
     if (fee.gt(this.maxFee_Eth) || fee.gt(this._revenue)) {
-      this.dumpAll();
+      winston.info("🧮 *TxManager* | Dumping (active tx no longer profitable)");
+      this._tx = null;
       return;
     }
 
@@ -247,15 +265,18 @@ class TxManager {
     // If there's already a pending transaction, check whether raising
     // the gasPrice (re-bidding) results in a still-profitable tx. If it
     // does, go ahead and re-bid.
-    const newTx = { ...tx };
-    // Pass by reference, so after dry run, newTx.gasPrice will be updated...
-    this._queue.replace(0, newTx, "clip", /*dryRun*/ true);
+    // .mul(1.0) to ensure we get a copy of the gasPrice and not a reference
+    const oldGasPrice = tx.gasPrice.mul(1.0);
+    // Pass by reference, so after dry run, tx.gasPrice will be updated...
+    this._queue.replace(0, tx, "clip", /*dryRun*/ true);
 
-    fee = TxManager._estimateFee(newTx);
-    if (fee.gt(this.maxFee_Eth) || fee.gt(this._revenue)) return;
+    fee = TxManager._estimateFee(tx).mul(0.75);
+    if (fee.gt(this.maxFee_Eth) || fee.gt(this._revenue)) {
+      tx.gasPrice = oldGasPrice;
+      return;
+    }
 
     this._queue.replace(0, tx, "clip");
-    tx.gasPrice = newTx.gasPrice;
   }
 
   /**
@@ -278,15 +299,16 @@ class TxManager {
    * @private
    *
    * @param gasLimit {Big} the gas limit of the proposed transaction
+   * @param revenue {Number} the expected revenue from proposed tx (in Eth)
    * @returns {Promise<Big>} the gas price in Wei
    */
-  async _getInitialGasPrice(gasLimit) {
-    const maxGasPrice = Big(Math.min(this._revenue, this.maxFee_Eth))
+  async _getInitialGasPrice(gasLimit, revenue) {
+    const maxGasPrice = Big(Math.min(revenue, this.maxFee_Eth))
       .times(1e18)
       .div(gasLimit);
 
     let gasPrice = Big(await this._queue._wallet._provider.eth.getGasPrice());
-    if (gasPrice.gte(maxGasPrice)) return gasPrice;
+    if (gasPrice.gte(maxGasPrice)) gasPrice;
 
     let n = 0;
     while (gasPrice.lt(maxGasPrice)) {
@@ -323,24 +345,12 @@ class TxManager {
   }
 
   /**
-   * Clears candidates and dumps existing transactions
-   */
-  reset() {
-    this._candidates = {};
-    this._revenue = 0.0; // in Eth
-    this._tx = null;
-
-    this.dumpAll();
-  }
-
-  /**
-   * Calls `reset()` to clear candidates and dump transactions,
-   * then cancels the periodic bidding function.
+   * Cancels the periodic bidding function and dumps txns.
    * Should be called before exiting the program
    */
   stop() {
-    this.reset();
     clearInterval(this._intervalHandle);
+    this.dumpAll();
   }
 }
 

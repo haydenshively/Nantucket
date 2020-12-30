@@ -5,6 +5,8 @@ Big.RM = 0;
 const Tx = require("ethereumjs-tx").Transaction;
 const Web3Utils = require("web3-utils");
 
+const x0 = "0x0000000000000000000000000000000000000000";
+
 class Wallet {
   /**
    * Constructs a new Wallet instance
@@ -62,14 +64,17 @@ class Wallet {
    * Estimates the gas necessary to send a given transaction
    *
    * @param {Object} tx an object describing the transaction. See `signAndSend`
+   * @param {Number?} nonce the transaction's nonce, as an integer (base 10)
+   * @param {Boolean?} anon whether gas should be estimated as if tx is from 0 address
    * @returns {Promise<Number>} estimated amount of gas that the tx will require
    *
    */
-  estimateGas(tx) {
+  estimateGas(tx, nonce = null, anon = false) {
     tx = { ...tx };
-    tx.from = process.env[this._envKeyAddress];
-    delete tx["gasPrice"]
-    delete tx["gasLimit"]
+    tx.from = anon ? x0 : process.env[this._envKeyAddress];
+    if (nonce !== null) tx.nonce = Web3Utils.toHex(nonce);
+    delete tx["gasPrice"];
+    delete tx["gasLimit"];
     return this._provider.eth.estimateGas(tx);
   }
 
@@ -93,7 +98,7 @@ class Wallet {
    */
   signAndSend(tx, nonce) {
     tx = { ...tx };
-    if ("gasPrice" in tx) this._gasPrices[nonce] = tx.gasPrice;
+    this._gasPrices[nonce] = tx.gasPrice;
 
     tx.nonce = Web3Utils.toHex(nonce);
     tx.gasLimit = Web3Utils.toHex(tx.gasLimit.toFixed(0));
