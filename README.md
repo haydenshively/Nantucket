@@ -14,7 +14,7 @@ That said, this space moves quickly, and there are obviously improvements to be 
 - 🦄 Liquidate via Uniswap (v2) flash swaps
 - 👻 Liquidate via AAVE (v1) flash loans - you'll have to go back in git history for this
 - 🔢 Liquidate multiple accounts at once
-- 🧮 Compute repay amounts atomically on-chain (guaranteed accuracy)
+- 🧮 Compute repay amounts atomically on-chain
 - ⛽️ Burn CHI to reduce gas costs
 - 🏷 Atomically post prices to Compound's Open Price Feed
 - (optional) Contract to split profits between 2 people
