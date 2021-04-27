@@ -11,10 +11,9 @@
     "dotenv": "^8.2.0",
     "ethereumjs-tx": "^2.1.2",
     "ethers": "^5.0.8",
-    "node-fetch": "^2.6.0",
-    "perf_hooks": "0.0.1",
+    "node-fetch": "^2.6.1",
     "pg": "^8.2.2",
-    "web3": "^1.2.6",
+    "web3": "^1.2.11",
     "winston": "^3.3.3"
   },
   "devDependencies": {
@@ -27,9 +26,7 @@
     "ganache-cli": "^6.9.1",
     "mocha": "^7.2.0"
   },
-  "optionalDependencies": {
-    "@tensorflow/tfjs-node-gpu": "^2.0.1"
-  },
+  "optionalDependencies": {},
   "scripts": {
     "nantucket": "node './src/start' '../config.json'",
     "nantucket-test": "node './src/start' '../config.test.json'",
