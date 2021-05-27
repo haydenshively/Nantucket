@@ -38,6 +38,9 @@ That said, this space moves quickly, and there are obviously improvements to be 
 
 ## Introduction
 
+> Looking back on it, the rest of this README is pretty poorly scoped and/or outdated. You're probably better off
+> learning elsewhere, and coming back here for the code.
+
 If you're planning to use this code, you should know this stuff already. But if
 you're a casual observer of my Github profile, feel free to read on.
 
