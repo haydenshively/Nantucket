@@ -2,6 +2,12 @@
 
 ![Node.js CI](https://github.com/haydenshively/nantucket/workflows/Node.js%20CI/badge.svg)
 
+----
+
+**Update, 7/26/21: I've open sourced Nantucket's successor [here](https://github.com/haydenshively/New-Bedford).**
+
+----
+
 Nantucket is a (massively) upgraded version of my [Compound Liquidation Bot](https://github.com/haydenshively/Compound-Liquidation-Bot).
 For capital-free liquidations, it was more or less state-of-the-art in November 2020.
 That said, this space moves quickly, and there are obviously improvements to be made
